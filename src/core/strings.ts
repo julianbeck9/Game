@@ -1,0 +1,19 @@
+/** All in-game text is German. */
+export const STR = {
+  title: 'Crown & Clash',
+  round: 'Runde',
+  victory: 'Sieg',
+  defeat: 'Niederlage',
+  pickAugment: 'Wähle ein Augment',
+  life: 'Leben',
+  usurpatorComes: 'Der Usurpator naht…',
+  crownIsYours: 'Die Krone gehört dir!',
+  retry: 'Erneut versuchen',
+  start: 'Kampf beginnen',
+  runFlavor: 'Verbannt. Verraten. Doch die Krone ruft dich zurück in die Arena.',
+  bossFlavorMini: 'Der Usurpator tritt selbst in den Sand — er will dich brechen sehen.',
+  bossFlavorFinal: 'Die letzte Schlacht. Der Usurpator trägt deine Krone — nimm sie ihm.',
+  defeatFlavor: 'Die Arena verschlingt einen weiteren Namen. Deiner verhallt.',
+  victoryFlavor: 'Der Thron ist wieder dein. Die Arena jubelt ihrem König zu.',
+  trainingHint: 'Trainingspuppe — beweg dich mit Stick oder WASD',
+} as const;
