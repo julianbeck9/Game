@@ -3,13 +3,14 @@ import { Combat } from '../core/combat';
 import { EventBus, DamageType } from '../core/events';
 import { Unit } from '../entities/Unit';
 import { Player } from '../entities/Player';
-import { makeHaescher, SCALE_R1, spawnEnemy } from '../entities/enemies';
+import { spawnEnemy } from '../entities/enemies';
 import { Projectile, ProjectileOpts } from '../entities/Projectile';
+import { roundSpec, lossCost, MAX_ROUND } from '../core/rounds';
 import { Joystick } from '../ui/Joystick';
 import { AbilityButton } from '../ui/AbilityButton';
 import { AugmentManager } from '../augments/AugmentManager';
 import { rollOffers } from '../augments/offers';
-import { run, newRun } from '../core/run';
+import { run } from '../core/run';
 import { dist, Vec } from '../core/geometry';
 import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H, ABILITIES } from '../config';
 import { STR } from '../core/strings';
@@ -56,7 +57,19 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     this.player = new Player(this, this, ARENA_X, ARENA_Y + 360);
     this.units.push(this.player);
-    this.units.push(spawnEnemy(this, this, ARENA_X, ARENA_Y - 360, makeHaescher(SCALE_R1)));
+
+    const spec = roundSpec(run.round);
+    const spots: [number, number][] =
+      spec.enemies.length === 1
+        ? [[ARENA_X, ARENA_Y - 360]]
+        : [
+            [ARENA_X - 240, ARENA_Y - 320],
+            [ARENA_X + 240, ARENA_Y - 320],
+          ];
+    spec.enemies.forEach((cfg, i) => {
+      const [x, y] = spots[i % spots.length];
+      this.units.push(spawnEnemy(this, this, x, y, cfg));
+    });
 
     this.projGfx = this.add.graphics().setDepth(9);
     this.aimGfx = this.add.graphics().setDepth(8);
@@ -70,7 +83,56 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.augments.init();
     this.events.once('shutdown', () => this.augments.destroy());
 
+    this.createHud(spec.boss, spec.title);
     this.bus.emit('roundStart', undefined);
+  }
+
+  private createHud(boss: boolean, title: string): void {
+    const style = { fontFamily: 'sans-serif', fontSize: '32px', color: '#c8d0e8' };
+    this.add.text(30, 24, `${STR.round} ${run.round} / ${MAX_ROUND}`, style).setDepth(100);
+    this.add
+      .text(GAME_W - 30, 24, `${STR.life}: ${run.runHP}`, { ...style, color: '#7ee08a' })
+      .setOrigin(1, 0)
+      .setDepth(100);
+
+    // Round intro banner
+    const banner = this.add
+      .text(ARENA_X, ARENA_Y - 80, title, {
+        fontFamily: 'sans-serif',
+        fontSize: '84px',
+        fontStyle: 'bold',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 8,
+      })
+      .setOrigin(0.5)
+      .setDepth(150)
+      .setAlpha(0);
+    const sub = boss
+      ? this.add
+          .text(ARENA_X, ARENA_Y + 10, STR.usurpatorComes, {
+            fontFamily: 'sans-serif',
+            fontSize: '38px',
+            fontStyle: 'italic',
+            color: '#ff9a8a',
+            stroke: '#000000',
+            strokeThickness: 6,
+          })
+          .setOrigin(0.5)
+          .setDepth(150)
+          .setAlpha(0)
+      : null;
+    this.tweens.add({
+      targets: sub ? [banner, sub] : banner,
+      alpha: 1,
+      duration: 350,
+      yoyo: true,
+      hold: 1300,
+      onComplete: () => {
+        banner.destroy();
+        sub?.destroy();
+      },
+    });
   }
 
   private createButtons(): void {
@@ -235,29 +297,35 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       .setDepth(200);
 
     if (win) {
-      // Augment pick after each won round
-      this.time.delayedCall(1300, () => {
-        this.scene.start('pick', { offers: rollOffers(run.round) });
-      });
+      if (run.round >= MAX_ROUND) {
+        this.time.delayedCall(1400, () => this.scene.start('end', { victory: true }));
+        return;
+      }
+      // Augment pick after each won round R1–R7; offers gate on the round just won
+      const offers = rollOffers(run.round);
+      run.round++;
+      this.time.delayedCall(1300, () => this.scene.start('pick', { offers }));
     } else {
+      run.runHP -= lossCost(run.round);
+      if (run.runHP <= 0) {
+        run.runHP = 0;
+        this.time.delayedCall(1400, () => this.scene.start('end', { victory: false }));
+        return;
+      }
       this.add
-        .text(ARENA_X, ARENA_Y + 50, STR.retry, {
+        .text(ARENA_X, ARENA_Y + 50, `−${lossCost(run.round)} ${STR.life} · ${STR.retry}`, {
           fontFamily: 'sans-serif',
           fontSize: '36px',
           color: '#ccccdd',
         })
         .setOrigin(0.5)
         .setDepth(200);
+      // Same round again, run-HP reduced
       this.time.delayedCall(600, () => {
-        this.input.once('pointerdown', () => this.restartRun());
-        this.input.keyboard?.once('keydown', () => this.restartRun());
+        this.input.once('pointerdown', () => this.scene.restart());
+        this.input.keyboard?.once('keydown', () => this.scene.restart());
       });
     }
-  }
-
-  private restartRun(): void {
-    newRun();
-    this.scene.restart();
   }
 
   private render(): void {

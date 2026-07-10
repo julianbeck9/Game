@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from './config';
 import { ArenaScene } from './scenes/ArenaScene';
 import { PickScene } from './scenes/PickScene';
+import { MenuScene } from './scenes/MenuScene';
+import { EndScene } from './scenes/EndScene';
 import { run } from './core/run';
 
 const game = new Phaser.Game({
@@ -17,7 +19,7 @@ const game = new Phaser.Game({
   input: {
     activePointers: 4,
   },
-  scene: [ArenaScene, PickScene],
+  scene: [MenuScene, ArenaScene, PickScene, EndScene],
 });
 
 // Debug/testing handle (read-only introspection; not used by game code)
