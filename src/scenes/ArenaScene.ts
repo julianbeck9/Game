@@ -3,7 +3,7 @@ import { Combat } from '../core/combat';
 import { EventBus, DamageType } from '../core/events';
 import { Unit } from '../entities/Unit';
 import { Player } from '../entities/Player';
-import { Dummy } from '../entities/Dummy';
+import { makeHaescher, SCALE_R1, spawnEnemy } from '../entities/enemies';
 import { Projectile, ProjectileOpts } from '../entities/Projectile';
 import { Joystick } from '../ui/Joystick';
 import { AbilityButton } from '../ui/AbilityButton';
@@ -28,17 +28,31 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     super('arena');
   }
 
+  private fightState: 'fighting' | 'won' | 'lost' = 'fighting';
+
   /** Combat.now — scene clock in ms (Phaser's `time` is the clock plugin itself). */
   get now(): number {
     return this.time.now;
   }
 
+  get playerUnit(): Unit {
+    return this.player;
+  }
+
   create(): void {
+    // Scene restarts reuse the instance — reset state
+    this.units = [];
+    this.projectiles = [];
+    this.buttons = [];
+    this.fightState = 'fighting';
+    this.aimPreview = null;
+    this.bus.clear();
+
     this.drawArenaFloor();
 
     this.player = new Player(this, this, ARENA_X, ARENA_Y + 360);
     this.units.push(this.player);
-    this.units.push(new Dummy(this, ARENA_X, ARENA_Y - 220));
+    this.units.push(spawnEnemy(this, this, ARENA_X, ARENA_Y - 360, makeHaescher(SCALE_R1)));
 
     this.projGfx = this.add.graphics().setDepth(9);
     this.aimGfx = this.add.graphics().setDepth(8);
@@ -46,15 +60,6 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.joystick = new Joystick(this);
     this.createButtons();
     this.setupKeyboard();
-
-    this.add
-      .text(ARENA_X, 40, STR.trainingHint, {
-        fontFamily: 'sans-serif',
-        fontSize: '28px',
-        color: '#8899bb',
-      })
-      .setOrigin(0.5)
-      .setDepth(100);
 
     this.bus.emit('roundStart', undefined);
   }
@@ -161,22 +166,66 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   update(time: number, deltaMs: number): void {
     const dt = Math.min(deltaMs, 50) / 1000;
 
-    // Movement input: joystick wins, else WASD
-    let mv = this.joystick.vec;
-    if (!this.joystick.active) {
-      mv = {
-        x: (this.keys.D.isDown ? 1 : 0) - (this.keys.A.isDown ? 1 : 0),
-        y: (this.keys.S.isDown ? 1 : 0) - (this.keys.W.isDown ? 1 : 0),
-      };
+    if (this.fightState === 'fighting') {
+      // Movement input: joystick wins, else WASD
+      let mv = this.joystick.vec;
+      if (!this.joystick.active) {
+        mv = {
+          x: (this.keys.D.isDown ? 1 : 0) - (this.keys.A.isDown ? 1 : 0),
+          y: (this.keys.S.isDown ? 1 : 0) - (this.keys.W.isDown ? 1 : 0),
+        };
+      }
+      this.player.move(dt, mv);
+
+      for (const u of this.units) u.update(time, dt);
+
+      for (const p of this.projectiles) p.update(dt, this.units);
+      this.projectiles = this.projectiles.filter((p) => p.alive);
+
+      this.checkFightEnd();
     }
-    this.player.move(dt, mv);
-
-    for (const u of this.units) u.update(time, dt);
-
-    for (const p of this.projectiles) p.update(dt, this.units);
-    this.projectiles = this.projectiles.filter((p) => p.alive);
 
     this.render();
+  }
+
+  private checkFightEnd(): void {
+    if (!this.player.alive) {
+      this.endFight(false);
+    } else if (this.units.every((u) => u.team === 'player' || !u.alive)) {
+      this.endFight(true);
+    }
+  }
+
+  private endFight(win: boolean): void {
+    this.fightState = win ? 'won' : 'lost';
+    this.bus.emit('roundEnd', { win });
+    this.projectiles = [];
+
+    this.add
+      .text(ARENA_X, ARENA_Y - 60, win ? STR.victory : STR.defeat, {
+        fontFamily: 'sans-serif',
+        fontSize: '110px',
+        fontStyle: 'bold',
+        color: win ? '#ffd24a' : '#e05555',
+        stroke: '#000000',
+        strokeThickness: 8,
+      })
+      .setOrigin(0.5)
+      .setDepth(200);
+    this.add
+      .text(ARENA_X, ARENA_Y + 50, STR.retry, {
+        fontFamily: 'sans-serif',
+        fontSize: '36px',
+        color: '#ccccdd',
+      })
+      .setOrigin(0.5)
+      .setDepth(200);
+
+    // Short grace period so a stray thumb doesn't skip the banner
+    this.time.delayedCall(600, () => {
+      this.input.once('pointerdown', () => this.scene.restart());
+      this.input.keyboard?.once('keydown', () => this.scene.restart());
+    });
   }
 
   private render(): void {

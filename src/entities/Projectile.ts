@@ -45,6 +45,12 @@ export class Projectile {
   get radius(): number {
     return this.opts.radius;
   }
+  get isHoming(): boolean {
+    return !!this.opts.homing;
+  }
+  get dir(): { x: number; y: number } {
+    return { x: this.dirX, y: this.dirY };
+  }
   get color(): number {
     return this.opts.color;
   }

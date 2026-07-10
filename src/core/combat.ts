@@ -9,7 +9,9 @@ import type { EventBus, DamageType } from './events';
 export interface Combat {
   readonly bus: EventBus;
   readonly units: Unit[];
+  readonly projectiles: Projectile[];
   readonly now: number;
+  readonly playerUnit: Unit;
   spawnProjectile(opts: ProjectileOpts): Projectile;
   dealDamage(source: Unit | null, target: Unit, amount: number, type: DamageType): number;
   nearestEnemy(of: Unit, maxDist?: number): Unit | null;
