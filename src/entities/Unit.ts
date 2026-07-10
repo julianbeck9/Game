@@ -10,6 +10,7 @@ export abstract class Unit {
   radius = 26;
   team: Team;
   hp: number;
+  shield = 0;
   alive = true;
   stats: StatBlock;
   gfx: Phaser.GameObjects.Graphics;
@@ -40,11 +41,22 @@ export abstract class Unit {
   /** Raw HP change; damage routing/events live in the combat core, not here. */
   applyDamage(amount: number): void {
     if (!this.alive) return;
+    if (this.shield > 0) {
+      const absorbed = Math.min(this.shield, amount);
+      this.shield -= absorbed;
+      amount -= absorbed;
+    }
+    if (amount <= 0) return;
     this.hp -= amount;
     if (this.hp <= 0) {
       this.hp = 0;
       this.alive = false;
     }
+  }
+
+  addShield(amount: number): void {
+    if (!this.alive || amount <= 0) return;
+    this.shield += amount;
   }
 
   heal(amount: number): void {
@@ -59,6 +71,10 @@ export abstract class Unit {
     g.clear();
     if (!this.alive) return;
     this.drawBody(g);
+    if (this.shield > 0) {
+      g.lineStyle(4, COLORS.shield, 0.8);
+      g.strokeCircle(this.x, this.y, this.radius + 7);
+    }
     this.drawHpBar(g);
   }
 

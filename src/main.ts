@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from './config';
 import { ArenaScene } from './scenes/ArenaScene';
+import { PickScene } from './scenes/PickScene';
+import { run } from './core/run';
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   width: GAME_W,
@@ -15,5 +17,19 @@ new Phaser.Game({
   input: {
     activePointers: 4,
   },
-  scene: [ArenaScene],
+  scene: [ArenaScene, PickScene],
 });
+
+// Debug/testing handle (read-only introspection; not used by game code)
+declare global {
+  interface Window {
+    __CC?: { run: unknown; scenes: () => string[] };
+  }
+}
+window.__CC = {
+  get run() {
+    return run;
+  },
+  scenes: () => game.scene.getScenes(true).map((s) => s.scene.key),
+};
+

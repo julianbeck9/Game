@@ -7,6 +7,9 @@ import { makeHaescher, SCALE_R1, spawnEnemy } from '../entities/enemies';
 import { Projectile, ProjectileOpts } from '../entities/Projectile';
 import { Joystick } from '../ui/Joystick';
 import { AbilityButton } from '../ui/AbilityButton';
+import { AugmentManager } from '../augments/AugmentManager';
+import { rollOffers } from '../augments/offers';
+import { run, newRun } from '../core/run';
 import { dist, Vec } from '../core/geometry';
 import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H, ABILITIES } from '../config';
 import { STR } from '../core/strings';
@@ -17,6 +20,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   projectiles: Projectile[] = [];
   player!: Player;
 
+  private augments!: AugmentManager;
   private joystick!: Joystick;
   private buttons: AbilityButton[] = [];
   private keys!: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
@@ -60,6 +64,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.joystick = new Joystick(this);
     this.createButtons();
     this.setupKeyboard();
+
+    // Augments plug in before the round starts so roundStart hooks fire
+    this.augments = new AugmentManager(this, this.player);
+    this.augments.init();
+    this.events.once('shutdown', () => this.augments.destroy());
 
     this.bus.emit('roundStart', undefined);
   }
@@ -130,17 +139,28 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
   dealDamage(source: Unit | null, target: Unit, amount: number, type: DamageType): number {
     if (!target.alive || amount <= 0) return 0;
-    const dealt = Math.min(amount, target.hp);
+    const prevPct = target.hpPct;
+    const dealt = Math.min(amount, target.hp + target.shield);
     target.applyDamage(amount);
 
     if (source === this.player) {
+      run.totalDamageDealt += dealt;
       this.bus.emit('damageDealt', { target, dmg: dealt, type });
+      const ls = this.player.stats.get('lifesteal');
+      if (ls > 0 && type !== 'reflect') this.player.heal(dealt * ls);
     }
     if (target === this.player) {
       const melee = source !== null && dist(source.x, source.y, target.x, target.y) < 120;
       this.bus.emit('damageTaken', { source, dmg: dealt, melee });
+      // Threshold events (Zweiter Wind etc.): fire when crossing downward
+      for (const pct of [0.5, 0.15]) {
+        if (prevPct > pct && this.player.hpPct <= pct && this.player.alive) {
+          this.bus.emit('playerHpThreshold', { pct });
+        }
+      }
     }
     if (!target.alive && target.team === 'enemy') {
+      run.kills++;
       this.bus.emit('enemyDeath', { enemy: target });
       this.bus.emit('killWindow', { victim: target });
     }
@@ -178,6 +198,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.player.move(dt, mv);
 
       for (const u of this.units) u.update(time, dt);
+      this.augments.update(dt);
 
       for (const p of this.projectiles) p.update(dt, this.units);
       this.projectiles = this.projectiles.filter((p) => p.alive);
@@ -212,20 +233,31 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       })
       .setOrigin(0.5)
       .setDepth(200);
-    this.add
-      .text(ARENA_X, ARENA_Y + 50, STR.retry, {
-        fontFamily: 'sans-serif',
-        fontSize: '36px',
-        color: '#ccccdd',
-      })
-      .setOrigin(0.5)
-      .setDepth(200);
 
-    // Short grace period so a stray thumb doesn't skip the banner
-    this.time.delayedCall(600, () => {
-      this.input.once('pointerdown', () => this.scene.restart());
-      this.input.keyboard?.once('keydown', () => this.scene.restart());
-    });
+    if (win) {
+      // Augment pick after each won round
+      this.time.delayedCall(1300, () => {
+        this.scene.start('pick', { offers: rollOffers(run.round) });
+      });
+    } else {
+      this.add
+        .text(ARENA_X, ARENA_Y + 50, STR.retry, {
+          fontFamily: 'sans-serif',
+          fontSize: '36px',
+          color: '#ccccdd',
+        })
+        .setOrigin(0.5)
+        .setDepth(200);
+      this.time.delayedCall(600, () => {
+        this.input.once('pointerdown', () => this.restartRun());
+        this.input.keyboard?.once('keydown', () => this.restartRun());
+      });
+    }
+  }
+
+  private restartRun(): void {
+    newRun();
+    this.scene.restart();
   }
 
   private render(): void {
