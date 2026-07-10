@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { AugmentDef, Tier } from '../augments/types';
 import { addAugment } from '../core/run';
+import { sfx } from '../core/sfx';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { STR } from '../core/strings';
 
@@ -116,6 +117,7 @@ export class PickScene extends Phaser.Scene {
   private pick(def: AugmentDef): void {
     if (this.picked) return;
     this.picked = true;
+    sfx.pick();
     addAugment(def);
     this.scene.start('arena');
   }

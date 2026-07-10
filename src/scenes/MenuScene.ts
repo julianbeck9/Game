@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { STR } from '../core/strings';
 import { newRun } from '../core/run';
+import { initAudio } from '../core/sfx';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -54,6 +55,7 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     const start = () => {
+      initAudio();
       newRun();
       this.scene.start('arena');
     };

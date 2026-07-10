@@ -16,6 +16,8 @@ export abstract class Unit {
   burns: { dps: number; until: number }[] = [];
   /** Fractional DoT accumulator so ticks apply whole damage points. */
   dotAcc = 0;
+  /** Juice: white flash on recently-hit units. */
+  hitFlashUntil = 0;
   stats: StatBlock;
   gfx: Phaser.GameObjects.Graphics;
 
@@ -80,6 +82,10 @@ export abstract class Unit {
     g.clear();
     if (!this.alive) return;
     this.drawBody(g);
+    if (this.scene.time.now < this.hitFlashUntil) {
+      g.fillStyle(0xffffff, 0.55);
+      g.fillCircle(this.x, this.y, this.radius);
+    }
     if (this.shield > 0) {
       g.lineStyle(4, COLORS.shield, 0.8);
       g.strokeCircle(this.x, this.y, this.radius + 7);

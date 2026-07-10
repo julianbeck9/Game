@@ -16,6 +16,7 @@ import { run } from '../core/run';
 import { dist, pointInPillar, Vec } from '../core/geometry';
 import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H, ABILITIES } from '../config';
 import { STR } from '../core/strings';
+import { initAudio, sfx } from '../core/sfx';
 
 export class ArenaScene extends Phaser.Scene implements Combat {
   readonly bus = new EventBus();
@@ -34,6 +35,12 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private hazards: Hazard[] = [];
   private taunt: { unit: Unit; until: number } | null = null;
   private flashes: { x1: number; y1: number; x2: number; y2: number; color: number; until: number }[] = [];
+
+  // Juice
+  private slowmoUntil = 0;
+  private dashTrail: { x: number; y: number; until: number }[] = [];
+  private deathBursts: { x: number; y: number; start: number; color: number }[] = [];
+  private burnNumAcc = new Map<Unit, { sum: number; showAt: number }>();
 
   // Arena modifier state (R5+)
   private modifier: ModifierId | null = null;
@@ -65,6 +72,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.buttons = [];
     this.hazards = [];
     this.flashes = [];
+    this.dashTrail = [];
+    this.deathBursts = [];
+    this.burnNumAcc = new Map();
+    this.slowmoUntil = 0;
     this.taunt = null;
     this.fightState = 'fighting';
     this.aimPreview = null;
@@ -103,6 +114,15 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     this.initModifier(spec.modifier ?? null);
     this.createHud(spec.boss, spec.title, spec.bossAugments);
+
+    // Presentation-layer event subscribers (SFX)
+    this.input.on('pointerdown', initAudio);
+    this.bus.on('autoHit', () => sfx.hit());
+    this.bus.on('abilityCast', () => sfx.cast());
+    this.bus.on('dashStart', () => sfx.dash());
+    this.bus.on('damageTaken', () => sfx.hurt());
+    this.bus.on('enemyDeath', () => sfx.kill());
+
     this.bus.emit('roundStart', undefined);
   }
 
@@ -382,12 +402,67 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         }
       }
     }
+    // ---- Juice: numbers, flashes, shake, slow-mo ----
+    target.hitFlashUntil = this.now + 90;
+    this.spawnDamageNumber(target, dealt, type);
+    if (target === this.player && dealt > 0) {
+      this.cameras.main.shake(130, Math.min(0.012, 0.003 + dealt / 8000));
+    } else if (dealt >= 45) {
+      this.cameras.main.shake(90, 0.004);
+    }
+
     if (killedByThisCall && target.team === 'enemy') {
       run.kills++;
+      // Kill hit-stop + death burst
+      this.slowmoUntil = this.now + 110;
+      this.deathBursts.push({ x: target.x, y: target.y, start: this.now, color: COLORS.enemy });
+      this.cameras.main.shake(120, 0.006);
       this.bus.emit('enemyDeath', { enemy: target });
       this.bus.emit('killWindow', { victim: target });
     }
     return dealt;
+  }
+
+  /** Floating damage numbers; burn ticks aggregate per unit to avoid spam. */
+  private spawnDamageNumber(target: Unit, dealt: number, type: DamageType): void {
+    if (dealt <= 0) return;
+    if (type === 'burn') {
+      const acc = this.burnNumAcc.get(target) ?? { sum: 0, showAt: this.now + 450 };
+      acc.sum += dealt;
+      if (this.now < acc.showAt) {
+        this.burnNumAcc.set(target, acc);
+        return;
+      }
+      dealt = acc.sum;
+      this.burnNumAcc.set(target, { sum: 0, showAt: this.now + 450 });
+    }
+    const color =
+      target === this.player
+        ? '#ff5555'
+        : type === 'burn'
+          ? '#ff9944'
+          : type === 'ability'
+            ? '#ffd24a'
+            : '#ffffff';
+    const t = this.add
+      .text(target.x + (Math.random() - 0.5) * 30, target.y - target.radius - 26, `${Math.round(dealt)}`, {
+        fontFamily: 'sans-serif',
+        fontSize: dealt >= 45 ? '40px' : '28px',
+        fontStyle: 'bold',
+        color,
+        stroke: '#000000',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(140);
+    this.tweens.add({
+      targets: t,
+      y: t.y - 55,
+      alpha: 0,
+      duration: 750,
+      ease: 'Cubic.easeOut',
+      onComplete: () => t.destroy(),
+    });
   }
 
   spawnEnemyUnit(cfg: Parameters<typeof spawnEnemy>[4], x: number, y: number): Unit {
@@ -503,7 +578,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   // ---- Frame loop ----
 
   update(time: number, deltaMs: number): void {
-    const dt = Math.min(deltaMs, 50) / 1000;
+    let dt = Math.min(deltaMs, 50) / 1000;
+    // Kill hit-stop: world crawls for ~110ms (absolute-time cooldowns are unaffected;
+    // the discrepancy is imperceptible at this length)
+    if (time < this.slowmoUntil) dt *= 0.15;
 
     if (this.fightState === 'fighting') {
       // Movement input: joystick wins, else WASD
@@ -515,6 +593,9 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         };
       }
       this.player.move(dt, mv);
+      if (this.player.dashing) {
+        this.dashTrail.push({ x: this.player.x, y: this.player.y, until: time + 450 });
+      }
 
       for (const u of this.units) u.update(time, dt);
       this.augments.update(dt);
@@ -590,6 +671,22 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private render(): void {
     for (const u of this.units) u.draw();
 
+    // Dash trail (fading gold after-images under the player)
+    this.dashTrail = this.dashTrail.filter((d) => d.until > this.now);
+    this.aimGfx.clear();
+    for (const d of this.dashTrail) {
+      this.aimGfx.fillStyle(COLORS.player, 0.4 * ((d.until - this.now) / 450));
+      this.aimGfx.fillCircle(d.x, d.y, this.player.radius * 0.9);
+    }
+
+    // Death bursts (expanding rings)
+    this.deathBursts = this.deathBursts.filter((b) => this.now - b.start < 320);
+    for (const b of this.deathBursts) {
+      const p = (this.now - b.start) / 320;
+      this.aimGfx.lineStyle(6 * (1 - p) + 1, b.color, 1 - p);
+      this.aimGfx.strokeCircle(b.x, b.y, 20 + p * 70);
+    }
+
     this.hazardGfx.clear();
     this.drawModifier(this.hazardGfx);
     for (const h of this.hazards) {
@@ -613,7 +710,6 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.projGfx.strokePath();
     }
 
-    this.aimGfx.clear();
     if (this.aimPreview) {
       const px = this.player.x;
       const py = this.player.y;

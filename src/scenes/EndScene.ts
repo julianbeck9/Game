@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { STR } from '../core/strings';
 import { run } from '../core/run';
+import { sfx } from '../core/sfx';
 
 export interface EndSceneData {
   victory: boolean;
@@ -16,6 +17,8 @@ export class EndScene extends Phaser.Scene {
   create(data: EndSceneData): void {
     const cx = GAME_W / 2;
     const v = data.victory;
+    if (v) sfx.victory();
+    else sfx.defeat();
 
     this.add.rectangle(cx, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 1);
 
