@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
-import { Combat } from '../core/combat';
+import { Combat, Hazard } from '../core/combat';
 import { EventBus, DamageType } from '../core/events';
 import { Unit } from '../entities/Unit';
 import { Player } from '../entities/Player';
+import { Clone } from '../entities/Clone';
+import { Decoy } from '../entities/Decoy';
 import { spawnEnemy } from '../entities/enemies';
 import { Projectile, ProjectileOpts } from '../entities/Projectile';
 import { roundSpec, lossCost, MAX_ROUND } from '../core/rounds';
@@ -27,7 +29,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private keys!: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
   private projGfx!: Phaser.GameObjects.Graphics;
   private aimGfx!: Phaser.GameObjects.Graphics;
+  private hazardGfx!: Phaser.GameObjects.Graphics;
   private aimPreview: Vec | null = null;
+  private hazards: Hazard[] = [];
+  private taunt: { unit: Unit; until: number } | null = null;
+  private flashes: { x1: number; y1: number; x2: number; y2: number; color: number; until: number }[] = [];
 
   constructor() {
     super('arena');
@@ -49,6 +55,9 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.units = [];
     this.projectiles = [];
     this.buttons = [];
+    this.hazards = [];
+    this.flashes = [];
+    this.taunt = null;
     this.fightState = 'fighting';
     this.aimPreview = null;
     this.bus.clear();
@@ -73,6 +82,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     this.projGfx = this.add.graphics().setDepth(9);
     this.aimGfx = this.add.graphics().setDepth(8);
+    this.hazardGfx = this.add.graphics().setDepth(3);
     this.input.addPointer(3);
     this.joystick = new Joystick(this);
     this.createButtons();
@@ -213,9 +223,14 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
   dealDamage(source: Unit | null, target: Unit, amount: number, type: DamageType): number {
     if (!target.alive || amount <= 0) return 0;
+    // Phasensprung rule flag: invulnerable while dashing
+    if (target === this.player && this.player.dashing && run.flags.dashIFrames) return 0;
     const prevPct = target.hpPct;
     const dealt = Math.min(amount, target.hp + target.shield);
     target.applyDamage(amount);
+    // Deaths caused by re-entrant dealDamage inside a hook (e.g. an execute)
+    // are credited to that inner call, not this one
+    const killedByThisCall = !target.alive;
 
     if (source === this.player) {
       run.totalDamageDealt += dealt;
@@ -233,7 +248,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         }
       }
     }
-    if (!target.alive && target.team === 'enemy') {
+    if (killedByThisCall && target.team === 'enemy') {
       run.kills++;
       this.bus.emit('enemyDeath', { enemy: target });
       this.bus.emit('killWindow', { victim: target });
@@ -261,6 +276,96 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     return best;
   }
 
+  botTarget(): Unit {
+    if (this.taunt && this.taunt.unit.alive && this.now < this.taunt.until) {
+      return this.taunt.unit;
+    }
+    return this.player;
+  }
+
+  setTaunt(unit: Unit, until: number): void {
+    this.taunt = { unit, until };
+  }
+
+  addBurn(target: Unit, dps: number, durationMs: number): void {
+    if (!target.alive) return;
+    const forever = run.flags.burnForever;
+    if (!forever && target.burns.length >= 10) return; // sane default cap; Ewige Flamme lifts it
+    target.burns.push({ dps, until: forever ? Infinity : this.now + durationMs });
+  }
+
+  addHazard(h: Hazard): void {
+    this.hazards.push(h);
+  }
+
+  delay(ms: number, fn: () => void): void {
+    this.time.delayedCall(ms, () => {
+      if (this.fightState === 'fighting') fn();
+    });
+  }
+
+  announce(text: string, color = '#ffee88'): void {
+    const t = this.add
+      .text(ARENA_X, ARENA_Y - 200, text, {
+        fontFamily: 'sans-serif',
+        fontSize: '36px',
+        fontStyle: 'bold',
+        color,
+        stroke: '#000000',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setDepth(160);
+    this.tweens.add({
+      targets: t,
+      y: ARENA_Y - 260,
+      alpha: 0,
+      duration: 1600,
+      ease: 'Cubic.easeOut',
+      onComplete: () => t.destroy(),
+    });
+  }
+
+  flashLine(x1: number, y1: number, x2: number, y2: number, color: number): void {
+    this.flashes.push({ x1, y1, x2, y2, color, until: this.now + 160 });
+  }
+
+  spawnMirror(scale: number): void {
+    this.units.push(new Clone(this, this, this.player.x + 70, this.player.y, this.player, scale));
+  }
+
+  /** Schattenzwilling helper — decoys are combat-core citizens, spawned via augment hook. */
+  spawnDecoy(x: number, y: number, durationMs: number): Unit {
+    const d = new Decoy(this, x, y, this.now + durationMs);
+    this.units.push(d);
+    this.setTaunt(d, this.now + durationMs);
+    return d;
+  }
+
+  /** Burn stacks + hazard zones tick every frame through the damage pipeline. */
+  private tickDots(dt: number): void {
+    for (const u of this.units) {
+      if (!u.alive) continue;
+      let dps = 0;
+      if (u.burns.length > 0) {
+        u.burns = u.burns.filter((b) => b.until > this.now);
+        for (const b of u.burns) dps += b.dps;
+      }
+      for (const h of this.hazards) {
+        if (h.team !== u.team && dist(u.x, u.y, h.x, h.y) <= h.r + u.radius) dps += h.dps;
+      }
+      if (dps <= 0) continue;
+      u.dotAcc += dps * dt;
+      if (u.dotAcc >= 1) {
+        const amt = Math.floor(u.dotAcc);
+        u.dotAcc -= amt;
+        // Burns/hazards on enemies are the player's doing; on the player, the arena's
+        this.dealDamage(u.team === 'enemy' ? this.player : null, u, amt, 'burn');
+      }
+    }
+    this.hazards = this.hazards.filter((h) => h.until > this.now);
+  }
+
   // ---- Frame loop ----
 
   update(time: number, deltaMs: number): void {
@@ -279,6 +384,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
       for (const u of this.units) u.update(time, dt);
       this.augments.update(dt);
+      this.tickDots(dt);
 
       for (const p of this.projectiles) p.update(dt, this.units);
       this.projectiles = this.projectiles.filter((p) => p.alive);
@@ -349,10 +455,26 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private render(): void {
     for (const u of this.units) u.draw();
 
+    this.hazardGfx.clear();
+    for (const h of this.hazards) {
+      this.hazardGfx.fillStyle(h.color, 0.22);
+      this.hazardGfx.fillCircle(h.x, h.y, h.r);
+      this.hazardGfx.lineStyle(2, h.color, 0.6);
+      this.hazardGfx.strokeCircle(h.x, h.y, h.r);
+    }
+
     this.projGfx.clear();
     for (const p of this.projectiles) {
       this.projGfx.fillStyle(p.color, 1);
       this.projGfx.fillCircle(p.x, p.y, p.radius);
+    }
+    this.flashes = this.flashes.filter((f) => f.until > this.now);
+    for (const f of this.flashes) {
+      this.projGfx.lineStyle(4, f.color, (f.until - this.now) / 160);
+      this.projGfx.beginPath();
+      this.projGfx.moveTo(f.x1, f.y1);
+      this.projGfx.lineTo(f.x2, f.y2);
+      this.projGfx.strokePath();
     }
 
     this.aimGfx.clear();

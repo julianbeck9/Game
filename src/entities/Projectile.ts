@@ -16,6 +16,8 @@ export interface ProjectileOpts {
   /** How many units this projectile may hit before dying (1 = normal, 2 = pierces one). */
   maxHits?: number;
   maxDist?: number;
+  /** Unit this projectile can never hit (e.g. splinters spawning on a target). */
+  ignore?: Unit;
   onHit: (target: Unit) => void;
   /** Called when the projectile dies without exhausting its hits (range end / pillar). */
   onExpire?: (x: number, y: number) => void;
@@ -90,7 +92,7 @@ export class Projectile {
     }
 
     for (const t of targets) {
-      if (!t.alive || t.team === this.team || this.hitUnits.has(t)) continue;
+      if (!t.alive || t.team === this.team || this.hitUnits.has(t) || t === o.ignore) continue;
       if (len(t.x - this.x, t.y - this.y) <= t.radius + this.radius) {
         this.hitUnits.add(t);
         this.hits++;

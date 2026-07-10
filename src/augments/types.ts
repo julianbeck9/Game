@@ -37,6 +37,8 @@ export interface AugmentCtx {
    * silver dampener and Blutmond's Blut doubling. Multiply magnitudes by it.
    */
   power(def: AugmentDef): number;
+  /** Activate an augment for this fight only (Narrenwürfel). */
+  grantTemp(def: AugmentDef): void;
 }
 
 export type AugmentHooks = {

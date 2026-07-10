@@ -5,6 +5,7 @@ import { Combat } from '../core/combat';
 import { AbilityId } from '../core/events';
 import { clampToArena, resolvePillars, norm, len, Vec } from '../core/geometry';
 import { COLORS, PLAYER_BASE, ABILITIES } from '../config';
+import { run } from '../core/run';
 
 export class Player extends Unit {
   /** Last non-zero movement direction; used for facing (Q quick-cast, dash). */
@@ -12,12 +13,15 @@ export class Player extends Unit {
   /** Remaining Königsruf-empowered autos. */
   empoweredAutos = 0;
   dashing = false;
+  /** Direction of the last Q cast (Echo re-fires along it). */
+  lastQDir: Vec = { x: 1, y: 0 };
 
   private nextAttackAt = 0;
   private readyAt: Record<AbilityId, number> = { Q: 0, E: 0, Dash: 0 };
   private lastCd: Record<AbilityId, number> = { Q: 1, E: 1, Dash: 1 };
   private dashDir: Vec = { x: 1, y: 0 };
   private dashUntil = 0;
+  private dashChargesUsed = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -61,15 +65,22 @@ export class Player extends Unit {
     return ABILITIES[ability].cd * Math.max(0.05, this.stats.get('cooldown'));
   }
 
+  get maxDashCharges(): number {
+    return run.flags.dashCharges;
+  }
+
   /** For UI: fraction of cooldown remaining, 0 = ready. */
   cooldownPct(ability: AbilityId): number {
+    if (ability === 'Dash' && this.dashChargesUsed < this.maxDashCharges) return 0;
     const remaining = this.readyAt[ability] - this.combat.now;
     if (remaining <= 0) return 0;
     return Math.min(1, remaining / this.lastCd[ability]);
   }
 
   isReady(ability: AbilityId): boolean {
-    return this.alive && this.combat.now >= this.readyAt[ability];
+    if (!this.alive) return false;
+    if (ability === 'Dash') return this.dashChargesUsed < this.maxDashCharges;
+    return this.combat.now >= this.readyAt[ability];
   }
 
   /** Flat cooldown reduction on running cooldowns (Kühlung etc.). */
@@ -81,6 +92,7 @@ export class Player extends Unit {
 
   resetCooldowns(): void {
     for (const a of ['Q', 'E', 'Dash'] as AbilityId[]) this.readyAt[a] = 0;
+    this.dashChargesUsed = 0;
   }
 
   private startCooldown(ability: AbilityId): void {
@@ -95,6 +107,7 @@ export class Player extends Unit {
   castQ(dir?: Vec): boolean {
     if (!this.isReady('Q')) return false;
     const d = dir && len(dir.x, dir.y) > 0.01 ? norm(dir.x, dir.y) : this.facing;
+    this.lastQDir = { ...d };
     this.startCooldown('Q');
     this.combat.bus.emit('abilityCast', { ability: 'Q' });
     this.fireQ(d);
@@ -132,10 +145,12 @@ export class Player extends Unit {
     return true;
   }
 
-  /** Phasenschritt: short dash in current move direction. */
+  /** Phasenschritt: short dash in current move direction (charge system). */
   dash(): boolean {
     if (!this.isReady('Dash') || this.dashing) return false;
-    this.startCooldown('Dash');
+    const wasIdle = this.dashChargesUsed === 0;
+    this.dashChargesUsed++;
+    if (wasIdle) this.startCooldown('Dash');
     this.dashing = true;
     this.dashDir = { ...this.facing };
     this.dashUntil = this.combat.now + ABILITIES.Dash.duration * 1000;
@@ -154,10 +169,17 @@ export class Player extends Unit {
       this.combat.bus.emit('dashEnd', undefined);
     }
 
+    // Dash charge regeneration, one at a time
+    if (this.dashChargesUsed > 0 && time >= this.readyAt.Dash) {
+      this.dashChargesUsed--;
+      if (this.dashChargesUsed > 0) this.startCooldown('Dash');
+    }
+
     this.tryAutoAttack(time);
   }
 
   private tryAutoAttack(time: number): void {
+    if (run.flags.noAutoAttacks) return; // Kronlos rule flag
     if (time < this.nextAttackAt) return;
     const range = this.stats.get('attackRange');
     const target = this.combat.nearestEnemy(this, range);

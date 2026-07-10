@@ -31,6 +31,7 @@ export class AugmentManager {
         }
         return p;
       },
+      grantTemp: (def: AugmentDef) => this.activate(def),
     };
   }
 

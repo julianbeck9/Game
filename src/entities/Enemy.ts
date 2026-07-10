@@ -96,7 +96,11 @@ export class Enemy extends Unit {
   }
 
   get target(): Unit {
-    return this.combat.playerUnit;
+    return this.combat.botTarget();
+  }
+
+  get isBoss(): boolean {
+    return this.cfg.kind === 'usurpator';
   }
 
   startLunge(l: Lunge): void {

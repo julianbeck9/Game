@@ -12,6 +12,10 @@ export abstract class Unit {
   hp: number;
   shield = 0;
   alive = true;
+  /** Stacking damage-over-time (burn system). Ticked by the combat core. */
+  burns: { dps: number; until: number }[] = [];
+  /** Fractional DoT accumulator so ticks apply whole damage points. */
+  dotAcc = 0;
   stats: StatBlock;
   gfx: Phaser.GameObjects.Graphics;
 
@@ -36,6 +40,11 @@ export abstract class Unit {
 
   get hpPct(): number {
     return this.hp / this.maxHP;
+  }
+
+  /** Execute-resistance etc. (Usurpator overrides). */
+  get isBoss(): boolean {
+    return false;
   }
 
   /** Raw HP change; damage routing/events live in the combat core, not here. */
@@ -76,6 +85,14 @@ export abstract class Unit {
       g.strokeCircle(this.x, this.y, this.radius + 7);
     }
     this.drawHpBar(g);
+    // Burn stack pips
+    if (this.burns.length > 0) {
+      g.fillStyle(COLORS.burn, 1);
+      const n = Math.min(this.burns.length, 10);
+      for (let i = 0; i < n; i++) {
+        g.fillCircle(this.x - (n - 1) * 6 + i * 12, this.y - this.radius - 30, 4);
+      }
+    }
   }
 
   protected abstract drawBody(g: Phaser.GameObjects.Graphics): void;

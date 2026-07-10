@@ -4,7 +4,8 @@ import { ArenaScene } from './scenes/ArenaScene';
 import { PickScene } from './scenes/PickScene';
 import { MenuScene } from './scenes/MenuScene';
 import { EndScene } from './scenes/EndScene';
-import { run } from './core/run';
+import { run, addAugment } from './core/run';
+import { augmentById } from './augments/registry';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -25,7 +26,13 @@ const game = new Phaser.Game({
 // Debug/testing handle (read-only introspection; not used by game code)
 declare global {
   interface Window {
-    __CC?: { run: unknown; scenes: () => string[]; goto: (round: number) => void };
+    __CC?: {
+      run: unknown;
+      scenes: () => string[];
+      goto: (round: number) => void;
+      grant: (id: string) => boolean;
+      arena: () => unknown;
+    };
   }
 }
 window.__CC = {
@@ -38,6 +45,14 @@ window.__CC = {
     run.round = round;
     for (const key of ['menu', 'pick', 'end', 'arena']) game.scene.stop(key);
     game.scene.start('arena');
+  },
+  arena: () => game.scene.getScene('arena'),
+  // Test helper: grant an augment by id (takes effect on next goto/round)
+  grant: (id: string) => {
+    const def = augmentById(id);
+    if (!def) return false;
+    addAugment(def);
+    return true;
   },
 };
 
