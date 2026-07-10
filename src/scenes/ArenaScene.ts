@@ -7,13 +7,13 @@ import { Clone } from '../entities/Clone';
 import { Decoy } from '../entities/Decoy';
 import { spawnEnemy } from '../entities/enemies';
 import { Projectile, ProjectileOpts } from '../entities/Projectile';
-import { roundSpec, lossCost, MAX_ROUND } from '../core/rounds';
+import { roundSpec, lossCost, MAX_ROUND, ModifierId, MODIFIER_NAMES } from '../core/rounds';
 import { Joystick } from '../ui/Joystick';
 import { AbilityButton } from '../ui/AbilityButton';
 import { AugmentManager } from '../augments/AugmentManager';
 import { rollOffers } from '../augments/offers';
 import { run } from '../core/run';
-import { dist, Vec } from '../core/geometry';
+import { dist, pointInPillar, Vec } from '../core/geometry';
 import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H, ABILITIES } from '../config';
 import { STR } from '../core/strings';
 
@@ -34,6 +34,14 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private hazards: Hazard[] = [];
   private taunt: { unit: Unit; until: number } | null = null;
   private flashes: { x1: number; y1: number; x2: number; y2: number; color: number; until: number }[] = [];
+
+  // Arena modifier state (R5+)
+  private modifier: ModifierId | null = null;
+  private roundStartedAt = 0;
+  private fireSafeR = ARENA_R;
+  private flowers: { x: number; y: number }[] = [];
+  private nextFlowerAt = 0;
+  private bruchzone: { x: number; y: number; r: number } | null = null;
 
   constructor() {
     super('arena');
@@ -93,13 +101,139 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.augments.init();
     this.events.once('shutdown', () => this.augments.destroy());
 
+    this.initModifier(spec.modifier ?? null);
     this.createHud(spec.boss, spec.title, spec.bossAugments);
     this.bus.emit('roundStart', undefined);
+  }
+
+  // ---- Arena modifiers (R5+) ----
+
+  private initModifier(mod: ModifierId | null): void {
+    this.modifier = mod;
+    this.roundStartedAt = this.now;
+    this.fireSafeR = ARENA_R;
+    this.flowers = [];
+    this.nextFlowerAt = this.now + 6000;
+    this.bruchzone = null;
+    if (mod === 'bruchzone') {
+      const ang = Math.random() * Math.PI * 2;
+      this.bruchzone = {
+        x: ARENA_X + Math.cos(ang) * 220,
+        y: ARENA_Y + Math.sin(ang) * 220,
+        r: 150,
+      };
+    }
+  }
+
+  private updateModifier(dt: number): void {
+    switch (this.modifier) {
+      case 'feuerring': {
+        // Fire creeps in from the edge over ~40s, forcing engagement
+        const t = Math.min(1, (this.now - this.roundStartedAt) / 40000);
+        this.fireSafeR = ARENA_R - (ARENA_R - 270) * t;
+        for (const u of this.units) {
+          if (!u.alive) continue;
+          if (dist(u.x, u.y, ARENA_X, ARENA_Y) + u.radius * 0.5 > this.fireSafeR) {
+            u.dotAcc += 12 * dt;
+            if (u.dotAcc >= 1) {
+              const amt = Math.floor(u.dotAcc);
+              u.dotAcc -= amt;
+              this.dealDamage(null, u, amt, 'burn');
+            }
+          }
+        }
+        break;
+      }
+      case 'heilblumen': {
+        // Flowers spawn on a timer; first unit to touch one consumes it
+        if (this.now >= this.nextFlowerAt && this.flowers.length < 2) {
+          this.nextFlowerAt = this.now + 12000;
+          for (let tries = 0; tries < 20; tries++) {
+            const ang = Math.random() * Math.PI * 2;
+            const r = 120 + Math.random() * (ARENA_R - 220);
+            const x = ARENA_X + Math.cos(ang) * r;
+            const y = ARENA_Y + Math.sin(ang) * r;
+            if (!pointInPillar(x, y, 30)) {
+              this.flowers.push({ x, y });
+              break;
+            }
+          }
+        }
+        this.flowers = this.flowers.filter((f) => {
+          for (const u of this.units) {
+            if (!u.alive || u.radius < 16) continue; // Diener/decoys don't graze
+            if (dist(u.x, u.y, f.x, f.y) <= u.radius + 24) {
+              u.heal(u.maxHP * 0.2);
+              this.announce(
+                u === this.player ? 'Heilblume!' : 'Der Gegner nimmt die Heilblume!',
+                u === this.player ? '#7ee08a' : '#ff9a8a',
+              );
+              return false;
+            }
+          }
+          return true;
+        });
+        break;
+      }
+      case 'bruchzone': {
+        // +25% damage to whoever holds the zone
+        const z = this.bruchzone!;
+        for (const u of this.units) {
+          if (!u.alive) continue;
+          const inside = dist(u.x, u.y, z.x, z.y) <= z.r + u.radius * 0.3;
+          if (inside) {
+            u.stats.set({ id: 'zone:bruch', stat: 'damage', pct: 0.25 });
+          } else {
+            u.stats.remove('zone:bruch');
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  private drawModifier(g: Phaser.GameObjects.Graphics): void {
+    switch (this.modifier) {
+      case 'feuerring': {
+        if (this.fireSafeR >= ARENA_R - 2) break;
+        const w = ARENA_R - this.fireSafeR;
+        g.lineStyle(w, COLORS.burn, 0.3);
+        g.strokeCircle(ARENA_X, ARENA_Y, this.fireSafeR + w / 2);
+        g.lineStyle(3, COLORS.burn, 0.8);
+        g.strokeCircle(ARENA_X, ARENA_Y, this.fireSafeR);
+        break;
+      }
+      case 'heilblumen': {
+        for (const f of this.flowers) {
+          g.fillStyle(0x2a8a4a, 1);
+          g.fillCircle(f.x, f.y, 10);
+          g.fillStyle(0x7ee08a, 1);
+          for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2 + this.now / 900;
+            g.fillCircle(f.x + Math.cos(a) * 16, f.y + Math.sin(a) * 16, 8);
+          }
+        }
+        break;
+      }
+      case 'bruchzone': {
+        const z = this.bruchzone!;
+        g.fillStyle(0x9955ff, 0.14);
+        g.fillCircle(z.x, z.y, z.r);
+        g.lineStyle(3, 0xbb88ff, 0.7);
+        g.strokeCircle(z.x, z.y, z.r);
+        break;
+      }
+    }
   }
 
   private createHud(boss: boolean, title: string, bossAugments?: string[]): void {
     const style = { fontFamily: 'sans-serif', fontSize: '32px', color: '#c8d0e8' };
     this.add.text(30, 24, `${STR.round} ${run.round} / ${MAX_ROUND}`, style).setDepth(100);
+    if (this.modifier) {
+      this.add
+        .text(30, 66, MODIFIER_NAMES[this.modifier], { ...style, fontSize: '26px', color: '#cba6ff' })
+        .setDepth(100);
+    }
     this.add
       .text(GAME_W - 30, 24, `${STR.life}: ${run.runHP}`, { ...style, color: '#7ee08a' })
       .setOrigin(1, 0)
@@ -385,6 +519,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       for (const u of this.units) u.update(time, dt);
       this.augments.update(dt);
       this.tickDots(dt);
+      this.updateModifier(dt);
 
       for (const p of this.projectiles) p.update(dt, this.units);
       this.projectiles = this.projectiles.filter((p) => p.alive);
@@ -456,6 +591,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     for (const u of this.units) u.draw();
 
     this.hazardGfx.clear();
+    this.drawModifier(this.hazardGfx);
     for (const h of this.hazards) {
       this.hazardGfx.fillStyle(h.color, 0.22);
       this.hazardGfx.fillCircle(h.x, h.y, h.r);

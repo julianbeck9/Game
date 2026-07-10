@@ -26,12 +26,22 @@ export function roundScale(round: number): DifficultyScale {
   };
 }
 
+export type ModifierId = 'feuerring' | 'heilblumen' | 'bruchzone';
+
+export const MODIFIER_NAMES: Record<ModifierId, string> = {
+  feuerring: 'Feuerring',
+  heilblumen: 'Heilblumen',
+  bruchzone: 'Bruchzone',
+};
+
 export interface RoundSpec {
   enemies: EnemyConfig[];
   boss: boolean;
   title: string;
   /** Usurpator's visible augments, shown at round start. */
   bossAugments?: string[];
+  /** Arena modifier, one per round from R5 on. */
+  modifier?: ModifierId;
 }
 
 function pick<T>(arr: T[]): T {
@@ -45,6 +55,8 @@ function pick<T>(arr: T[]): T {
  */
 export function roundSpec(round: number): RoundSpec {
   const s = roundScale(round);
+  const modifier =
+    round >= 5 ? pick<ModifierId>(['feuerring', 'heilblumen', 'bruchzone']) : undefined;
 
   if (round === 4 || round === 8) {
     const boss = makeUsurpator(s, round === 8);
@@ -53,6 +65,7 @@ export function roundSpec(round: number): RoundSpec {
       boss: true,
       title: `Runde ${round} — Der Usurpator`,
       bossAugments: boss.visibleAugments,
+      modifier,
     };
   }
 
@@ -85,5 +98,5 @@ export function roundSpec(round: number): RoundSpec {
       ]);
       break;
   }
-  return { enemies, boss: false, title: `Runde ${round}` };
+  return { enemies, boss: false, title: `Runde ${round}`, modifier };
 }
