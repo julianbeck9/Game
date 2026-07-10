@@ -48,6 +48,17 @@ export const PLAYER_BASE = {
   attackSpeed: 1.0, // attacks per second
   attackRange: 450,
   projSpeed: 900,
+  abilityDamage: 1.0, // % scaler
+  cooldown: 1.0, // % scaler (lower = faster)
+  lifesteal: 0,
 } as const;
 
 export const JOYSTICK_R = 110; // max stick travel
+
+// Ability base values (ms / px; tune freely)
+export const ABILITIES = {
+  Q: { dmg: 55, cd: 4000, speed: 1100, range: 900, radius: 12 }, // Klingenwurf
+  E: { cd: 8000, autos: 3, dmgBonus: 0.6, healPct: 0.2 }, // Königsruf
+  Dash: { cd: 5000, dist: 220, duration: 0.18 }, // Phasenschritt
+} as const;
+

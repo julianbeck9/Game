@@ -6,8 +6,9 @@ import { Player } from '../entities/Player';
 import { Dummy } from '../entities/Dummy';
 import { Projectile, ProjectileOpts } from '../entities/Projectile';
 import { Joystick } from '../ui/Joystick';
-import { dist } from '../core/geometry';
-import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS } from '../config';
+import { AbilityButton } from '../ui/AbilityButton';
+import { dist, Vec } from '../core/geometry';
+import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H, ABILITIES } from '../config';
 import { STR } from '../core/strings';
 
 export class ArenaScene extends Phaser.Scene implements Combat {
@@ -17,8 +18,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   player!: Player;
 
   private joystick!: Joystick;
+  private buttons: AbilityButton[] = [];
   private keys!: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
   private projGfx!: Phaser.GameObjects.Graphics;
+  private aimGfx!: Phaser.GameObjects.Graphics;
+  private aimPreview: Vec | null = null;
 
   constructor() {
     super('arena');
@@ -37,16 +41,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.units.push(new Dummy(this, ARENA_X, ARENA_Y - 220));
 
     this.projGfx = this.add.graphics().setDepth(9);
-    this.joystick = new Joystick(this);
+    this.aimGfx = this.add.graphics().setDepth(8);
     this.input.addPointer(3);
-
-    const kb = this.input.keyboard!;
-    this.keys = {
-      W: kb.addKey('W'),
-      A: kb.addKey('A'),
-      S: kb.addKey('S'),
-      D: kb.addKey('D'),
-    };
+    this.joystick = new Joystick(this);
+    this.createButtons();
+    this.setupKeyboard();
 
     this.add
       .text(ARENA_X, 40, STR.trainingHint, {
@@ -58,6 +57,62 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       .setDepth(100);
 
     this.bus.emit('roundStart', undefined);
+  }
+
+  private createButtons(): void {
+    const bx = GAME_W - 190;
+    const by = GAME_H - 190;
+    this.buttons.push(
+      // Dash — biggest, corner anchor
+      new AbilityButton(this, {
+        x: bx + 60,
+        y: by + 60,
+        r: 84,
+        label: '⇢',
+        color: 0x4488dd,
+        onCast: () => this.player.dash(),
+        getCooldownPct: () => this.player.cooldownPct('Dash'),
+      }),
+      // Q — aimable
+      new AbilityButton(this, {
+        x: bx - 150,
+        y: by + 40,
+        r: 68,
+        label: 'Q',
+        color: 0xcc8833,
+        aimable: true,
+        onCast: (dir) => this.player.castQ(dir ?? undefined),
+        onAimPreview: (dir) => (this.aimPreview = dir),
+        getCooldownPct: () => this.player.cooldownPct('Q'),
+      }),
+      // E
+      new AbilityButton(this, {
+        x: bx + 40,
+        y: by - 150,
+        r: 68,
+        label: 'E',
+        color: 0xbbaa33,
+        onCast: () => this.player.castE(),
+        getCooldownPct: () => this.player.cooldownPct('E'),
+      }),
+    );
+  }
+
+  private setupKeyboard(): void {
+    const kb = this.input.keyboard!;
+    this.keys = {
+      W: kb.addKey('W'),
+      A: kb.addKey('A'),
+      S: kb.addKey('S'),
+      D: kb.addKey('D'),
+    };
+    // Desktop: Q aims toward the mouse cursor, E self-cast, Space dash
+    kb.addKey('Q').on('down', () => {
+      const p = this.input.activePointer;
+      this.player.castQ({ x: p.worldX - this.player.x, y: p.worldY - this.player.y });
+    });
+    kb.addKey('E').on('down', () => this.player.castE());
+    kb.addKey('SPACE').on('down', () => this.player.dash());
   }
 
   // ---- Combat API ----
@@ -121,14 +176,31 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     for (const p of this.projectiles) p.update(dt, this.units);
     this.projectiles = this.projectiles.filter((p) => p.alive);
 
-    // Render
+    this.render();
+  }
+
+  private render(): void {
     for (const u of this.units) u.draw();
+
     this.projGfx.clear();
     for (const p of this.projectiles) {
       this.projGfx.fillStyle(p.color, 1);
       this.projGfx.fillCircle(p.x, p.y, p.radius);
     }
+
+    this.aimGfx.clear();
+    if (this.aimPreview) {
+      const px = this.player.x;
+      const py = this.player.y;
+      this.aimGfx.lineStyle(5, COLORS.playerProj, 0.55);
+      this.aimGfx.beginPath();
+      this.aimGfx.moveTo(px, py);
+      this.aimGfx.lineTo(px + this.aimPreview.x * ABILITIES.Q.range, py + this.aimPreview.y * ABILITIES.Q.range);
+      this.aimGfx.strokePath();
+    }
+
     this.joystick.draw();
+    for (const b of this.buttons) b.draw();
   }
 
   private drawArenaFloor(): void {
