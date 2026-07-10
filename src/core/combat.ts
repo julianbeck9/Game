@@ -1,6 +1,7 @@
 import type { Unit } from '../entities/Unit';
 import type { Projectile, ProjectileOpts } from '../entities/Projectile';
 import type { EventBus, DamageType } from './events';
+import type { EnemyConfig } from '../entities/Enemy';
 
 /**
  * The surface entities and augments use to act on the world.
@@ -15,4 +16,6 @@ export interface Combat {
   spawnProjectile(opts: ProjectileOpts): Projectile;
   dealDamage(source: Unit | null, target: Unit, amount: number, type: DamageType): number;
   nearestEnemy(of: Unit, maxDist?: number): Unit | null;
+  /** Mid-fight enemy spawns (Wächter/Usurpator summoning Diener). */
+  spawnEnemyUnit(cfg: EnemyConfig, x: number, y: number): Unit;
 }

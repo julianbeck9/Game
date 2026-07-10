@@ -35,6 +35,10 @@ export interface EnemyConfig {
   abilities: EnemyAbilitySpec[];
   /** 0..1: higher = shorter pauses between actions, more forward pressure. */
   aggression: number;
+  /** Passive regen as fraction of max HP per second (boss Blut augments). */
+  regenPctPerSec?: number;
+  /** Shown to the player at round start (Usurpator's visible augments). */
+  visibleAugments?: string[];
 }
 
 interface Lunge {
@@ -107,6 +111,8 @@ export class Enemy extends Unit {
     this.telegraphGfx.clear();
     if (!this.alive) return;
     this.stats.update(time);
+
+    if (this.cfg.regenPctPerSec) this.heal(this.maxHP * this.cfg.regenPctPerSec * dt);
 
     const t = this.target;
     if (!t.alive) return;

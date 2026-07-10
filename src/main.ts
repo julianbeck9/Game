@@ -25,7 +25,7 @@ const game = new Phaser.Game({
 // Debug/testing handle (read-only introspection; not used by game code)
 declare global {
   interface Window {
-    __CC?: { run: unknown; scenes: () => string[] };
+    __CC?: { run: unknown; scenes: () => string[]; goto: (round: number) => void };
   }
 }
 window.__CC = {
@@ -33,5 +33,11 @@ window.__CC = {
     return run;
   },
   scenes: () => game.scene.getScenes(true).map((s) => s.scene.key),
+  // Test helper: jump straight to a round
+  goto: (round: number) => {
+    run.round = round;
+    for (const key of ['menu', 'pick', 'end', 'arena']) game.scene.stop(key);
+    game.scene.start('arena');
+  },
 };
 

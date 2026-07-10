@@ -83,17 +83,29 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.augments.init();
     this.events.once('shutdown', () => this.augments.destroy());
 
-    this.createHud(spec.boss, spec.title);
+    this.createHud(spec.boss, spec.title, spec.bossAugments);
     this.bus.emit('roundStart', undefined);
   }
 
-  private createHud(boss: boolean, title: string): void {
+  private createHud(boss: boolean, title: string, bossAugments?: string[]): void {
     const style = { fontFamily: 'sans-serif', fontSize: '32px', color: '#c8d0e8' };
     this.add.text(30, 24, `${STR.round} ${run.round} / ${MAX_ROUND}`, style).setDepth(100);
     this.add
       .text(GAME_W - 30, 24, `${STR.life}: ${run.runHP}`, { ...style, color: '#7ee08a' })
       .setOrigin(1, 0)
       .setDepth(100);
+
+    // "Know your enemy": the Usurpator's augments stay visible all round
+    if (bossAugments?.length) {
+      this.add
+        .text(ARENA_X, 26, `Usurpator: ${bossAugments.join(' · ')}`, {
+          fontFamily: 'sans-serif',
+          fontSize: '28px',
+          color: '#ff9a8a',
+        })
+        .setOrigin(0.5, 0)
+        .setDepth(100);
+    }
 
     // Round intro banner
     const banner = this.add
@@ -227,6 +239,12 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.bus.emit('killWindow', { victim: target });
     }
     return dealt;
+  }
+
+  spawnEnemyUnit(cfg: Parameters<typeof spawnEnemy>[4], x: number, y: number): Unit {
+    const e = spawnEnemy(this, this, x, y, cfg);
+    this.units.push(e);
+    return e;
   }
 
   nearestEnemy(of: Unit, maxDist = Infinity): Unit | null {

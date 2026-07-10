@@ -1,5 +1,11 @@
 import { EnemyConfig } from '../entities/Enemy';
-import { DifficultyScale, makeHaescher } from '../entities/enemies';
+import {
+  DifficultyScale,
+  makeHaescher,
+  makeSchuetze,
+  makeUsurpator,
+  makeWaechter,
+} from '../entities/enemies';
 
 export const MAX_ROUND = 8;
 
@@ -24,19 +30,60 @@ export interface RoundSpec {
   enemies: EnemyConfig[];
   boss: boolean;
   title: string;
+  /** Usurpator's visible augments, shown at round start. */
+  bossAugments?: string[];
+}
+
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 /**
- * Composition per round.
- * M5 note: only the Häscher archetype exists yet, so every round fields
- * Häscher variants (duos from R5). M6 swaps in Schütze/Wächter/Usurpator.
+ * Run structure: R1 Häscher · R2 Schütze · R3 Wächter · R4 Usurpator (mini)
+ * · R5–7 escalating duos · R8 Usurpator (final).
+ * Duos + Diener summons keep the on-kill augment economy fueled.
  */
 export function roundSpec(round: number): RoundSpec {
   const s = roundScale(round);
-  const duo = round >= 5 && round <= 7;
-  return {
-    enemies: duo ? [makeHaescher(s), makeHaescher(s)] : [makeHaescher(s)],
-    boss: round === 4 || round === 8,
-    title: `Runde ${round}`,
-  };
+
+  if (round === 4 || round === 8) {
+    const boss = makeUsurpator(s, round === 8);
+    return {
+      enemies: [boss],
+      boss: true,
+      title: `Runde ${round} — Der Usurpator`,
+      bossAugments: boss.visibleAugments,
+    };
+  }
+
+  let enemies: EnemyConfig[];
+  switch (round) {
+    case 1:
+      enemies = [makeHaescher(s)];
+      break;
+    case 2:
+      enemies = [makeSchuetze(s)];
+      break;
+    case 3:
+      enemies = [makeWaechter(s)];
+      break;
+    case 5:
+      enemies = [makeHaescher(s), makeSchuetze(s)];
+      break;
+    case 6:
+      enemies = pick([
+        [makeSchuetze(s), makeWaechter(s)],
+        [makeHaescher(s), makeWaechter(s)],
+        [makeHaescher(s), makeSchuetze(s)],
+      ]);
+      break;
+    default: // 7
+      enemies = pick([
+        [makeWaechter(s), makeSchuetze(s)],
+        [makeWaechter(s), makeHaescher(s)],
+        [makeSchuetze(s), makeSchuetze(s)],
+      ]);
+      break;
+  }
+  return { enemies, boss: false, title: `Runde ${round}` };
 }
