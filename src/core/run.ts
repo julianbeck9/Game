@@ -6,8 +6,8 @@ import { AugmentDef, Tag, RuleFlags, DEFAULT_FLAGS } from '../augments/types';
  */
 export interface RunState {
   round: number;
-  /** Run-HP pool (100). Round losses subtract from it. */
-  runHP: number;
+  /** Lives (hearts): a lost round costs one, but the run marches on. 0 = over. */
+  lives: number;
   augments: AugmentDef[];
   tagCounts: Record<Tag, number>;
   flags: RuleFlags;
@@ -29,7 +29,7 @@ export function newRun(): RunState {
 function newRunState(): RunState {
   return {
     round: 1,
-    runHP: 100,
+    lives: 3,
     augments: [],
     tagCounts: { Blut: 0, Sturm: 0, Arkan: 0, Ward: 0, Bruch: 0 },
     flags: { ...DEFAULT_FLAGS },

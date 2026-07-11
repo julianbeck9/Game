@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Unit } from './Unit';
 import { StatBlock, StatName } from '../core/stats';
 import { Combat } from '../core/combat';
-import { clampToArena, resolvePillars, norm, len, dist, Vec } from '../core/geometry';
+import { norm, len, dist, Vec } from '../core/geometry';
 import { COLORS } from '../config';
 import { shadedDisc } from '../core/draw';
 
@@ -236,13 +236,6 @@ export class Enemy extends Unit {
       this.threatSince = 0;
       this.threatRoll = -1;
     }
-  }
-
-  moveBy(dx: number, dy: number): void {
-    const p1 = resolvePillars(this.x + dx, this.y + dy, this.radius);
-    const p2 = clampToArena(p1.x, p1.y, this.radius);
-    this.x = p2.x;
-    this.y = p2.y;
   }
 
   private advanceLunge(dt: number): void {

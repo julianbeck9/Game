@@ -18,6 +18,14 @@ export interface ProjectileOpts {
   maxDist?: number;
   /** Unit this projectile can never hit (e.g. splinters spawning on a target). */
   ignore?: Unit;
+  /**
+   * Boomerang: instead of dying at range end / pillars / arena edge, the
+   * projectile turns around and homes back to this unit, able to hit each
+   * target once more on the return leg.
+   */
+  boomerangTo?: Unit;
+  /** Rendered as a spinning blade instead of a bolt. */
+  spin?: boolean;
   onHit: (target: Unit) => void;
   /** Called when the projectile dies without exhausting its hits (range end / pillar). */
   onExpire?: (x: number, y: number) => void;
@@ -50,9 +58,13 @@ export class Projectile {
   get isHoming(): boolean {
     return !!this.opts.homing;
   }
+  get isSpinning(): boolean {
+    return !!this.opts.spin;
+  }
   get dir(): { x: number; y: number } {
     return { x: this.dirX, y: this.dirY };
   }
+  private returning = false;
   get color(): number {
     return this.opts.color;
   }
@@ -64,7 +76,16 @@ export class Projectile {
     if (!this.alive) return;
     const o = this.opts;
 
-    if (o.homing && o.homing.alive) {
+    if (this.returning) {
+      const home = o.boomerangTo!;
+      if (!home.alive) {
+        this.alive = false;
+        return;
+      }
+      const n = norm(home.x - this.x, home.y - this.y);
+      this.dirX = n.x;
+      this.dirY = n.y;
+    } else if (o.homing && o.homing.alive) {
       const n = norm(o.homing.x - this.x, o.homing.y - this.y);
       this.dirX = n.x;
       this.dirY = n.y;
@@ -75,20 +96,29 @@ export class Projectile {
     this.y += this.dirY * step;
     this.traveled += step;
 
-    // Out of arena or range
-    const maxDist = o.maxDist ?? 2000;
-    if (
-      this.traveled >= maxDist ||
-      len(this.x - ARENA_X, this.y - ARENA_Y) > ARENA_R + 40
-    ) {
-      this.expire();
-      return;
-    }
-
-    // Pillars block projectiles (skillshot play)
-    if ((o.blockedByPillars ?? true) && pointInPillar(this.x, this.y, this.radius)) {
-      this.expire();
-      return;
+    if (this.returning) {
+      const home = o.boomerangTo!;
+      if (len(home.x - this.x, home.y - this.y) <= home.radius + this.radius) {
+        this.alive = false; // caught
+        return;
+      }
+    } else {
+      // Range end, arena edge, or a pillar: boomerangs turn around, bolts die
+      const maxDist = o.maxDist ?? 2000;
+      const atLimit =
+        this.traveled >= maxDist ||
+        len(this.x - ARENA_X, this.y - ARENA_Y) > ARENA_R + 40 ||
+        ((o.blockedByPillars ?? true) && pointInPillar(this.x, this.y, this.radius));
+      if (atLimit) {
+        if (o.boomerangTo) {
+          this.returning = true;
+          this.hitUnits.clear(); // the return leg hits everyone again
+          this.hits = 0;
+        } else {
+          this.expire();
+          return;
+        }
+      }
     }
 
     for (const t of targets) {
@@ -98,7 +128,14 @@ export class Projectile {
         this.hits++;
         o.onHit(t);
         if (this.hits >= (o.maxHits ?? 1)) {
-          this.alive = false;
+          if (o.boomerangTo && !this.returning) {
+            // Out of pierces: swing back instead of dying
+            this.returning = true;
+            this.hitUnits.clear();
+            this.hits = 0;
+          } else {
+            this.alive = false;
+          }
           return;
         }
       }

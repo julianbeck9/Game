@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { StatBlock } from '../core/stats';
 import { COLORS } from '../config';
+import { clampToArena, resolvePillars } from '../core/geometry';
 
 export type Team = 'player' | 'enemy';
 
@@ -18,6 +19,8 @@ export abstract class Unit {
   dotAcc = 0;
   /** Juice: white flash on recently-hit units. */
   hitFlashUntil = 0;
+  /** Juice: accumulated healing waiting to be shown as a floating number. */
+  healDisplayAcc = 0;
   stats: StatBlock;
   gfx: Phaser.GameObjects.Graphics;
 
@@ -72,7 +75,17 @@ export abstract class Unit {
 
   heal(amount: number): void {
     if (!this.alive) return;
+    const before = this.hp;
     this.hp = Math.min(this.maxHP, this.hp + amount);
+    this.healDisplayAcc += this.hp - before;
+  }
+
+  /** Displaced movement (dashes, knockbacks) with pillar/arena resolution. */
+  moveBy(dx: number, dy: number): void {
+    const p1 = resolvePillars(this.x + dx, this.y + dy, this.radius);
+    const p2 = clampToArena(p1.x, p1.y, this.radius);
+    this.x = p2.x;
+    this.y = p2.y;
   }
 
   abstract update(time: number, dt: number): void;

@@ -70,7 +70,7 @@ export class EndScene extends Phaser.Scene {
     panel.strokeRoundedRect(cx - pw / 2, py - ph / 2, pw, ph, 18);
 
     const rows: [string, string][] = [
-      ['Runden geschafft', `${v ? 8 : run.round - 1} / 8`],
+      ['Runde erreicht', `${run.round} / 12`],
       ['Gesamtschaden', `${Math.round(run.totalDamageDealt)}`],
       ['Größter Treffer', `${Math.round(run.maxHit)}`],
       ['Tötungen', `${run.kills}`],

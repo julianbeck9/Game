@@ -2,10 +2,10 @@ import { AugmentDef, Tier } from './types';
 import { AUGMENTS } from './registry';
 import { run } from '../core/run';
 
-/** Tier gating per pick (after round N): R1–2 Silber · R3–5 Silber/Gold · R6–7 Gold/Prisma. */
+/** Tier gating per pick (after round N): early Silber · midgame Silber/Gold · lategame Gold/Prisma. */
 function allowedTiers(round: number): Tier[] {
-  if (round <= 2) return ['silber'];
-  if (round <= 5) return ['silber', 'gold'];
+  if (round <= 3) return ['silber'];
+  if (round <= 8) return ['silber', 'gold'];
   return ['gold', 'prisma'];
 }
 

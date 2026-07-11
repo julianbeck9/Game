@@ -20,17 +20,24 @@ npm run preview  # dist/ lokal serven
 |---|---|---|
 | Bewegen | linker Daumen: Floating-Joystick | WASD |
 | Auto-Angriff | automatisch aufs nächste Ziel | automatisch |
-| Q — Klingenwurf | Tippen = Quick-Cast in Blickrichtung, Halten+Ziehen = zielen | Q (zielt zur Maus) |
-| E — Königsruf | Tippen | E |
-| Phasenschritt (Dash) | Tippen | Leertaste |
+| Q — Klingenwurf (Bumerang) | Tippen = aufs nächste Ziel, Halten+Ziehen = zielen | Q (zielt zur Maus) |
+| E — Königsruf (Nova + Buff) | Tippen | E |
+| Phasenschritt (Dash, schneidet durch Gegner) | Tippen | Leertaste |
+
+**Das Kit:** Q ist eine Bumerang-Klinge (trifft auf Hin- und Rückweg, dreht an
+Säulen/Arenarand um). E stößt eine goldene Nova aus (Schaden + Rückstoß) und
+lädt die nächsten 3 Autos auf (+60% Schaden, heilen). Der Dash phast durch
+Gegner und schneidet sie dabei.
 
 ## Run-Struktur
 
-R1 Häscher · R2 Schütze · R3 Wächter · **R4 Usurpator (Mini-Boss)** ·
-R5–7 Duos (ab R6 auch mit dem **Hexer**: Fluchzonen + Blink) + Arena-Modifikator
-(Feuerring / Heilblumen / Bruchzone / Blitzsturm) · **R8 Usurpator (Finale)**.
-Runden-Niederlagen kosten Leben (−15/−25/−40) aus einem Pool von 100;
-bei 0 ist der Run vorbei.
+**12 Runden, 3 Leben.** R1–4 Solo-Archetypen (Häscher, Schütze, Hexer,
+Wächter) · R5 erstes Duo · **R6 Usurpator (Mini-Boss)** · R7–9 Duos ·
+R10–11 Trios · **R12 Usurpator (Finale)**. Ab R5 gibt es pro Runde einen
+zufälligen Arena-Modifikator (Feuerring / Heilblumen / Bruchzone / Blitzsturm).
+Eine verlorene Runde kostet ein Herz, **es geht trotzdem in die nächste Runde**
+— nur das Finale muss wirklich gewonnen werden. Augment-Wahl nach jeder Runde,
+Sieg oder Niederlage.
 
 Der Usurpator trägt eigene, **sichtbare Augmente** (2 im Mini-, 4 im Finalkampf)
 — sie stehen zu Rundenbeginn oben im HUD.

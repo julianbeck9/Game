@@ -8,24 +8,7 @@ import {
   makeWaechter,
 } from '../entities/enemies';
 
-export const MAX_ROUND = 8;
-
-/** Run-HP cost of losing a round: R1–3 −15 · R4–6 −25 · R7–8 −40. */
-export function lossCost(round: number): number {
-  if (round <= 3) return 15;
-  if (round <= 6) return 25;
-  return 40;
-}
-
-/** Per-round difficulty: stats up, reaction time down, dodges up. */
-export function roundScale(round: number): DifficultyScale {
-  return {
-    hp: 1 + 0.16 * (round - 1),
-    dmg: 1 + 0.11 * (round - 1),
-    reactionMs: Math.max(140, 400 - 30 * (round - 1)),
-    dodgeChance: Math.min(0.85, 0.42 + 0.05 * round),
-  };
-}
+export const MAX_ROUND = 12;
 
 export type ModifierId = 'feuerring' | 'heilblumen' | 'bruchzone' | 'blitzsturm';
 
@@ -35,6 +18,16 @@ export const MODIFIER_NAMES: Record<ModifierId, string> = {
   bruchzone: 'Bruchzone',
   blitzsturm: 'Blitzsturm',
 };
+
+/** Per-round difficulty: stats up, reaction time down, dodges up — steeper now that losses advance too. */
+export function roundScale(round: number): DifficultyScale {
+  return {
+    hp: 1 + 0.17 * (round - 1),
+    dmg: 1 + 0.12 * (round - 1),
+    reactionMs: Math.max(120, 400 - 25 * (round - 1)),
+    dodgeChance: Math.min(0.9, 0.4 + 0.045 * round),
+  };
+}
 
 export interface RoundSpec {
   enemies: EnemyConfig[];
@@ -51,9 +44,12 @@ function pick<T>(arr: T[]): T {
 }
 
 /**
- * Run structure: R1 Häscher · R2 Schütze · R3 Wächter · R4 Usurpator (mini)
- * · R5–7 escalating duos · R8 Usurpator (final).
- * Duos + Diener summons keep the on-kill augment economy fueled.
+ * 12-round gauntlet. Losses cost a heart but the run advances — only the
+ * final throne room (R12) must actually be won.
+ *
+ * R1–4 solo archetypes · R5 first duo · R6 Usurpator (mini) · R7–9 duos ·
+ * R10–11 trios · R12 Usurpator (final). Duos/trios + Diener summons keep
+ * the on-kill augment economy fueled.
  */
 export function roundSpec(round: number): RoundSpec {
   const s = roundScale(round);
@@ -62,8 +58,9 @@ export function roundSpec(round: number): RoundSpec {
       ? pick<ModifierId>(['feuerring', 'heilblumen', 'bruchzone', 'blitzsturm'])
       : undefined;
 
-  if (round === 4 || round === 8) {
-    const boss = makeUsurpator(s, round === 8);
+  if (round === 6 || round === MAX_ROUND) {
+    const final = round === MAX_ROUND;
+    const boss = makeUsurpator(s, final);
     return {
       enemies: [boss],
       boss: true,
@@ -82,26 +79,45 @@ export function roundSpec(round: number): RoundSpec {
       enemies = [makeSchuetze(s)];
       break;
     case 3:
+      enemies = [makeHexer(s)];
+      break;
+    case 4:
       enemies = [makeWaechter(s)];
       break;
     case 5:
-      enemies = [makeHaescher(s), makeSchuetze(s)];
+      enemies = pick([
+        [makeHaescher(s), makeSchuetze(s)],
+        [makeHaescher(s), makeHexer(s)],
+      ]);
       break;
-    case 6:
+    case 7:
+      enemies = pick([
+        [makeHaescher(s), makeSchuetze(s)],
+        [makeHexer(s), makeSchuetze(s)],
+        [makeHexer(s), makeHaescher(s)],
+      ]);
+      break;
+    case 8:
       enemies = pick([
         [makeSchuetze(s), makeWaechter(s)],
         [makeHaescher(s), makeWaechter(s)],
-        [makeHexer(s), makeHaescher(s)],
-        [makeHexer(s), makeSchuetze(s)],
+        [makeHexer(s), makeWaechter(s)],
       ]);
       break;
-    default: // 7
+    case 9:
       enemies = pick([
-        [makeWaechter(s), makeSchuetze(s)],
-        [makeWaechter(s), makeHaescher(s)],
         [makeWaechter(s), makeHexer(s)],
         [makeSchuetze(s), makeSchuetze(s)],
-        [makeHexer(s), makeHaescher(s)],
+        [makeWaechter(s), makeHaescher(s)],
+      ]);
+      break;
+    case 10:
+      enemies = [makeHaescher(s), makeSchuetze(s), makeHexer(s)];
+      break;
+    default: // 11
+      enemies = pick([
+        [makeWaechter(s), makeHaescher(s), makeSchuetze(s)],
+        [makeWaechter(s), makeHexer(s), makeSchuetze(s)],
       ]);
       break;
   }

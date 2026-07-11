@@ -46,6 +46,8 @@ export interface Combat {
   announce(text: string, color?: string): void;
   /** Transient line flash (chain lightning etc.). */
   flashLine(x1: number, y1: number, x2: number, y2: number, color: number): void;
+  /** Expanding ring effect (novas, kill bursts, lightning impacts). */
+  ring(x: number, y: number, color: number, maxR: number): void;
   /** Spiegelkönig: spawn a simplified mirror of the player at the given effect scale. */
   spawnMirror(scale: number): void;
   /** Schattenzwilling: leave a taunting decoy at a position. */

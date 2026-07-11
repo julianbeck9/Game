@@ -8,7 +8,9 @@ import { run, addAugment } from './core/run';
 import { augmentById } from './augments/registry';
 
 const game = new Phaser.Game({
-  type: Phaser.AUTO,
+  // ?renderer=canvas — headless test environments render Canvas2D far faster
+  // than software WebGL; real devices stay on AUTO (WebGL)
+  type: location.search.includes('renderer=canvas') ? Phaser.CANVAS : Phaser.AUTO,
   parent: 'game',
   width: GAME_W,
   height: GAME_H,
@@ -22,6 +24,20 @@ const game = new Phaser.Game({
   },
   scene: [MenuScene, ArenaScene, PickScene, EndScene],
 });
+
+// iOS Safari leaves the canvas offset/mis-scaled after rotating the device:
+// re-measure once the browser has settled, and pin the page back to the top.
+const refreshScale = () => {
+  window.scrollTo(0, 0);
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+    game.scale.refresh();
+  }, 250);
+  setTimeout(() => game.scale.refresh(), 600);
+};
+window.addEventListener('orientationchange', refreshScale);
+window.addEventListener('resize', refreshScale);
+window.visualViewport?.addEventListener('resize', refreshScale);
 
 // Debug/testing handle (read-only introspection; not used by game code)
 declare global {

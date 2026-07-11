@@ -89,12 +89,21 @@ export class AbilityButton {
     scene.input.on('pointerupoutside', release);
   }
 
+  private lastStateKey = '';
+
   draw(): void {
     const { x, y, r, color } = this.opts;
     const g = this.gfx;
     const cd = this.opts.getCooldownPct();
     const held = this.pointerId !== -1;
     const ready = cd <= 0;
+
+    // Redraw only when the visible state actually changed (graphics
+    // tessellation every frame is expensive on weak GPUs)
+    const ch = this.opts.getCharges?.();
+    const key = `${Math.round(cd * 60)}|${held}|${ch ? ch.avail + ':' + ch.max : ''}`;
+    if (key === this.lastStateKey) return;
+    this.lastStateKey = key;
 
     g.clear();
     // Base plate
@@ -124,7 +133,6 @@ export class AbilityButton {
     g.strokeCircle(x, y, r);
 
     // Charge pips
-    const ch = this.opts.getCharges?.();
     if (ch && ch.max > 1) {
       for (let i = 0; i < ch.max; i++) {
         const px = x - (ch.max - 1) * 10 + i * 20;

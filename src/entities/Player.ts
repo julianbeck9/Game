@@ -3,7 +3,7 @@ import { Unit } from './Unit';
 import { StatBlock } from '../core/stats';
 import { Combat } from '../core/combat';
 import { AbilityId } from '../core/events';
-import { clampToArena, resolvePillars, norm, len, Vec } from '../core/geometry';
+import { norm, len, Vec } from '../core/geometry';
 import { COLORS, PLAYER_BASE, ABILITIES } from '../config';
 import { run } from '../core/run';
 import { crown, shadedDisc } from '../core/draw';
@@ -23,6 +23,9 @@ export class Player extends Unit {
   private dashDir: Vec = { x: 1, y: 0 };
   private dashUntil = 0;
   private dashChargesUsed = 0;
+  /** Enemies already cut by the current Phasenschritt. */
+  private dashSlashed = new Set<Unit>();
+  private isMoving = false;
 
   constructor(
     scene: Phaser.Scene,
@@ -40,23 +43,32 @@ export class Player extends Unit {
     if (!this.alive) return;
     if (this.dashing) {
       const speed = ABILITIES.Dash.dist / ABILITIES.Dash.duration;
-      this.applyMove(this.dashDir.x * speed * dt, this.dashDir.y * speed * dt);
+      this.moveBy(this.dashDir.x * speed * dt, this.dashDir.y * speed * dt);
+      this.phaseSlash();
+      this.isMoving = true;
       return;
     }
     const mag = Math.min(1, len(moveVec.x, moveVec.y));
-    if (mag > 0.05) {
+    this.isMoving = mag > 0.05;
+    if (this.isMoving) {
       const n = norm(moveVec.x, moveVec.y);
       this.facing = n;
       const speed = this.stats.get('moveSpeed');
-      this.applyMove(n.x * speed * mag * dt, n.y * speed * mag * dt);
+      this.moveBy(n.x * speed * mag * dt, n.y * speed * mag * dt);
     }
   }
 
-  private applyMove(dx: number, dy: number): void {
-    const p1 = resolvePillars(this.x + dx, this.y + dy, this.radius);
-    const p2 = clampToArena(p1.x, p1.y, this.radius);
-    this.x = p2.x;
-    this.y = p2.y;
+  /** Phasenschritt cuts everything the king phases through. */
+  private phaseSlash(): void {
+    const dmg = ABILITIES.Dash.slashDmg * this.stats.get('abilityDamage');
+    for (const u of [...this.combat.units]) {
+      if (!u.alive || u.team !== 'enemy' || this.dashSlashed.has(u)) continue;
+      if (len(u.x - this.x, u.y - this.y) <= u.radius + this.radius + 8) {
+        this.dashSlashed.add(u);
+        const dealt = this.combat.dealDamage(this, u, dmg, 'ability');
+        this.combat.bus.emit('abilityHit', { ability: 'Dash', target: u, dmg: dealt });
+      }
+    }
   }
 
   // ---- Cooldowns ----
@@ -108,10 +120,20 @@ export class Player extends Unit {
 
   // ---- Abilities ----
 
-  /** Klingenwurf: line skillshot, pierces the first target. */
+  /**
+   * Klingenwurf: boomerang blade — flies out, turns at range/pillars/edge,
+   * and cuts everything again on the way back to the king's hand.
+   * Quick-cast (no dir) aims at the nearest enemy, not the walk direction.
+   */
   castQ(dir?: Vec): boolean {
     if (!this.isReady('Q')) return false;
-    const d = dir && len(dir.x, dir.y) > 0.01 ? norm(dir.x, dir.y) : this.facing;
+    let d: Vec;
+    if (dir && len(dir.x, dir.y) > 0.01) {
+      d = norm(dir.x, dir.y);
+    } else {
+      const target = this.combat.nearestEnemy(this, ABILITIES.Q.range + 150);
+      d = target ? norm(target.x - this.x, target.y - this.y) : this.facing;
+    }
     this.lastQDir = { ...d };
     this.startCooldown('Q');
     this.combat.bus.emit('abilityCast', { ability: 'Q' });
@@ -134,6 +156,8 @@ export class Player extends Unit {
       team: 'player',
       maxHits: 2,
       maxDist: a.range,
+      boomerangTo: this,
+      spin: true,
       onHit: (t) => {
         const dealt = this.combat.dealDamage(this, t, dmg, 'ability');
         this.combat.bus.emit('abilityHit', { ability: 'Q', target: t, dmg: dealt });
@@ -141,12 +165,27 @@ export class Player extends Unit {
     });
   }
 
-  /** Königsruf: next N autos hit harder and heal. */
+  /**
+   * Königsruf: royal command — a golden nova damages and shoves nearby
+   * enemies back, and the next N autos hit harder and heal.
+   */
   castE(): boolean {
     if (!this.isReady('E')) return false;
     this.startCooldown('E');
     this.empoweredAutos = ABILITIES.E.autos;
     this.combat.bus.emit('abilityCast', { ability: 'E' });
+
+    const novaDmg = ABILITIES.E.novaDmg * this.stats.get('abilityDamage');
+    this.combat.ring(this.x, this.y, COLORS.buff, ABILITIES.E.novaRange);
+    for (const u of [...this.combat.units]) {
+      if (!u.alive || u.team !== 'enemy') continue;
+      const d = len(u.x - this.x, u.y - this.y);
+      if (d > ABILITIES.E.novaRange) continue;
+      const dealt = this.combat.dealDamage(this, u, novaDmg, 'ability');
+      this.combat.bus.emit('abilityHit', { ability: 'E', target: u, dmg: dealt });
+      const away = norm(u.x - this.x, u.y - this.y);
+      u.moveBy(away.x * ABILITIES.E.knockback, away.y * ABILITIES.E.knockback);
+    }
     return true;
   }
 
@@ -159,6 +198,7 @@ export class Player extends Unit {
     this.dashing = true;
     this.dashDir = { ...this.facing };
     this.dashUntil = this.combat.now + ABILITIES.Dash.duration * 1000;
+    this.dashSlashed.clear();
     this.combat.bus.emit('dashStart', undefined);
     return true;
   }
@@ -230,7 +270,9 @@ export class Player extends Unit {
       g.strokeCircle(this.x, this.y, this.radius + 10);
     }
 
-    shadedDisc(g, this.x, this.y, this.radius, this.dashing ? 0xffe680 : COLORS.player);
+    // Walk bounce: a light squash-and-stretch while moving
+    const bob = this.isMoving && !this.dashing ? Math.sin(this.combat.now / 105) * 1.8 : 0;
+    shadedDisc(g, this.x, this.y, this.radius + bob, this.dashing ? 0xffe680 : COLORS.player);
 
     // Facing wedge: a small blade tip pointing where the king looks
     const f = this.facing;

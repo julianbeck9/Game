@@ -74,7 +74,8 @@ export function updateAndDrawEmbers(
   now: number,
   dt: number,
 ): Ember[] {
-  const alive = embers.filter((e) => now - e.born < e.life);
+  let alive = embers.filter((e) => now - e.born < e.life);
+  if (alive.length > 60) alive = alive.slice(alive.length - 60); // perf cap
   for (const e of alive) {
     e.x += e.vx * dt;
     e.y += e.vy * dt;

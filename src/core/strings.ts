@@ -9,6 +9,8 @@ export const STR = {
   usurpatorComes: 'Der Usurpator naht…',
   crownIsYours: 'Die Krone gehört dir!',
   retry: 'Erneut versuchen',
+  lifeLost: '−1 Leben — die Arena ruft die nächste Runde',
+  finalMustFall: 'Der Usurpator muss fallen! Noch einmal…',
   start: 'Kampf beginnen',
   runFlavor: 'Verbannt. Verraten. Doch die Krone ruft dich zurück in die Arena.',
   bossFlavorMini: 'Der Usurpator tritt selbst in den Sand — er will dich brechen sehen.',

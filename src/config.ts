@@ -60,8 +60,11 @@ export const JOYSTICK_R = 110; // max stick travel
 
 // Ability base values (ms / px; tune freely)
 export const ABILITIES = {
-  Q: { dmg: 55, cd: 4000, speed: 1100, range: 900, radius: 12 }, // Klingenwurf
-  E: { cd: 8000, autos: 3, dmgBonus: 0.6, healPct: 0.2 }, // Königsruf
-  Dash: { cd: 5000, dist: 220, duration: 0.18 }, // Phasenschritt
+  // Klingenwurf: boomerang blade — out and back, cuts on both legs
+  Q: { dmg: 48, cd: 4200, speed: 1050, range: 640, radius: 13 },
+  // Königsruf: golden nova (dmg + knockback) + empowered autos
+  E: { cd: 8000, autos: 3, dmgBonus: 0.6, healPct: 0.2, novaDmg: 16, novaRange: 270, knockback: 95 },
+  // Phasenschritt: dash that cuts everything it phases through
+  Dash: { cd: 5000, dist: 220, duration: 0.18, slashDmg: 18 },
 } as const;
 

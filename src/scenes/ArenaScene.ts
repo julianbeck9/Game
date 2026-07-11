@@ -7,7 +7,7 @@ import { Clone } from '../entities/Clone';
 import { Decoy } from '../entities/Decoy';
 import { spawnEnemy } from '../entities/enemies';
 import { Projectile, ProjectileOpts } from '../entities/Projectile';
-import { roundSpec, lossCost, MAX_ROUND, ModifierId, MODIFIER_NAMES } from '../core/rounds';
+import { roundSpec, MAX_ROUND, ModifierId, MODIFIER_NAMES } from '../core/rounds';
 import { Joystick } from '../ui/Joystick';
 import { AbilityButton } from '../ui/AbilityButton';
 import { AugmentManager } from '../augments/AugmentManager';
@@ -42,7 +42,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private embers: Ember[] = [];
   private slowmoUntil = 0;
   private dashTrail: { x: number; y: number; until: number }[] = [];
-  private deathBursts: { x: number; y: number; start: number; color: number }[] = [];
+  private rings: { x: number; y: number; start: number; color: number; maxR: number }[] = [];
   private burnNumAcc = new Map<Unit, { sum: number; showAt: number }>();
 
   // Arena modifier state (R5+)
@@ -78,7 +78,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.hazards = [];
     this.flashes = [];
     this.dashTrail = [];
-    this.deathBursts = [];
+    this.rings = [];
     this.burnNumAcc = new Map();
     this.slowmoUntil = 0;
     this.taunt = null;
@@ -95,10 +95,16 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     const spots: [number, number][] =
       spec.enemies.length === 1
         ? [[ARENA_X, ARENA_Y - 360]]
-        : [
-            [ARENA_X - 240, ARENA_Y - 320],
-            [ARENA_X + 240, ARENA_Y - 320],
-          ];
+        : spec.enemies.length === 2
+          ? [
+              [ARENA_X - 240, ARENA_Y - 320],
+              [ARENA_X + 240, ARENA_Y - 320],
+            ]
+          : [
+              [ARENA_X - 300, ARENA_Y - 270],
+              [ARENA_X, ARENA_Y - 380],
+              [ARENA_X + 300, ARENA_Y - 270],
+            ];
     spec.enemies.forEach((cfg, i) => {
       const [x, y] = spots[i % spots.length];
       this.units.push(spawnEnemy(this, this, x, y, cfg));
@@ -241,7 +247,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
             }
           }
           this.flashLine(s.x, s.y - 620, s.x, s.y, 0xaaddff);
-          this.deathBursts.push({ x: s.x, y: s.y, start: this.now, color: 0xaaddff });
+          this.ring(s.x, s.y, 0xaaddff, 140);
           this.cameras.main.shake(100, 0.005);
         }
         this.strikes = this.strikes.filter((s) => this.now < s.at);
@@ -311,34 +317,16 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         .setDepth(100);
     }
 
-    // Right panel: run-HP as a bar with number
-    const rw = 320;
+    // Right panel: three hearts — lost ones stay as dark husks
+    const rw = 250;
     const rx = GAME_W - rw - 18;
     hud.fillStyle(0x0a0a14, 0.72);
-    hud.fillRoundedRect(rx, 16, rw, 58, 14);
+    hud.fillRoundedRect(rx, 16, rw, 64, 14);
     hud.lineStyle(2, 0x3a3a55, 0.8);
-    hud.strokeRoundedRect(rx, 16, rw, 58, 14);
-    this.add
-      .text(rx + 18, 27, STR.life, { ...style, fontSize: '26px', color: '#9aa8c0' })
-      .setDepth(100);
-    const barX = rx + 116;
-    const barW = rw - 134;
-    hud.fillStyle(0x111118, 1);
-    hud.fillRoundedRect(barX, 32, barW, 26, 8);
-    const pct = Math.max(0, run.runHP) / 100;
-    hud.fillStyle(pct > 0.4 ? 0x44dd66 : pct > 0.2 ? 0xffaa44 : 0xdd3344, 1);
-    if (pct > 0) hud.fillRoundedRect(barX, 32, Math.max(14, barW * pct), 26, 8);
-    this.add
-      .text(barX + barW / 2, 45, `${run.runHP}`, {
-        fontFamily: 'sans-serif',
-        fontSize: '24px',
-        fontStyle: 'bold',
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 4,
-      })
-      .setOrigin(0.5)
-      .setDepth(100);
+    hud.strokeRoundedRect(rx, 16, rw, 64, 14);
+    for (let i = 0; i < 3; i++) {
+      this.drawHeart(hud, rx + 52 + i * 74, 48, 20, i < run.lives);
+    }
 
     // "Know your enemy": the Usurpator's augments stay visible all round
     if (bossAugments?.length) {
@@ -513,12 +501,40 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       run.kills++;
       // Kill hit-stop + death burst
       this.slowmoUntil = this.now + 110;
-      this.deathBursts.push({ x: target.x, y: target.y, start: this.now, color: COLORS.enemy });
+      this.ring(target.x, target.y, COLORS.enemy, 95);
       this.cameras.main.shake(120, 0.006);
       this.bus.emit('enemyDeath', { enemy: target });
       this.bus.emit('killWindow', { victim: target });
     }
     return dealt;
+  }
+
+  /** Green floating numbers for meaningful heals (lifesteal trickle stays quiet). */
+  private flushHealNumbers(): void {
+    for (const u of this.units) {
+      if (u.healDisplayAcc < 8) continue;
+      const amt = Math.round(u.healDisplayAcc);
+      u.healDisplayAcc = 0;
+      const t = this.add
+        .text(u.x, u.y - u.radius - 26, `+${amt}`, {
+          fontFamily: 'sans-serif',
+          fontSize: '28px',
+          fontStyle: 'bold',
+          color: '#7ee08a',
+          stroke: '#000000',
+          strokeThickness: 4,
+        })
+        .setOrigin(0.5)
+        .setDepth(140);
+      this.tweens.add({
+        targets: t,
+        y: t.y - 50,
+        alpha: 0,
+        duration: 800,
+        ease: 'Cubic.easeOut',
+        onComplete: () => t.destroy(),
+      });
+    }
   }
 
   /** Floating damage numbers; burn ticks aggregate per unit to avoid spam. */
@@ -637,6 +653,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.flashes.push({ x1, y1, x2, y2, color, until: this.now + 160 });
   }
 
+  ring(x: number, y: number, color: number, maxR: number): void {
+    this.rings.push({ x, y, start: this.now, color, maxR });
+  }
+
   spawnMirror(scale: number): void {
     this.units.push(new Clone(this, this, this.player.x + 70, this.player.y, this.player, scale));
   }
@@ -699,6 +719,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.augments.update(dt);
       this.tickDots(dt);
       this.updateModifier(dt);
+      this.flushHealNumbers();
 
       for (const p of this.projectiles) p.update(dt, this.units);
       this.projectiles = this.projectiles.filter((p) => p.alive);
@@ -735,36 +756,48 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       .setOrigin(0.5)
       .setDepth(200);
 
-    if (win) {
-      if (run.round >= MAX_ROUND) {
-        this.time.delayedCall(1400, () => this.scene.start('end', { victory: true }));
-        return;
-      }
-      // Augment pick after each won round R1–R7; offers gate on the round just won
-      const offers = rollOffers(run.round);
-      run.round++;
-      this.time.delayedCall(1300, () => this.scene.start('pick', { offers }));
-    } else {
-      run.runHP -= lossCost(run.round);
-      if (run.runHP <= 0) {
-        run.runHP = 0;
+    if (!win) {
+      run.lives--;
+      if (run.lives <= 0) {
         this.time.delayedCall(1400, () => this.scene.start('end', { victory: false }));
         return;
       }
+      if (run.round >= MAX_ROUND) {
+        // The throne room is the one fight that must be WON — retry it
+        this.add
+          .text(ARENA_X, ARENA_Y + 50, STR.finalMustFall, {
+            fontFamily: 'sans-serif',
+            fontSize: '36px',
+            color: '#ff9a8a',
+          })
+          .setOrigin(0.5)
+          .setDepth(200);
+        this.time.delayedCall(600, () => {
+          this.input.once('pointerdown', () => this.scene.restart());
+          this.input.keyboard?.once('keydown', () => this.scene.restart());
+        });
+        return;
+      }
       this.add
-        .text(ARENA_X, ARENA_Y + 50, `−${lossCost(run.round)} ${STR.life} · ${STR.retry}`, {
+        .text(ARENA_X, ARENA_Y + 50, STR.lifeLost, {
           fontFamily: 'sans-serif',
           fontSize: '36px',
-          color: '#ccccdd',
+          color: '#ff9a8a',
         })
         .setOrigin(0.5)
         .setDepth(200);
-      // Same round again, run-HP reduced
-      this.time.delayedCall(600, () => {
-        this.input.once('pointerdown', () => this.scene.restart());
-        this.input.keyboard?.once('keydown', () => this.scene.restart());
-      });
     }
+
+    if (win && run.round >= MAX_ROUND) {
+      this.time.delayedCall(1400, () => this.scene.start('end', { victory: true }));
+      return;
+    }
+
+    // Win or lose, the gauntlet marches on: augment pick, then the next round.
+    // Offers gate on the round just played.
+    const offers = rollOffers(run.round);
+    run.round++;
+    this.time.delayedCall(win ? 1300 : 1700, () => this.scene.start('pick', { offers }));
   }
 
   private render(): void {
@@ -778,12 +811,14 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.aimGfx.fillCircle(d.x, d.y, this.player.radius * 0.9);
     }
 
-    // Death bursts (expanding rings)
-    this.deathBursts = this.deathBursts.filter((b) => this.now - b.start < 320);
-    for (const b of this.deathBursts) {
-      const p = (this.now - b.start) / 320;
-      this.aimGfx.lineStyle(6 * (1 - p) + 1, b.color, 1 - p);
-      this.aimGfx.strokeCircle(b.x, b.y, 20 + p * 70);
+    // Expanding rings (kill bursts, E nova, lightning impacts)
+    this.rings = this.rings.filter((b) => this.now - b.start < 340);
+    for (const b of this.rings) {
+      const p = (this.now - b.start) / 340;
+      this.aimGfx.lineStyle(7 * (1 - p) + 1, b.color, 1 - p);
+      this.aimGfx.strokeCircle(b.x, b.y, 18 + p * (b.maxR - 18));
+      this.aimGfx.lineStyle(2, 0xffffff, (1 - p) * 0.5);
+      this.aimGfx.strokeCircle(b.x, b.y, (18 + p * (b.maxR - 18)) * 0.85);
     }
 
     this.hazardGfx.clear();
@@ -797,6 +832,23 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     this.projGfx.clear();
     for (const p of this.projectiles) {
+      if (p.isSpinning) {
+        // Boomerang blade: whirling cross of blades + glow
+        const a = this.now / 55;
+        this.projGfx.fillStyle(p.color, 0.2);
+        this.projGfx.fillCircle(p.x, p.y, p.radius * 2.4);
+        this.projGfx.lineStyle(5, p.color, 1);
+        for (const off of [0, Math.PI / 2]) {
+          const L = p.radius * 2.1;
+          this.projGfx.beginPath();
+          this.projGfx.moveTo(p.x - Math.cos(a + off) * L, p.y - Math.sin(a + off) * L);
+          this.projGfx.lineTo(p.x + Math.cos(a + off) * L, p.y + Math.sin(a + off) * L);
+          this.projGfx.strokePath();
+        }
+        this.projGfx.fillStyle(0xffffff, 0.9);
+        this.projGfx.fillCircle(p.x, p.y, p.radius * 0.5);
+        continue;
+      }
       // Motion streak + glow + bright core
       this.projGfx.lineStyle(p.radius, p.color, 0.3);
       this.projGfx.beginPath();
@@ -908,6 +960,23 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       g.fillRect(t.x - 4, t.y, 8, 26);
       g.fillStyle(0x3a3a4e, 1);
       g.fillCircle(t.x, t.y + 2, 7);
+    }
+  }
+
+  /** Two circles + a triangle = a heart. Filled red or a dark husk. */
+  private drawHeart(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number, full: boolean): void {
+    const color = full ? 0xe0445e : 0x2a2a3a;
+    g.fillStyle(color, 1);
+    g.fillCircle(x - s * 0.42, y - s * 0.3, s * 0.48);
+    g.fillCircle(x + s * 0.42, y - s * 0.3, s * 0.48);
+    g.fillTriangle(x - s * 0.85, y - s * 0.12, x + s * 0.85, y - s * 0.12, x, y + s * 0.85);
+    if (full) {
+      g.fillStyle(0xffffff, 0.45);
+      g.fillCircle(x - s * 0.45, y - s * 0.38, s * 0.16);
+    } else {
+      g.lineStyle(2, 0x44445c, 1);
+      g.strokeCircle(x - s * 0.42, y - s * 0.3, s * 0.48);
+      g.strokeCircle(x + s * 0.42, y - s * 0.3, s * 0.48);
     }
   }
 
