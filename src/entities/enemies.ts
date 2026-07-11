@@ -16,6 +16,9 @@ export interface DifficultyScale {
   dmg: number; // multiplier
   reactionMs: number; // dodge reaction delay (lower = harder)
   dodgeChance: number;
+  /** LoL-like defenses, rising per round. */
+  armor: number;
+  mr: number;
 }
 
 // ---- Shared ability builders ----
@@ -139,7 +142,7 @@ export function makeHaescher(s: DifficultyScale): EnemyConfig {
     radius: 26,
     color: COLORS.enemy,
     darkColor: COLORS.enemyDark,
-    stats: { maxHP: 240 * s.hp, moveSpeed: 270, damage: s.dmg },
+    stats: { maxHP: 240 * s.hp, moveSpeed: 270, damage: s.dmg, armor: s.armor + 4, magicResist: s.mr },
     preferredRange: 40,
     rangeBand: 30,
     reactionMs: s.reactionMs,
@@ -157,7 +160,7 @@ export function makeSchuetze(s: DifficultyScale): EnemyConfig {
     radius: 24,
     color: 0xe0663c,
     darkColor: 0x8b3a1a,
-    stats: { maxHP: 190 * s.hp, moveSpeed: 285, damage: s.dmg },
+    stats: { maxHP: 190 * s.hp, moveSpeed: 285, damage: s.dmg, armor: s.armor, magicResist: s.mr },
     preferredRange: 380,
     rangeBand: 70,
     reactionMs: s.reactionMs,
@@ -175,7 +178,7 @@ export function makeWaechter(s: DifficultyScale): EnemyConfig {
     radius: 38,
     color: 0xb03060,
     darkColor: 0x5c1030,
-    stats: { maxHP: 520 * s.hp, moveSpeed: 205, damage: s.dmg },
+    stats: { maxHP: 520 * s.hp, moveSpeed: 205, damage: s.dmg, armor: s.armor + 12, magicResist: s.mr + 6 },
     preferredRange: 50,
     rangeBand: 35,
     reactionMs: s.reactionMs + 120, // tanks are slow to react
@@ -193,7 +196,7 @@ export function makeHexer(s: DifficultyScale): EnemyConfig {
     radius: 24,
     color: 0xb04ad0,
     darkColor: 0x5c2070,
-    stats: { maxHP: 200 * s.hp, moveSpeed: 255, damage: s.dmg },
+    stats: { maxHP: 200 * s.hp, moveSpeed: 255, damage: s.dmg, armor: s.armor, magicResist: s.mr + 12 },
     preferredRange: 330,
     rangeBand: 60,
     reactionMs: s.reactionMs,
@@ -271,7 +274,7 @@ export function makeDiener(s: DifficultyScale): EnemyConfig {
     radius: 14,
     color: 0xd06a6a,
     darkColor: 0x7a2a2a,
-    stats: { maxHP: 45 * s.hp, moveSpeed: 310, damage: s.dmg },
+    stats: { maxHP: 45 * s.hp, moveSpeed: 310, damage: s.dmg, armor: 0, magicResist: 0 },
     preferredRange: 25,
     rangeBand: 20,
     reactionMs: s.reactionMs + 200,
@@ -301,7 +304,7 @@ export function makeUsurpator(s: DifficultyScale, final: boolean): EnemyConfig {
     radius: 32,
     color: 0xcc2244,
     darkColor: 0x661022,
-    stats: { maxHP: (final ? 950 : 620) * s.hp, moveSpeed: 280, damage: s.dmg * (final ? 1.15 : 1) },
+    stats: { maxHP: (final ? 950 : 620) * s.hp, moveSpeed: 280, damage: s.dmg * (final ? 1.15 : 1), armor: s.armor + 8, magicResist: s.mr + 8 },
     preferredRange: 220,
     rangeBand: 80,
     reactionMs: Math.max(120, s.reactionMs - 60),

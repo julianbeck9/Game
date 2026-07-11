@@ -1,22 +1,41 @@
 import Phaser from 'phaser';
 import { Unit } from './Unit';
-import { StatBlock } from '../core/stats';
+import { StatBlock, StatName } from '../core/stats';
 import { Combat } from '../core/combat';
 import { AbilityId } from '../core/events';
 import { norm, len, Vec } from '../core/geometry';
-import { COLORS, PLAYER_BASE, ABILITIES } from '../config';
+import { COLORS, ABILITIES } from '../config';
 import { run } from '../core/run';
-import { crown, shadedDisc } from '../core/draw';
+import { crown } from '../core/draw';
+import { ChampionDef } from '../champions/types';
+import { championById } from '../champions/registry';
+
+/** Stats every champion shares unless their sheet overrides them. */
+const CHAMP_DEFAULTS: Partial<Record<StatName, number>> = {
+  abilityPower: 0,
+  armor: 0,
+  magicResist: 0,
+  critChance: 0,
+  abilityHaste: 0,
+  abilityDamage: 1.0,
+  cooldown: 1.0,
+  lifesteal: 0,
+  projSpeed: 900,
+};
 
 export class Player extends Unit {
+  readonly champ: ChampionDef;
   /** Last non-zero movement direction; used for facing (Q quick-cast, dash). */
   facing: Vec = { x: 1, y: 0 };
-  /** Remaining Königsruf-empowered autos. */
+  /** Remaining Königsruf-empowered autos (König kit). */
   empoweredAutos = 0;
   dashing = false;
   /** Direction of the last Q cast (Echo re-fires along it). */
   lastQDir: Vec = { x: 1, y: 0 };
+  /** Kit-local state for champion scripts (Yasuo Q stacks, Ashe focus timer…). */
+  memory: Record<string, number> = {};
 
+  private sprite: Phaser.GameObjects.Image;
   private nextAttackAt = 0;
   private readyAt: Record<AbilityId, number> = { Q: 0, E: 0, Dash: 0 };
   private lastCd: Record<AbilityId, number> = { Q: 1, E: 1, Dash: 1 };
@@ -29,11 +48,18 @@ export class Player extends Unit {
 
   constructor(
     scene: Phaser.Scene,
-    protected combat: Combat,
+    readonly combat: Combat,
     x: number,
     y: number,
   ) {
-    super(scene, x, y, 'player', new StatBlock({ ...PLAYER_BASE }));
+    const champ = championById(run.champion);
+    super(scene, x, y, 'player', new StatBlock({ ...CHAMP_DEFAULTS, ...champ.base }));
+    this.champ = champ;
+    this.sprite = scene.add.image(x, y, `champ:${champ.id}`).setDepth(11);
+  }
+
+  get qRange(): number {
+    return this.champ.qRange;
   }
 
   // ---- Movement ----
@@ -58,24 +84,25 @@ export class Player extends Unit {
     }
   }
 
-  /** Phasenschritt cuts everything the king phases through. */
+  /** Phasenschritt cuts everything the champion phases through. */
   private phaseSlash(): void {
-    const dmg = ABILITIES.Dash.slashDmg * this.stats.get('abilityDamage');
+    const dmg = (8 + 0.5 * this.stats.get('damage')) * this.stats.get('abilityDamage');
     for (const u of [...this.combat.units]) {
       if (!u.alive || u.team !== 'enemy' || this.dashSlashed.has(u)) continue;
       if (len(u.x - this.x, u.y - this.y) <= u.radius + this.radius + 8) {
         this.dashSlashed.add(u);
-        const dealt = this.combat.dealDamage(this, u, dmg, 'ability');
+        const dealt = this.combat.dealDamage(this, u, dmg, 'ability', 'physisch');
         this.combat.bus.emit('abilityHit', { ability: 'Dash', target: u, dmg: dealt });
       }
     }
   }
 
-  // ---- Cooldowns ----
+  // ---- Cooldowns (LoL-like: base × cooldown-mult × 100/(100+haste)) ----
 
-  /** Scaled cooldown duration for an ability, in ms. */
   cooldownDuration(ability: AbilityId): number {
-    return ABILITIES[ability].cd * Math.max(0.05, this.stats.get('cooldown'));
+    const haste = this.stats.get('abilityHaste');
+    const base = ability === 'Dash' ? ABILITIES.Dash.cd : this.champ.cds[ability];
+    return base * Math.max(0.05, this.stats.get('cooldown')) * (100 / (100 + haste));
   }
 
   get maxDashCharges(): number {
@@ -118,20 +145,16 @@ export class Player extends Unit {
     this.readyAt[ability] = this.combat.now + cd;
   }
 
-  // ---- Abilities ----
+  // ---- Abilities (kit delegated to the champion script) ----
 
-  /**
-   * Klingenwurf: boomerang blade — flies out, turns at range/pillars/edge,
-   * and cuts everything again on the way back to the king's hand.
-   * Quick-cast (no dir) aims at the nearest enemy, not the walk direction.
-   */
+  /** Quick-cast (no dir) aims at the nearest enemy, not the walk direction. */
   castQ(dir?: Vec): boolean {
     if (!this.isReady('Q')) return false;
     let d: Vec;
     if (dir && len(dir.x, dir.y) > 0.01) {
       d = norm(dir.x, dir.y);
     } else {
-      const target = this.combat.nearestEnemy(this, ABILITIES.Q.range + 150);
+      const target = this.combat.nearestEnemy(this, this.champ.qRange + 150);
       d = target ? norm(target.x - this.x, target.y - this.y) : this.facing;
     }
     this.lastQDir = { ...d };
@@ -141,51 +164,16 @@ export class Player extends Unit {
     return true;
   }
 
-  /** Actual Q projectile spawn — separate so augments (Echo) can re-fire it. */
+  /** Actual Q effect — separate so augments (Echo) can re-fire it. */
   fireQ(d: Vec, dmgScale = 1): void {
-    const a = ABILITIES.Q;
-    const dmg = a.dmg * this.stats.get('abilityDamage') * dmgScale;
-    this.combat.spawnProjectile({
-      x: this.x + d.x * (this.radius + 6),
-      y: this.y + d.y * (this.radius + 6),
-      dirX: d.x,
-      dirY: d.y,
-      speed: a.speed,
-      radius: a.radius,
-      color: COLORS.playerProj,
-      team: 'player',
-      maxHits: 2,
-      maxDist: a.range,
-      boomerangTo: this,
-      spin: true,
-      onHit: (t) => {
-        const dealt = this.combat.dealDamage(this, t, dmg, 'ability');
-        this.combat.bus.emit('abilityHit', { ability: 'Q', target: t, dmg: dealt });
-      },
-    });
+    this.champ.fireQ(this, d, dmgScale);
   }
 
-  /**
-   * Königsruf: royal command — a golden nova damages and shoves nearby
-   * enemies back, and the next N autos hit harder and heal.
-   */
   castE(): boolean {
     if (!this.isReady('E')) return false;
     this.startCooldown('E');
-    this.empoweredAutos = ABILITIES.E.autos;
     this.combat.bus.emit('abilityCast', { ability: 'E' });
-
-    const novaDmg = ABILITIES.E.novaDmg * this.stats.get('abilityDamage');
-    this.combat.ring(this.x, this.y, COLORS.buff, ABILITIES.E.novaRange);
-    for (const u of [...this.combat.units]) {
-      if (!u.alive || u.team !== 'enemy') continue;
-      const d = len(u.x - this.x, u.y - this.y);
-      if (d > ABILITIES.E.novaRange) continue;
-      const dealt = this.combat.dealDamage(this, u, novaDmg, 'ability');
-      this.combat.bus.emit('abilityHit', { ability: 'E', target: u, dmg: dealt });
-      const away = norm(u.x - this.x, u.y - this.y);
-      u.moveBy(away.x * ABILITIES.E.knockback, away.y * ABILITIES.E.knockback);
-    }
+    this.champ.castE(this);
     return true;
   }
 
@@ -226,78 +214,90 @@ export class Player extends Unit {
   private tryAutoAttack(time: number): void {
     if (run.flags.noAutoAttacks) return; // Kronlos rule flag
     if (time < this.nextAttackAt) return;
+    // Planted feet: champions only attack while standing still
+    if (this.isMoving || this.dashing) return;
     const range = this.stats.get('attackRange');
     const target = this.combat.nearestEnemy(this, range);
     if (!target) return;
 
     const atkSpeed = Math.max(0.1, this.stats.get('attackSpeed'));
     this.nextAttackAt = time + 1000 / atkSpeed;
+    this.facing = norm(target.x - this.x, target.y - this.y);
 
     let dmg = this.stats.get('damage');
+    const crit = Math.random() < this.stats.get('critChance');
+    if (crit) dmg *= 1.75;
     const empowered = this.empoweredAutos > 0;
     if (empowered) {
       this.empoweredAutos--;
       dmg *= 1 + ABILITIES.E.dmgBonus;
     }
 
-    this.combat.spawnProjectile({
-      x: this.x,
-      y: this.y,
-      dirX: target.x - this.x,
-      dirY: target.y - this.y,
-      speed: this.stats.get('projSpeed'),
-      radius: empowered ? 11 : 8,
-      color: empowered ? COLORS.buff : COLORS.playerProj,
-      team: 'player',
-      homing: target,
-      maxDist: range + 200,
-      onHit: (t) => {
-        const dealt = this.combat.dealDamage(this, t, dmg, 'auto');
-        if (empowered) this.heal(dealt * ABILITIES.E.healPct);
-        this.combat.bus.emit('autoHit', { target: t, dmg: dealt });
-      },
-    });
+    const onHit = (t: Unit) => {
+      const dealt = this.combat.dealDamage(this, t, dmg, 'auto', 'physisch');
+      if (empowered) this.heal(dealt * ABILITIES.E.healPct);
+      this.combat.bus.emit('autoHit', { target: t, dmg: dealt });
+      this.champ.onAutoHit?.(this, t);
+    };
+
+    if (this.champ.ranged) {
+      this.combat.spawnProjectile({
+        x: this.x,
+        y: this.y,
+        dirX: target.x - this.x,
+        dirY: target.y - this.y,
+        speed: this.stats.get('projSpeed'),
+        radius: empowered || crit ? 11 : 8,
+        color: empowered ? COLORS.buff : crit ? 0xffffff : COLORS.playerProj,
+        team: 'player',
+        homing: target,
+        maxDist: range + 200,
+        onHit,
+      });
+    } else {
+      // Melee swing: instant, with a slash flash
+      this.combat.flashLine(this.x, this.y, target.x, target.y, crit ? 0xffffff : COLORS.playerProj);
+      onHit(target);
+    }
   }
 
-  // ---- Rendering ----
+  // ---- Rendering (8-bit sprite + effect overlays) ----
 
   protected drawBody(g: Phaser.GameObjects.Graphics): void {
+    // Drop shadow under the sprite
+    g.fillStyle(0x000000, 0.28);
+    g.fillEllipse(this.x, this.y + this.radius * 0.95, this.radius * 2.1, this.radius * 0.7);
+
     // Königsruf glow while empowered
     if (this.empoweredAutos > 0) {
       g.fillStyle(COLORS.buff, 0.16);
       g.fillCircle(this.x, this.y, this.radius + 14);
       g.lineStyle(3, COLORS.buff, 0.8);
       g.strokeCircle(this.x, this.y, this.radius + 10);
-    }
-
-    // Walk bounce: a light squash-and-stretch while moving
-    const bob = this.isMoving && !this.dashing ? Math.sin(this.combat.now / 105) * 1.8 : 0;
-    shadedDisc(g, this.x, this.y, this.radius + bob, this.dashing ? 0xffe680 : COLORS.player);
-
-    // Facing wedge: a small blade tip pointing where the king looks
-    const f = this.facing;
-    const tipX = this.x + f.x * (this.radius + 7);
-    const tipY = this.y + f.y * (this.radius + 7);
-    g.fillStyle(COLORS.playerDark, 1);
-    g.fillTriangle(
-      tipX, tipY,
-      this.x + f.x * (this.radius - 6) - f.y * 8, this.y + f.y * (this.radius - 6) + f.x * 8,
-      this.x + f.x * (this.radius - 6) + f.y * 8, this.y + f.y * (this.radius - 6) - f.x * 8,
-    );
-
-    crown(g, this.x, this.y - this.radius - 9, 26, COLORS.player);
-
-    // Königsruf ammo pips: one dot per empowered auto still loaded
-    if (this.empoweredAutos > 0) {
       g.fillStyle(COLORS.buff, 1);
       for (let i = 0; i < this.empoweredAutos; i++) {
         g.fillCircle(this.x - (this.empoweredAutos - 1) * 6 + i * 12, this.y - this.radius - 26, 4);
       }
     }
+
+    // Crown marker above whoever you play — you are the would-be king
+    crown(g, this.x, this.y - this.radius - 12, 18, COLORS.player, 0.9);
+
+    // Walk bounce + sprite sync
+    const bob = this.isMoving && !this.dashing ? Math.sin(this.combat.now / 105) * 2.2 : 0;
+    this.sprite.setPosition(this.x, this.y - 4 - Math.abs(bob));
+    this.sprite.setFlipX(this.facing.x < 0);
+    this.sprite.setAlpha(this.dashing ? 0.6 : 1);
+    this.sprite.setVisible(this.alive);
+  }
+
+  draw(): void {
+    super.draw();
+    if (!this.alive) this.sprite.setVisible(false);
   }
 
   protected drawHpBar(g: Phaser.GameObjects.Graphics): void {
-    // Player HP bar sits below (crown occupies the top)
+    // Player HP bar sits below (crown + buff pips occupy the top)
     const w = this.radius * 2.4;
     const h = 7;
     const x = this.x - w / 2;
@@ -306,5 +306,10 @@ export class Player extends Unit {
     g.fillRect(x - 1, y - 1, w + 2, h + 2);
     g.fillStyle(COLORS.hpGreen, 1);
     g.fillRect(x, y, w * Phaser.Math.Clamp(this.hpPct, 0, 1), h);
+  }
+
+  destroy(): void {
+    this.sprite.destroy();
+    super.destroy();
   }
 }

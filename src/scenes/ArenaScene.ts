@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Combat, Hazard } from '../core/combat';
-import { EventBus, DamageType } from '../core/events';
+import { EventBus, DamageType, School } from '../core/events';
+import { ensureChampionTextures } from '../champions/registry';
 import { Unit } from '../entities/Unit';
 import { Player } from '../entities/Player';
 import { Clone } from '../entities/Clone';
@@ -14,10 +15,11 @@ import { AugmentManager } from '../augments/AugmentManager';
 import { rollOffers } from '../augments/offers';
 import { run } from '../core/run';
 import { dist, pointInPillar, Vec } from '../core/geometry';
-import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H, ABILITIES } from '../config';
+import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H } from '../config';
 import { STR } from '../core/strings';
 import { initAudio, sfx } from '../core/sfx';
 import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/draw';
+import { addFullscreenButton } from '../core/fullscreen';
 
 export class ArenaScene extends Phaser.Scene implements Combat {
   readonly bus = new EventBus();
@@ -34,6 +36,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private hazardGfx!: Phaser.GameObjects.Graphics;
   private aimPreview: Vec | null = null;
   private hazards: Hazard[] = [];
+  private walls: { x1: number; y1: number; x2: number; y2: number; until: number }[] = [];
   private taunt: { unit: Unit; until: number } | null = null;
   private flashes: { x1: number; y1: number; x2: number; y2: number; color: number; until: number }[] = [];
 
@@ -76,6 +79,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.projectiles = [];
     this.buttons = [];
     this.hazards = [];
+    this.walls = [];
     this.flashes = [];
     this.dashTrail = [];
     this.rings = [];
@@ -87,6 +91,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.bus.clear();
 
     this.drawArenaFloor();
+    ensureChampionTextures(this);
 
     this.player = new Player(this, this, ARENA_X, ARENA_Y + 360);
     this.units.push(this.player);
@@ -327,6 +332,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     for (let i = 0; i < 3; i++) {
       this.drawHeart(hud, rx + 52 + i * 74, 48, 20, i < run.lives);
     }
+    addFullscreenButton(this, GAME_W - 56, 128);
 
     // "Know your enemy": the Usurpator's augments stay visible all round
     if (bossAugments?.length) {
@@ -460,10 +466,20 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     return p;
   }
 
-  dealDamage(source: Unit | null, target: Unit, amount: number, type: DamageType): number {
+  dealDamage(source: Unit | null, target: Unit, amount: number, type: DamageType, school?: School): number {
     if (!target.alive || amount <= 0) return 0;
     // Phasensprung rule flag: invulnerable while dashing
     if (target === this.player && this.player.dashing && run.flags.dashIFrames) return 0;
+
+    // LoL-like mitigation: Rüstung vs physisch, MR vs magisch, wahr ignores both
+    const sch: School =
+      school ?? (type === 'burn' ? 'magisch' : type === 'other' ? 'wahr' : 'physisch');
+    if (sch === 'physisch') {
+      amount *= 100 / (100 + Math.max(0, target.stats.get('armor')));
+    } else if (sch === 'magisch') {
+      amount *= 100 / (100 + Math.max(0, target.stats.get('magicResist')));
+    }
+
     const prevPct = target.hpPct;
     const dealt = Math.min(amount, target.hp + target.shield);
     target.applyDamage(amount);
@@ -657,6 +673,33 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.rings.push({ x, y, start: this.now, color, maxR });
   }
 
+  addWall(x1: number, y1: number, x2: number, y2: number, until: number): void {
+    this.walls.push({ x1, y1, x2, y2, until });
+  }
+
+  /** Windwand: enemy projectiles crossing a wall segment are devoured. */
+  private tickWalls(): void {
+    this.walls = this.walls.filter((w) => w.until > this.now);
+    if (this.walls.length === 0) return;
+    for (const p of this.projectiles) {
+      if (p.team !== 'enemy' || !p.alive) continue;
+      for (const w of this.walls) {
+        // Distance from projectile to the wall segment
+        const dx = w.x2 - w.x1;
+        const dy = w.y2 - w.y1;
+        const lenSq = dx * dx + dy * dy;
+        const t = Math.max(0, Math.min(1, ((p.x - w.x1) * dx + (p.y - w.y1) * dy) / lenSq));
+        const cx = w.x1 + t * dx;
+        const cy = w.y1 + t * dy;
+        if (Math.hypot(p.x - cx, p.y - cy) <= 16 + p.radius) {
+          p.alive = false;
+          this.ring(p.x, p.y, 0xd8f4ff, 34);
+          break;
+        }
+      }
+    }
+  }
+
   spawnMirror(scale: number): void {
     this.units.push(new Clone(this, this, this.player.x + 70, this.player.y, this.player, scale));
   }
@@ -722,6 +765,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.flushHealNumbers();
 
       for (const p of this.projectiles) p.update(dt, this.units);
+      this.tickWalls();
       this.projectiles = this.projectiles.filter((p) => p.alive);
 
       this.checkFightEnd();
@@ -823,6 +867,20 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     this.hazardGfx.clear();
     this.drawModifier(this.hazardGfx);
+    // Wind walls: shimmering white-blue bands
+    for (const w of this.walls) {
+      const pulse = 0.5 + Math.sin(this.now / 90) * 0.2;
+      this.hazardGfx.lineStyle(20, 0xd8f4ff, 0.22 * pulse + 0.1);
+      this.hazardGfx.beginPath();
+      this.hazardGfx.moveTo(w.x1, w.y1);
+      this.hazardGfx.lineTo(w.x2, w.y2);
+      this.hazardGfx.strokePath();
+      this.hazardGfx.lineStyle(4, 0xffffff, 0.5 * pulse + 0.2);
+      this.hazardGfx.beginPath();
+      this.hazardGfx.moveTo(w.x1, w.y1);
+      this.hazardGfx.lineTo(w.x2, w.y2);
+      this.hazardGfx.strokePath();
+    }
     for (const h of this.hazards) {
       this.hazardGfx.fillStyle(h.color, 0.22);
       this.hazardGfx.fillCircle(h.x, h.y, h.r);
@@ -874,11 +932,27 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     if (this.aimPreview) {
       const px = this.player.x;
       const py = this.player.y;
-      this.aimGfx.lineStyle(5, COLORS.playerProj, 0.55);
+      const L = this.player.qRange;
+      const ax = this.aimPreview.x;
+      const ay = this.aimPreview.y;
+      // Wide translucent strip + core line + arrowhead so aiming reads clearly
+      this.aimGfx.fillStyle(COLORS.playerProj, 0.14);
+      this.aimGfx.fillTriangle(
+        px - ay * 20, py + ax * 20,
+        px + ay * 20, py - ax * 20,
+        px + ax * L, py + ay * L,
+      );
+      this.aimGfx.lineStyle(5, COLORS.playerProj, 0.6);
       this.aimGfx.beginPath();
       this.aimGfx.moveTo(px, py);
-      this.aimGfx.lineTo(px + this.aimPreview.x * ABILITIES.Q.range, py + this.aimPreview.y * ABILITIES.Q.range);
+      this.aimGfx.lineTo(px + ax * L, py + ay * L);
       this.aimGfx.strokePath();
+      this.aimGfx.fillStyle(COLORS.playerProj, 0.9);
+      this.aimGfx.fillTriangle(
+        px + ax * L, py + ay * L,
+        px + ax * (L - 34) - ay * 16, py + ay * (L - 34) + ax * 16,
+        px + ax * (L - 34) + ay * 16, py + ay * (L - 34) - ax * 16,
+      );
     }
 
     this.joystick.draw();

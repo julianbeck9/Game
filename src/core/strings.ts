@@ -5,6 +5,7 @@ export const STR = {
   victory: 'Sieg',
   defeat: 'Niederlage',
   pickAugment: 'Wähle ein Augment',
+  chooseChampion: 'Wähle deinen Champion',
   life: 'Leben',
   usurpatorComes: 'Der Usurpator naht…',
   crownIsYours: 'Die Krone gehört dir!',

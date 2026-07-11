@@ -1,6 +1,6 @@
 import type { Unit } from '../entities/Unit';
 import type { Projectile, ProjectileOpts } from '../entities/Projectile';
-import type { EventBus, DamageType } from './events';
+import type { EventBus, DamageType, School } from './events';
 import type { EnemyConfig } from '../entities/Enemy';
 
 export interface Hazard {
@@ -25,8 +25,11 @@ export interface Combat {
   readonly now: number;
   readonly playerUnit: Unit;
   spawnProjectile(opts: ProjectileOpts): Projectile;
-  dealDamage(source: Unit | null, target: Unit, amount: number, type: DamageType): number;
+  /** school defaults per type: auto/reflect/ability → physisch, burn → magisch, other → wahr. */
+  dealDamage(source: Unit | null, target: Unit, amount: number, type: DamageType, school?: School): number;
   nearestEnemy(of: Unit, maxDist?: number): Unit | null;
+  /** Windwand etc.: a line segment that eats enemy projectiles until `until`. */
+  addWall(x1: number, y1: number, x2: number, y2: number, until: number): void;
   /** Mid-fight enemy spawns (Wächter/Usurpator summoning Diener). */
   spawnEnemyUnit(cfg: EnemyConfig, x: number, y: number): Unit;
 

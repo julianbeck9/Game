@@ -6,6 +6,8 @@ import { AugmentDef, Tag, RuleFlags, DEFAULT_FLAGS } from '../augments/types';
  */
 export interface RunState {
   round: number;
+  /** Selected playable champion id. */
+  champion: string;
   /** Lives (hearts): a lost round costs one, but the run marches on. 0 = over. */
   lives: number;
   augments: AugmentDef[];
@@ -29,6 +31,7 @@ export function newRun(): RunState {
 function newRunState(): RunState {
   return {
     round: 1,
+    champion: 'koenig',
     lives: 3,
     augments: [],
     tagCounts: { Blut: 0, Sturm: 0, Arkan: 0, Ward: 0, Bruch: 0 },

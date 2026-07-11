@@ -2,6 +2,8 @@ import type { Unit } from '../entities/Unit';
 
 export type AbilityId = 'Q' | 'E' | 'Dash';
 export type DamageType = 'auto' | 'ability' | 'burn' | 'reflect' | 'other';
+/** Damage school for mitigation: physisch vs Rüstung, magisch vs MR, wahr ignores both. */
+export type School = 'physisch' | 'magisch' | 'wahr';
 
 /**
  * Typed combat events. The combat core only EMITS these; augments only

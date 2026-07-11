@@ -26,6 +26,8 @@ export function roundScale(round: number): DifficultyScale {
     dmg: 1 + 0.12 * (round - 1),
     reactionMs: Math.max(120, 400 - 25 * (round - 1)),
     dodgeChance: Math.min(0.9, 0.4 + 0.045 * round),
+    armor: 4 + 2.2 * (round - 1),
+    mr: 4 + 2.2 * (round - 1),
   };
 }
 

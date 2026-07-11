@@ -1,7 +1,12 @@
 export type StatName =
   | 'maxHP'
   | 'moveSpeed'
-  | 'damage' // auto-attack damage
+  | 'damage' // Angriffsschaden (AD); enemies use it as a % scaler
+  | 'abilityPower' // Fähigkeitsstärke (AP)
+  | 'armor' // Rüstung: physical damage taken × 100/(100+armor)
+  | 'magicResist' // Magieresistenz: magical damage × 100/(100+mr)
+  | 'critChance' // 0..1, auto-attacks crit for 175%
+  | 'abilityHaste' // cooldown × 100/(100+haste)
   | 'attackSpeed'
   | 'attackRange'
   | 'abilityDamage' // % scaler for ability base damage (base 1.0)
