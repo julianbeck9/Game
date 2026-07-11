@@ -63,13 +63,13 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(10);
 
-    // Champion select cards
-    const cardW = 480;
-    const cardH = 520;
-    const gap = 55;
+    // Champion select cards (compact row)
+    const cardW = 348;
+    const cardH = 500;
+    const gap = 22;
     const total = CHAMPIONS.length * cardW + (CHAMPIONS.length - 1) * gap;
     const x0 = (GAME_W - total) / 2 + cardW / 2;
-    const y = GAME_H / 2 + 160;
+    const y = GAME_H / 2 + 170;
     CHAMPIONS.forEach((c, i) => {
       this.makeChampCard(c.id, x0 + i * (cardW + gap), y, cardW, cardH, i);
     });
@@ -95,7 +95,7 @@ export class MenuScene extends Phaser.Scene {
     const bg = this.add.rectangle(0, 0, w, h, 0x14141f, 1).setStrokeStyle(4, COLORS.player, 0.75);
     zone.add(bg);
 
-    const sprite = this.add.image(0, -h / 2 + 150, `champ:${id}`).setScale(3.4);
+    const sprite = this.add.image(0, -h / 2 + 130, `champ:${id}`).setScale(2.9);
     zone.add(sprite);
     this.tweens.add({
       targets: sprite,
@@ -108,9 +108,9 @@ export class MenuScene extends Phaser.Scene {
 
     zone.add(
       this.add
-        .text(0, -h / 2 + 268, champ.name, {
+        .text(0, -h / 2 + 232, champ.name, {
           fontFamily: 'Georgia, serif',
-          fontSize: '44px',
+          fontSize: '38px',
           fontStyle: 'bold',
           color: '#ffffff',
         })
@@ -118,9 +118,9 @@ export class MenuScene extends Phaser.Scene {
     );
     zone.add(
       this.add
-        .text(0, -h / 2 + 318, champ.tagline, {
+        .text(0, -h / 2 + 276, champ.tagline, {
           fontFamily: 'sans-serif',
-          fontSize: '26px',
+          fontSize: '21px',
           fontStyle: 'italic',
           color: '#9aa3bb',
         })
@@ -128,23 +128,23 @@ export class MenuScene extends Phaser.Scene {
     );
     zone.add(
       this.add
-        .text(0, -h / 2 + 392, champ.kitLine, {
+        .text(0, -h / 2 + 356, champ.kitLine, {
           fontFamily: 'sans-serif',
-          fontSize: '26px',
+          fontSize: '22px',
           color: '#d8dce8',
-          wordWrap: { width: w - 60 },
+          wordWrap: { width: w - 44 },
           align: 'center',
-          lineSpacing: 8,
+          lineSpacing: 7,
         })
         .setOrigin(0.5),
     );
 
-    const statLine = `LP ${champ.base.maxHP} · AD ${champ.base.damage} · Tempo ${champ.base.attackSpeed} · ${champ.ranged ? 'Fernkampf' : 'Nahkampf'}`;
+    const statLine = `LP ${champ.base.maxHP} · AD ${champ.base.damage} · ${champ.ranged ? 'Fernkampf' : 'Nahkampf'}`;
     zone.add(
       this.add
-        .text(0, h / 2 - 46, statLine, {
+        .text(0, h / 2 - 38, statLine, {
           fontFamily: 'sans-serif',
-          fontSize: '23px',
+          fontSize: '20px',
           color: '#7a86a5',
         })
         .setOrigin(0.5),
@@ -154,7 +154,7 @@ export class MenuScene extends Phaser.Scene {
     bg.on('pointerover', () => bg.setFillStyle(0x1f1f30));
     bg.on('pointerout', () => bg.setFillStyle(0x14141f));
     bg.on('pointerdown', () => this.startFn(id));
-    this.input.keyboard?.addKey(['ONE', 'TWO', 'THREE'][index]).on('down', () => this.startFn(id));
+    this.input.keyboard?.addKey(['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'][index]).on('down', () => this.startFn(id));
   }
 
   update(time: number, deltaMs: number): void {

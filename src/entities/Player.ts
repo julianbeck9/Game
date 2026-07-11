@@ -62,6 +62,11 @@ export class Player extends Unit {
     return this.champ.qRange;
   }
 
+  /** Planted feet (attacks flow while standing; some augments reward it too). */
+  get isStationary(): boolean {
+    return !this.isMoving && !this.dashing;
+  }
+
   // ---- Movement ----
 
   /** moveVec: normalized-ish input vector (joystick or WASD), magnitude 0..1. */

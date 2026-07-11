@@ -262,7 +262,169 @@ function applyFrost(p: { combat: { now: number } }, t: Unit, pct: number, ms: nu
   t.stats.set({ id: 'slow:frost', stat: 'moveSpeed', pct: -pct, expiresAt: p.combat.now + ms });
 }
 
-export const CHAMPIONS: ChampionDef[] = [koenig, yasuo, ashe];
+// ---------------------------------------------------------------------------
+// Garen — Bollwerk von Demacia (fan homage)
+// Q: Tempo + nächster Hieb wuchtig · E: rotierende Klingen um sich selbst
+// ---------------------------------------------------------------------------
+
+const garen: ChampionDef = {
+  id: 'garen',
+  name: 'Garen',
+  tagline: 'Die Macht Demacias',
+  kitLine: 'Q Tempo + Wuchtschlag · E rotierende Klingen (AoE, mobil)',
+  ranged: false,
+  qRange: 300,
+  cds: { Q: 6000, E: 9000, Dash: 5600 },
+  base: {
+    maxHP: 265,
+    moveSpeed: 305,
+    damage: 21,
+    attackSpeed: 0.9,
+    attackRange: 160,
+    armor: 18,
+    magicResist: 14,
+    projSpeed: 900,
+  },
+  fireQ: (p, _d, scale) => {
+    // Surge forward, next swing lands like a hammer
+    p.stats.set({ id: 'buff:garenq', stat: 'moveSpeed', pct: 0.3, expiresAt: p.combat.now + 1600 });
+    p.memory.qEmpoweredUntil = p.combat.now + 3200;
+    p.memory.qEmpowerScale = scale;
+    p.combat.ring(p.x, p.y, 0xffe680, 90);
+  },
+  castE: (p) => {
+    // Spin: six damage pulses around the moving champion
+    const dmg = (9 + 0.45 * p.stats.get('damage')) * p.stats.get('abilityDamage');
+    for (let i = 0; i < 6; i++) {
+      p.combat.delay(i * 420, () => {
+        if (!p.alive) return;
+        p.combat.ring(p.x, p.y, 0xd8e8ff, 190);
+        for (const u of [...p.combat.units]) {
+          if (!u.alive || u.team !== 'enemy') continue;
+          if (Math.hypot(u.x - p.x, u.y - p.y) > 190 + u.radius * 0.4) continue;
+          const dealt = p.combat.dealDamage(p, u, dmg, 'ability', 'physisch');
+          p.combat.bus.emit('abilityHit', { ability: 'E', target: u, dmg: dealt });
+        }
+      });
+    }
+  },
+  onAutoHit: (p, t) => {
+    if ((p.memory.qEmpoweredUntil ?? 0) > p.combat.now) {
+      p.memory.qEmpoweredUntil = 0;
+      const bonus =
+        (14 + 0.9 * p.stats.get('damage')) * p.stats.get('abilityDamage') * (p.memory.qEmpowerScale || 1);
+      const dealt = p.combat.dealDamage(p, t, bonus, 'ability', 'physisch');
+      p.combat.bus.emit('abilityHit', { ability: 'Q', target: t, dmg: dealt });
+      p.combat.ring(t.x, t.y, 0xffe680, 60);
+    }
+  },
+  sprite: [
+    '..GGGGG..',
+    '..G.G.G..',
+    '..SSSSS..',
+    '..SKSKS..',
+    '..SSSSS..',
+    '.BGGGGGB.',
+    'BGGYGYGGB',
+    'B.GGGGG.B',
+    '..GG.GG..',
+    '..B...B..',
+  ],
+  palette: PAL,
+};
+
+// ---------------------------------------------------------------------------
+// Jinx — das Chaos-Geschütz (fan homage)
+// Q: Rakete mit Flächenschaden · E: Schockblitz (schwerer Slow) · Kills drehen auf
+// ---------------------------------------------------------------------------
+
+const jinx: ChampionDef = {
+  id: 'jinx',
+  name: 'Jinx',
+  tagline: 'Die lose Kanone',
+  kitLine: 'Q Rakete (Fläche) · E Schockblitz (starker Slow) · Kills: Tempo!',
+  ranged: true,
+  qRange: 600,
+  cds: { Q: 4800, E: 7000, Dash: 5200 },
+  base: {
+    maxHP: 175,
+    moveSpeed: 285,
+    damage: 18,
+    attackSpeed: 1.05,
+    attackRange: 520,
+    armor: 8,
+    magicResist: 8,
+    critChance: 0.1,
+    projSpeed: 980,
+  },
+  fireQ: (p, d, scale) => {
+    const dmg = (16 + 0.8 * p.stats.get('damage')) * p.stats.get('abilityDamage') * scale;
+    p.combat.spawnProjectile({
+      x: p.x + d.x * (p.radius + 6),
+      y: p.y + d.y * (p.radius + 6),
+      dirX: d.x,
+      dirY: d.y,
+      speed: 900,
+      radius: 12,
+      color: 0xff8ac0,
+      team: 'player',
+      maxDist: 620,
+      onHit: (t) => {
+        // Rocket: splash around the impact
+        p.combat.ring(t.x, t.y, 0xff8ac0, 150);
+        for (const u of [...p.combat.units]) {
+          if (!u.alive || u.team !== 'enemy') continue;
+          if (Math.hypot(u.x - t.x, u.y - t.y) > 150 + u.radius * 0.4) continue;
+          const dealt = p.combat.dealDamage(p, u, dmg, 'ability', 'physisch');
+          p.combat.bus.emit('abilityHit', { ability: 'Q', target: u, dmg: dealt });
+        }
+      },
+    });
+  },
+  castE: (p) => {
+    const target = p.combat.nearestEnemy(p, 640);
+    const dir = target ? norm(target.x - p.x, target.y - p.y) : p.facing;
+    const dmg = (10 + 0.4 * p.stats.get('damage')) * p.stats.get('abilityDamage');
+    p.combat.spawnProjectile({
+      x: p.x + dir.x * (p.radius + 6),
+      y: p.y + dir.y * (p.radius + 6),
+      dirX: dir.x,
+      dirY: dir.y,
+      speed: 1250,
+      radius: 9,
+      color: 0xaaddff,
+      team: 'player',
+      maxDist: 640,
+      onHit: (t) => {
+        const dealt = p.combat.dealDamage(p, t, dmg, 'ability', 'magisch');
+        p.combat.bus.emit('abilityHit', { ability: 'E', target: t, dmg: dealt });
+        t.stats.set({ id: 'slow:zapper', stat: 'moveSpeed', pct: -0.7, expiresAt: p.combat.now + 1300 });
+      },
+    });
+  },
+  onAutoHit: (p, t) => {
+    // Aufdrehen: a kill winds the minigun up
+    if (!t.alive) {
+      p.stats.set({ id: 'buff:aufdrehen', stat: 'attackSpeed', pct: 0.5, expiresAt: p.combat.now + 4000 });
+      p.combat.announce('Aufgedreht!', '#ff8ac0');
+    }
+  },
+  sprite: [
+    'B..KKK..B',
+    'B.KKKKK.B',
+    'BB.SSS.BB',
+    '.B.SKS.B.',
+    '.BBSSSBB.',
+    '..RWWWR..',
+    '..WWWWW..',
+    '.R.WWW.R.',
+    '..W...W..',
+    '..K...K..',
+  ],
+  palette: PAL,
+};
+
+export const CHAMPIONS: ChampionDef[] = [koenig, yasuo, ashe, garen, jinx];
 
 export function championById(id: string): ChampionDef {
   return CHAMPIONS.find((c) => c.id === id) ?? koenig;

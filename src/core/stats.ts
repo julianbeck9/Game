@@ -69,6 +69,11 @@ export class StatBlock {
     return this.mods.some((m) => m.id === id);
   }
 
+  /** e.g. hasPrefix('slow:') — is the unit currently slowed by anything? */
+  hasPrefix(prefix: string): boolean {
+    return this.mods.some((m) => m.id.startsWith(prefix));
+  }
+
   /** Purge expired timed mods. Call once per frame with scene time. */
   update(now: number): void {
     this.mods = this.mods.filter((m) => m.expiresAt === undefined || m.expiresAt > now);

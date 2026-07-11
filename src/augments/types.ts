@@ -16,6 +16,8 @@ export interface RuleFlags {
   /** Doppelkrone: silver augments act at half power. */
   silverHalved: boolean;
   dashCharges: number;
+  /** Phönixherz: revives per run; the combat core consumes them on death. */
+  revives: number;
 }
 
 export const DEFAULT_FLAGS: RuleFlags = {
@@ -25,6 +27,7 @@ export const DEFAULT_FLAGS: RuleFlags = {
   burnForever: false,
   silverHalved: false,
   dashCharges: 1,
+  revives: 0,
 };
 
 /** Everything an augment hook may touch. Handlers never reach into scene internals. */

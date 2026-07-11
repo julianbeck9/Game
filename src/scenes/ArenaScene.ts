@@ -777,6 +777,16 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
   private checkFightEnd(): void {
     if (!this.player.alive) {
+      // Revive rule flag (Phönixherz): once per run, rise again mid-fight
+      if ((run.memory.revivesUsed ?? 0) < run.flags.revives) {
+        run.memory.revivesUsed = (run.memory.revivesUsed ?? 0) + 1;
+        this.player.alive = true;
+        this.player.hp = this.player.maxHP * 0.5;
+        this.ring(this.player.x, this.player.y, 0xffd24a, 260);
+        this.announce('Phönixherz!', '#ffd24a');
+        this.cameras.main.shake(200, 0.008);
+        return;
+      }
       this.endFight(false);
     } else if (this.units.every((u) => u.team === 'player' || !u.alive)) {
       this.endFight(true);

@@ -539,6 +539,391 @@ const doppelkrone: AugmentDef = {
   ruleFlags: { prismaSlots: 2, silverHalved: true },
 };
 
+// ---------------------------------------------------------------------------
+// ARENA-EXPANSION — an die bekannten Arena-Augmente angelehnt, frei adaptiert
+// ---------------------------------------------------------------------------
+
+// #31
+const goliath: AugmentDef = {
+  id: 'goliath',
+  name: 'Goliath',
+  tier: 'silber',
+  tags: ['Ward'],
+  description: 'Du bist größer: +35% max. LP, aber −8% Tempo.',
+  statMods: [
+    { stat: 'maxHP', pct: 0.35 },
+    { stat: 'moveSpeed', pct: -0.08 },
+  ],
+  onCombatInit: (ctx) => {
+    ctx.player.radius = 32;
+  },
+};
+
+// #32
+const eiskalt: AugmentDef = {
+  id: 'eiskalt',
+  name: 'Eiskalt',
+  tier: 'silber',
+  tags: ['Arkan'],
+  description: 'Deine Angriffe verlangsamen Getroffene um 15% (1s).',
+  hooks: {
+    autoHit: ({ target }, ctx) => {
+      target.stats.set({
+        id: 'slow:eiskalt',
+        stat: 'moveSpeed',
+        pct: -0.15 * ctx.power(eiskalt),
+        expiresAt: ctx.combat.now + 1000,
+      });
+    },
+  },
+};
+
+// #33
+const feuerband: AugmentDef = {
+  id: 'feuerband',
+  name: 'Feuerband',
+  tier: 'silber',
+  tags: ['Bruch'],
+  description: 'Brennende Gegner sind um 20% verlangsamt.',
+  onUpdate: (_dt, ctx) => {
+    for (const u of ctx.combat.units) {
+      if (!u.alive || u.team !== 'enemy') continue;
+      if (u.burns.length > 0) {
+        u.stats.set({
+          id: 'slow:feuerband',
+          stat: 'moveSpeed',
+          pct: -0.2 * ctx.power(feuerband),
+          expiresAt: ctx.combat.now + 300,
+        });
+      }
+    }
+  },
+};
+
+// #34
+const adrenalin: AugmentDef = {
+  id: 'adrenalin',
+  name: 'Adrenalin',
+  tier: 'silber',
+  tags: ['Sturm'],
+  description: 'Erlittener Schaden gewährt +18% Tempo für 1,5s.',
+  hooks: {
+    damageTaken: (_p, ctx) => {
+      ctx.player.stats.set({
+        id: 'buff:adrenalin',
+        stat: 'moveSpeed',
+        pct: 0.18 * ctx.power(adrenalin),
+        expiresAt: ctx.combat.now + 1500,
+      });
+    },
+  },
+};
+
+// #35
+const mystischerHieb: AugmentDef = {
+  id: 'mystischerhieb',
+  name: 'Mystischer Hieb',
+  tier: 'silber',
+  tags: ['Arkan'],
+  description: 'Fähigkeitstreffer verkürzen deine Abklingzeiten um 0,5s.',
+  hooks: {
+    abilityHit: (_p, ctx) => ctx.player.reduceCooldowns(500 * ctx.power(mystischerHieb)),
+  },
+};
+
+// #36
+const seelenraub: AugmentDef = {
+  id: 'seelenraub',
+  name: 'Seelenraub',
+  tier: 'silber',
+  tags: ['Blut'],
+  description: '+6 max. LP pro Tötung — hält den ganzen Run.',
+  onCombatInit: (ctx) => applySeelenraub(ctx),
+  hooks: {
+    killWindow: (_p, ctx) => {
+      ctx.run.memory.seelenraubStacks = (ctx.run.memory.seelenraubStacks ?? 0) + 1;
+      applySeelenraub(ctx);
+      ctx.player.heal(6);
+    },
+  },
+};
+
+function applySeelenraub(ctx: AugmentCtx): void {
+  const stacks = ctx.run.memory.seelenraubStacks ?? 0;
+  const dampen = ctx.run.flags.silverHalved ? 0.5 : 1;
+  ctx.player.stats.set({ id: 'perm:seelenraub', stat: 'maxHP', flat: stacks * 6 * dampen });
+}
+
+// #37
+const blutdurst: AugmentDef = {
+  id: 'blutdurst',
+  name: 'Blutdurst',
+  tier: 'silber',
+  tags: ['Blut'],
+  description: 'Tötungen heilen dich sofort um 20% deiner max. LP.',
+  hooks: {
+    killWindow: (_p, ctx) => ctx.player.heal(ctx.player.maxHP * 0.2 * ctx.power(blutdurst)),
+  },
+};
+
+// #38
+const panzerung: AugmentDef = {
+  id: 'panzerung',
+  name: 'Panzerung',
+  tier: 'silber',
+  tags: ['Ward'],
+  description: '+14 Rüstung und +14 Magieresistenz.',
+  statMods: [
+    { stat: 'armor', flat: 14 },
+    { stat: 'magicResist', flat: 14 },
+  ],
+};
+
+// #39
+const riesentoeter: AugmentDef = {
+  id: 'riesentoeter',
+  name: 'Riesentöter',
+  tier: 'gold',
+  tags: ['Bruch'],
+  description: 'Gegen Gegner mit mehr als 400 max. LP: +18% Schaden.',
+  hooks: {
+    damageDealt: ({ target, dmg, type }, ctx) => {
+      if (type === 'other' || !target.alive || target.maxHP <= 400) return;
+      if ((ctx.run.memory.riesentoeterLock ?? 0) > ctx.combat.now) return;
+      ctx.run.memory.riesentoeterLock = ctx.combat.now + 30; // one echo per hit
+      ctx.combat.dealDamage(ctx.player, target, dmg * 0.18 * ctx.power(riesentoeter), 'other');
+    },
+  },
+};
+
+// #40
+const frostgeboren: AugmentDef = {
+  id: 'frostgeboren',
+  name: 'Frostgeboren',
+  tier: 'gold',
+  tags: ['Arkan'],
+  description: 'Verlangsamte Gegner erleiden 15% mehr Schaden von dir.',
+  hooks: {
+    damageDealt: ({ target, dmg, type }, ctx) => {
+      if (type === 'other' || !target.alive) return;
+      if (!target.stats.hasPrefix('slow:')) return;
+      if ((ctx.run.memory.frostgebLock ?? 0) > ctx.combat.now) return;
+      ctx.run.memory.frostgebLock = ctx.combat.now + 30;
+      ctx.combat.dealDamage(ctx.player, target, dmg * 0.15 * ctx.power(frostgeboren), 'other');
+    },
+  },
+};
+
+// #41
+const kampfrausch: AugmentDef = {
+  id: 'kampfrausch',
+  name: 'Kampfrausch',
+  tier: 'gold',
+  tags: ['Blut'],
+  description: 'Bis zu +60% Angriffstempo — je weniger LP, desto mehr.',
+  onUpdate: (_dt, ctx) => {
+    const missing = 1 - ctx.player.hpPct;
+    ctx.player.stats.set({
+      id: 'dyn:kampfrausch',
+      stat: 'attackSpeed',
+      pct: 0.6 * missing * ctx.power(kampfrausch),
+    });
+  },
+};
+
+// #42
+const standhaft: AugmentDef = {
+  id: 'standhaft',
+  name: 'Standhaft',
+  tier: 'gold',
+  tags: ['Ward'],
+  description: 'Solange du stillstehst: +25 Rüstung und Magieresistenz.',
+  onUpdate: (_dt, ctx) => {
+    if (ctx.player.isStationary) {
+      const v = 25 * ctx.power(standhaft);
+      ctx.player.stats.set({ id: 'dyn:standhaft-r', stat: 'armor', flat: v });
+      ctx.player.stats.set({ id: 'dyn:standhaft-m', stat: 'magicResist', flat: v });
+    } else {
+      ctx.player.stats.remove('dyn:standhaft-r');
+      ctx.player.stats.remove('dyn:standhaft-m');
+    }
+  },
+};
+
+// #43
+const ueberheilung: AugmentDef = {
+  id: 'ueberheilung',
+  name: 'Überheilung',
+  tier: 'gold',
+  tags: ['Blut', 'Ward'],
+  description: 'Bei vollen LP wandelt sich Heilkraft in einen Schild (bis 25% max. LP).',
+  onUpdate: (dt, ctx) => {
+    const p = ctx.player;
+    if (p.hpPct >= 0.995 && p.shield < p.maxHP * 0.25) {
+      p.shield = Math.min(p.maxHP * 0.25, p.shield + p.maxHP * 0.03 * dt * ctx.power(ueberheilung));
+    }
+  },
+};
+
+// #44
+const zeitgewinn: AugmentDef = {
+  id: 'zeitgewinn',
+  name: 'Zeitgewinn',
+  tier: 'gold',
+  tags: ['Arkan'],
+  description: '+35 Fähigkeitentempo.',
+  statMods: [{ stat: 'abilityHaste', flat: 35 }],
+};
+
+// #45
+const blitzschlaege: AugmentDef = {
+  id: 'blitzschlaege',
+  name: 'Blitzschläge',
+  tier: 'gold',
+  tags: ['Bruch', 'Arkan'],
+  description: 'Alle 5s trifft ein Blitz den nächsten Gegner (26 Schaden, magisch).',
+  onCombatInit: (ctx) => {
+    ctx.run.memory.blitzNextAt = ctx.combat.now + 3000;
+  },
+  onUpdate: (_dt, ctx) => {
+    if (ctx.combat.now < (ctx.run.memory.blitzNextAt ?? 0)) return;
+    const t = ctx.combat.nearestEnemy(ctx.player, 750);
+    if (!t) return;
+    ctx.run.memory.blitzNextAt = ctx.combat.now + 5000;
+    ctx.combat.flashLine(t.x, t.y - 500, t.x, t.y, 0xaaddff);
+    ctx.combat.ring(t.x, t.y, 0xaaddff, 80);
+    ctx.combat.dealDamage(ctx.player, t, 26 * ctx.power(blitzschlaege), 'ability', 'magisch');
+  },
+};
+
+// #46
+const juwelenhandschuh: AugmentDef = {
+  id: 'juwelenhandschuh',
+  name: 'Juwelenhandschuh',
+  tier: 'gold',
+  tags: ['Arkan'],
+  description: 'Deine Fähigkeiten können kritisch treffen (+75% Schaden). +10% Kritchance.',
+  statMods: [{ stat: 'critChance', flat: 0.1 }],
+  hooks: {
+    abilityHit: ({ target, dmg }, ctx) => {
+      if (!target.alive) return;
+      if (Math.random() < ctx.player.stats.get('critChance')) {
+        ctx.combat.dealDamage(ctx.player, target, dmg * 0.75 * ctx.power(juwelenhandschuh), 'other');
+        ctx.combat.ring(target.x, target.y, 0xffffff, 46);
+      }
+    },
+  },
+};
+
+// #47
+const erdstoss: AugmentDef = {
+  id: 'erdstoss',
+  name: 'Erdstoß',
+  tier: 'gold',
+  tags: ['Sturm', 'Bruch'],
+  description: 'Am Ende deines Dashs bricht der Boden: 22 Schaden im Umkreis.',
+  hooks: {
+    dashEnd: (_p, ctx) => {
+      const dmg = (22 + 0.3 * ctx.player.stats.get('damage')) * ctx.power(erdstoss);
+      ctx.combat.ring(ctx.player.x, ctx.player.y, 0xcc9955, 210);
+      for (const u of [...ctx.combat.units]) {
+        if (!u.alive || u.team !== 'enemy') continue;
+        if (Math.hypot(u.x - ctx.player.x, u.y - ctx.player.y) > 210) continue;
+        ctx.combat.dealDamage(ctx.player, u, dmg, 'ability', 'physisch');
+      }
+    },
+  },
+};
+
+// #48
+const doppelherz: AugmentDef = {
+  id: 'doppelherz',
+  name: 'Doppelherz',
+  tier: 'gold',
+  tags: ['Blut', 'Ward'],
+  description: '+40 max. LP. Unter 30% LP regenerierst du 6 LP/s.',
+  statMods: [{ stat: 'maxHP', flat: 40 }],
+  onUpdate: (dt, ctx) => {
+    if (ctx.player.hpPct < 0.3) ctx.player.heal(6 * dt * ctx.power(doppelherz));
+  },
+};
+
+// #49
+const phoenixherz: AugmentDef = {
+  id: 'phoenixherz',
+  name: 'Phönixherz',
+  tier: 'prisma',
+  tags: ['Blut', 'Ward'],
+  description: 'Einmal pro Run: Stirbst du, erhebst du dich mit 50% LP erneut.',
+  ruleFlags: { revives: 1 },
+};
+
+// #50
+const gigant: AugmentDef = {
+  id: 'gigant',
+  name: 'Gigant',
+  tier: 'prisma',
+  tags: ['Ward', 'Bruch'],
+  description: '+120% max. LP und +30% Schaden. Dafür −15% Tempo und ein riesiges Ziel.',
+  statMods: [
+    { stat: 'maxHP', pct: 1.2 },
+    { stat: 'damage', pct: 0.3 },
+    { stat: 'abilityDamage', pct: 0.3 },
+    { stat: 'moveSpeed', pct: -0.15 },
+  ],
+  onCombatInit: (ctx) => {
+    ctx.player.radius = 38;
+  },
+};
+
+// #51
+const zeitraffer: AugmentDef = {
+  id: 'zeitraffer',
+  name: 'Zeitraffer',
+  tier: 'prisma',
+  tags: ['Arkan'],
+  description: '+90 Fähigkeitentempo — Fähigkeiten sind fast immer bereit.',
+  statMods: [{ stat: 'abilityHaste', flat: 90 }],
+};
+
+// #52
+const kometenruf: AugmentDef = {
+  id: 'kometenruf',
+  name: 'Kometenruf',
+  tier: 'prisma',
+  tags: ['Arkan', 'Bruch'],
+  description: 'Jede Fähigkeit ruft einen Kometen auf den nächsten Gegner (32 + AP, magisch).',
+  hooks: {
+    abilityCast: (_p, ctx) => {
+      const t = ctx.combat.nearestEnemy(ctx.player, 800);
+      if (!t) return;
+      const tx = t.x;
+      const ty = t.y;
+      ctx.combat.ring(tx, ty, 0x9fb8ff, 110);
+      ctx.combat.delay(600, () => {
+        ctx.combat.flashLine(tx, ty - 560, tx, ty, 0x9fb8ff);
+        ctx.combat.ring(tx, ty, 0x9fb8ff, 130);
+        const dmg = (32 + ctx.player.stats.get('abilityPower')) * ctx.power(kometenruf);
+        for (const u of [...ctx.combat.units]) {
+          if (!u.alive || u.team !== 'enemy') continue;
+          if (Math.hypot(u.x - tx, u.y - ty) > 130) continue;
+          ctx.combat.dealDamage(ctx.player, u, dmg, 'ability', 'magisch');
+        }
+      });
+    },
+  },
+};
+
+// #53
+const vampirfuerst: AugmentDef = {
+  id: 'vampirfuerst',
+  name: 'Vampirfürst',
+  tier: 'prisma',
+  tags: ['Blut'],
+  description: '+22% Lebensraub auf allen Schaden.',
+  statMods: [{ stat: 'lifesteal', flat: 0.22 }],
+};
+
 export const AUGMENTS: AugmentDef[] = [
   // Silber
   blutzoll,
@@ -573,6 +958,30 @@ export const AUGMENTS: AugmentDef[] = [
   spiegelkoenig,
   ewigeFlamme,
   doppelkrone,
+  // Arena-Expansion
+  goliath,
+  eiskalt,
+  feuerband,
+  adrenalin,
+  mystischerHieb,
+  seelenraub,
+  blutdurst,
+  panzerung,
+  riesentoeter,
+  frostgeboren,
+  kampfrausch,
+  standhaft,
+  ueberheilung,
+  zeitgewinn,
+  blitzschlaege,
+  juwelenhandschuh,
+  erdstoss,
+  doppelherz,
+  phoenixherz,
+  gigant,
+  zeitraffer,
+  kometenruf,
+  vampirfuerst,
 ];
 
 export function augmentById(id: string): AugmentDef | undefined {
