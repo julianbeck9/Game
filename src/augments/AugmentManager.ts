@@ -38,6 +38,8 @@ export class AugmentManager {
   /** Call once after the combat scene has created the player. */
   init(): void {
     for (const def of run.augments) this.activate(def);
+    // Items are augment-shaped: same stat pipeline, same hook bus
+    for (const item of run.items) this.activate(item);
   }
 
   /** Activate one augment for this combat (also used for mid-fight temp grants — Narrenwürfel). */
@@ -75,6 +77,7 @@ export class AugmentManager {
 
   update(dt: number): void {
     for (const def of run.augments) def.onUpdate?.(dt, this.ctx);
+    for (const item of run.items) item.onUpdate?.(dt, this.ctx);
   }
 
   destroy(): void {

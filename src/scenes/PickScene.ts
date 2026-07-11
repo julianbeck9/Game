@@ -194,6 +194,6 @@ export class PickScene extends Phaser.Scene {
     this.picked = true;
     sfx.pick();
     addAugment(def);
-    this.time.delayedCall(180, () => this.scene.start('arena'));
+    this.time.delayedCall(180, () => this.scene.start('shop'));
   }
 }

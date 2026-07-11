@@ -13,7 +13,7 @@ import { Joystick } from '../ui/Joystick';
 import { AbilityButton } from '../ui/AbilityButton';
 import { AugmentManager } from '../augments/AugmentManager';
 import { rollOffers } from '../augments/offers';
-import { run } from '../core/run';
+import { run, earnGold } from '../core/run';
 import { dist, pointInPillar, Vec } from '../core/geometry';
 import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H } from '../config';
 import { STR } from '../core/strings';
@@ -63,6 +63,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   }
 
   private fightState: 'fighting' | 'won' | 'lost' = 'fighting';
+  private goldHudText: Phaser.GameObjects.Text | null = null;
 
   /** Combat.now — scene clock in ms (Phaser's `time` is the clock plugin itself). */
   get now(): number {
@@ -309,18 +310,45 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     const style = { fontFamily: 'sans-serif', fontSize: '32px', color: '#e8ecf8' };
     const hud = this.add.graphics().setDepth(99);
 
-    // Left panel: round + modifier
-    const leftW = this.modifier ? 300 : 230;
+    // Left panel: round + gold (+ modifier)
+    const leftW = this.modifier ? 320 : 250;
+    const leftH = this.modifier ? 134 : 100;
     hud.fillStyle(0x0a0a14, 0.72);
-    hud.fillRoundedRect(18, 16, leftW, this.modifier ? 96 : 58, 14);
+    hud.fillRoundedRect(18, 16, leftW, leftH, 14);
     hud.lineStyle(2, 0x3a3a55, 0.8);
-    hud.strokeRoundedRect(18, 16, leftW, this.modifier ? 96 : 58, 14);
+    hud.strokeRoundedRect(18, 16, leftW, leftH, 14);
     this.add.text(38, 27, `${STR.round} ${run.round} / ${MAX_ROUND}`, style).setDepth(100);
+    hud.fillStyle(0xffd24a, 1);
+    hud.fillCircle(50, 84, 11);
+    hud.fillStyle(0xb8912a, 1);
+    hud.fillCircle(50, 84, 6);
+    this.goldHudText = this.add
+      .text(70, 70, `${run.gold}`, { ...style, fontSize: '28px', color: '#ffd24a' })
+      .setDepth(100);
     if (this.modifier) {
       this.add
-        .text(38, 70, `✦ ${MODIFIER_NAMES[this.modifier]}`, { ...style, fontSize: '26px', color: '#cba6ff' })
+        .text(38, 106, `✦ ${MODIFIER_NAMES[this.modifier]}`, { ...style, fontSize: '26px', color: '#cba6ff' })
         .setDepth(100);
     }
+
+    // Item icons under the panel
+    run.items.forEach((it, i) => {
+      const ix = 38 + i * 44;
+      const iy = 30 + leftH + 16;
+      hud.fillStyle(it.color, 0.2);
+      hud.fillRoundedRect(ix - 17, iy - 17, 34, 34, 8);
+      hud.lineStyle(2, it.color, 0.9);
+      hud.strokeRoundedRect(ix - 17, iy - 17, 34, 34, 8);
+      this.add
+        .text(ix, iy, it.glyph, {
+          fontFamily: 'Georgia, serif',
+          fontSize: '20px',
+          fontStyle: 'bold',
+          color: '#' + it.color.toString(16).padStart(6, '0'),
+        })
+        .setOrigin(0.5)
+        .setDepth(100);
+    });
 
     // Right panel: three hearts — lost ones stay as dark husks
     const rw = 250;
@@ -515,7 +543,21 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     if (killedByThisCall && target.team === 'enemy') {
       run.kills++;
-      // Kill hit-stop + death burst
+      // Kill gold + hit-stop + death burst
+      earnGold(25);
+      const gt = this.add
+        .text(target.x, target.y - target.radius - 48, '+25', {
+          fontFamily: 'sans-serif',
+          fontSize: '26px',
+          fontStyle: 'bold',
+          color: '#ffd24a',
+          stroke: '#000000',
+          strokeThickness: 4,
+        })
+        .setOrigin(0.5)
+        .setDepth(141);
+      this.tweens.add({ targets: gt, y: gt.y - 46, alpha: 0, duration: 900, onComplete: () => gt.destroy() });
+      this.goldHudText?.setText(`${run.gold}`);
       this.slowmoUntil = this.now + 110;
       this.ring(target.x, target.y, COLORS.enemy, 95);
       this.cameras.main.shake(120, 0.006);
@@ -797,6 +839,21 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.fightState = win ? 'won' : 'lost';
     this.bus.emit('roundEnd', { win });
     this.projectiles = [];
+
+    // Round gold: winning pays properly, losing pays consolation
+    const reward = win ? 120 + 12 * run.round : 80;
+    earnGold(reward);
+    this.add
+      .text(ARENA_X, ARENA_Y + 110, `+${reward} Gold`, {
+        fontFamily: 'sans-serif',
+        fontSize: '34px',
+        fontStyle: 'bold',
+        color: '#ffd24a',
+        stroke: '#000000',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setDepth(200);
 
     this.add
       .text(ARENA_X, ARENA_Y - 60, win ? STR.victory : STR.defeat, {

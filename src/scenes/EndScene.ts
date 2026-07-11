@@ -62,7 +62,7 @@ export class EndScene extends Phaser.Scene {
     // Stats panel
     const panel = this.add.graphics().setDepth(9);
     const pw = 760;
-    const ph = 300;
+    const ph = 350;
     const py = GAME_H / 2 + 40;
     panel.fillStyle(0x11111c, 1);
     panel.fillRoundedRect(cx - pw / 2, py - ph / 2, pw, ph, 18);
@@ -74,9 +74,10 @@ export class EndScene extends Phaser.Scene {
       ['Gesamtschaden', `${Math.round(run.totalDamageDealt)}`],
       ['Größter Treffer', `${Math.round(run.maxHit)}`],
       ['Tötungen', `${run.kills}`],
+      ['Gold verdient', `${run.goldEarned}`],
     ];
     rows.forEach(([label, value], i) => {
-      const ry = py - ph / 2 + 48 + i * 62;
+      const ry = py - ph / 2 + 44 + i * 62;
       this.add
         .text(cx - pw / 2 + 60, ry, label, { fontFamily: 'sans-serif', fontSize: '30px', color: '#8a94b0' })
         .setOrigin(0, 0.5)
