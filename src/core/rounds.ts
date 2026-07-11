@@ -2,6 +2,7 @@ import { EnemyConfig } from '../entities/Enemy';
 import {
   DifficultyScale,
   makeHaescher,
+  makeHexer,
   makeSchuetze,
   makeUsurpator,
   makeWaechter,
@@ -26,12 +27,13 @@ export function roundScale(round: number): DifficultyScale {
   };
 }
 
-export type ModifierId = 'feuerring' | 'heilblumen' | 'bruchzone';
+export type ModifierId = 'feuerring' | 'heilblumen' | 'bruchzone' | 'blitzsturm';
 
 export const MODIFIER_NAMES: Record<ModifierId, string> = {
   feuerring: 'Feuerring',
   heilblumen: 'Heilblumen',
   bruchzone: 'Bruchzone',
+  blitzsturm: 'Blitzsturm',
 };
 
 export interface RoundSpec {
@@ -56,7 +58,9 @@ function pick<T>(arr: T[]): T {
 export function roundSpec(round: number): RoundSpec {
   const s = roundScale(round);
   const modifier =
-    round >= 5 ? pick<ModifierId>(['feuerring', 'heilblumen', 'bruchzone']) : undefined;
+    round >= 5
+      ? pick<ModifierId>(['feuerring', 'heilblumen', 'bruchzone', 'blitzsturm'])
+      : undefined;
 
   if (round === 4 || round === 8) {
     const boss = makeUsurpator(s, round === 8);
@@ -87,14 +91,17 @@ export function roundSpec(round: number): RoundSpec {
       enemies = pick([
         [makeSchuetze(s), makeWaechter(s)],
         [makeHaescher(s), makeWaechter(s)],
-        [makeHaescher(s), makeSchuetze(s)],
+        [makeHexer(s), makeHaescher(s)],
+        [makeHexer(s), makeSchuetze(s)],
       ]);
       break;
     default: // 7
       enemies = pick([
         [makeWaechter(s), makeSchuetze(s)],
         [makeWaechter(s), makeHaescher(s)],
+        [makeWaechter(s), makeHexer(s)],
         [makeSchuetze(s), makeSchuetze(s)],
+        [makeHexer(s), makeHaescher(s)],
       ]);
       break;
   }

@@ -6,6 +6,7 @@ import { AbilityId } from '../core/events';
 import { clampToArena, resolvePillars, norm, len, Vec } from '../core/geometry';
 import { COLORS, PLAYER_BASE, ABILITIES } from '../config';
 import { run } from '../core/run';
+import { crown, shadedDisc } from '../core/draw';
 
 export class Player extends Unit {
   /** Last non-zero movement direction; used for facing (Q quick-cast, dash). */
@@ -67,6 +68,10 @@ export class Player extends Unit {
 
   get maxDashCharges(): number {
     return run.flags.dashCharges;
+  }
+
+  get dashChargesAvail(): number {
+    return this.maxDashCharges - this.dashChargesUsed;
   }
 
   /** For UI: fraction of cooldown remaining, 0 = ready. */
@@ -219,31 +224,34 @@ export class Player extends Unit {
   protected drawBody(g: Phaser.GameObjects.Graphics): void {
     // Königsruf glow while empowered
     if (this.empoweredAutos > 0) {
-      g.fillStyle(COLORS.buff, 0.18);
+      g.fillStyle(COLORS.buff, 0.16);
       g.fillCircle(this.x, this.y, this.radius + 14);
       g.lineStyle(3, COLORS.buff, 0.8);
       g.strokeCircle(this.x, this.y, this.radius + 10);
     }
 
-    // Gold champion disc (brighter while dashing)
+    shadedDisc(g, this.x, this.y, this.radius, this.dashing ? 0xffe680 : COLORS.player);
+
+    // Facing wedge: a small blade tip pointing where the king looks
+    const f = this.facing;
+    const tipX = this.x + f.x * (this.radius + 7);
+    const tipY = this.y + f.y * (this.radius + 7);
     g.fillStyle(COLORS.playerDark, 1);
-    g.fillCircle(this.x, this.y, this.radius + 3);
-    g.fillStyle(this.dashing ? 0xffe680 : COLORS.player, 1);
-    g.fillCircle(this.x, this.y, this.radius);
+    g.fillTriangle(
+      tipX, tipY,
+      this.x + f.x * (this.radius - 6) - f.y * 8, this.y + f.y * (this.radius - 6) + f.x * 8,
+      this.x + f.x * (this.radius - 6) + f.y * 8, this.y + f.y * (this.radius - 6) - f.x * 8,
+    );
 
-    // Facing tick
-    g.lineStyle(4, COLORS.playerDark, 1);
-    g.beginPath();
-    g.moveTo(this.x, this.y);
-    g.lineTo(this.x + this.facing.x * (this.radius - 4), this.y + this.facing.y * (this.radius - 4));
-    g.strokePath();
+    crown(g, this.x, this.y - this.radius - 9, 26, COLORS.player);
 
-    // Tiny crown: three spikes above center
-    g.fillStyle(COLORS.player, 1);
-    const cy = this.y - this.radius - 8;
-    g.fillTriangle(this.x - 12, cy + 6, this.x - 4, cy + 6, this.x - 8, cy - 4);
-    g.fillTriangle(this.x - 4, cy + 6, this.x + 4, cy + 6, this.x, cy - 7);
-    g.fillTriangle(this.x + 4, cy + 6, this.x + 12, cy + 6, this.x + 8, cy - 4);
+    // Königsruf ammo pips: one dot per empowered auto still loaded
+    if (this.empoweredAutos > 0) {
+      g.fillStyle(COLORS.buff, 1);
+      for (let i = 0; i < this.empoweredAutos; i++) {
+        g.fillCircle(this.x - (this.empoweredAutos - 1) * 6 + i * 12, this.y - this.radius - 26, 4);
+      }
+    }
   }
 
   protected drawHpBar(g: Phaser.GameObjects.Graphics): void {

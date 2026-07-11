@@ -4,6 +4,7 @@ import { StatBlock, StatName } from '../core/stats';
 import { Combat } from '../core/combat';
 import { clampToArena, resolvePillars, norm, len, dist, Vec } from '../core/geometry';
 import { COLORS } from '../config';
+import { shadedDisc } from '../core/draw';
 
 export interface EnemyAbilitySpec {
   id: string;
@@ -17,7 +18,7 @@ export interface EnemyAbilitySpec {
 
 export interface EnemyConfig {
   name: string;
-  kind: 'haescher' | 'schuetze' | 'waechter' | 'usurpator' | 'diener';
+  kind: 'haescher' | 'schuetze' | 'waechter' | 'usurpator' | 'diener' | 'hexer';
   radius: number;
   color: number;
   darkColor: number;
@@ -310,21 +311,28 @@ export class Enemy extends Unit {
   // ---- Rendering ----
 
   protected drawBody(g: Phaser.GameObjects.Graphics): void {
-    g.fillStyle(this.cfg.darkColor, 1);
-    g.fillCircle(this.x, this.y, this.radius + 3);
-    // Melee swing flash
+    // Boss aura: slow-pulsing ring so the Usurpator dominates the frame
+    if (this.isBoss) {
+      const pulse = Math.sin(this.combat.now / 300) * 3;
+      g.lineStyle(3, this.cfg.color, 0.45);
+      g.strokeCircle(this.x, this.y, this.radius + 12 + pulse);
+      g.fillStyle(this.cfg.color, 0.08);
+      g.fillCircle(this.x, this.y, this.radius + 12 + pulse);
+    }
+
     const swinging = this.memory.swingAt && this.combat.now - this.memory.swingAt < 120;
-    g.fillStyle(swinging ? 0xffffff : this.cfg.color, 1);
-    g.fillCircle(this.x, this.y, this.radius);
+    shadedDisc(g, this.x, this.y, this.radius, swinging ? 0xffffff : this.cfg.color);
+
+    // Facing wedge
+    const f = this.facing;
+    g.fillStyle(this.cfg.darkColor, 1);
+    g.fillTriangle(
+      this.x + f.x * (this.radius + 6), this.y + f.y * (this.radius + 6),
+      this.x + f.x * (this.radius - 5) - f.y * 7, this.y + f.y * (this.radius - 5) + f.x * 7,
+      this.x + f.x * (this.radius - 5) + f.y * 7, this.y + f.y * (this.radius - 5) - f.x * 7,
+    );
 
     this.drawInsignia(g);
-
-    // Facing tick
-    g.lineStyle(4, this.cfg.darkColor, 1);
-    g.beginPath();
-    g.moveTo(this.x, this.y);
-    g.lineTo(this.x + this.facing.x * (this.radius - 4), this.y + this.facing.y * (this.radius - 4));
-    g.strokePath();
   }
 
   /** Archetype marking so enemies read at a glance. */
@@ -361,6 +369,12 @@ export class Enemy extends Unit {
         g.moveTo(this.x - 6, this.y);
         g.lineTo(this.x + 6, this.y);
         g.strokePath();
+        break;
+      case 'hexer': // crescent moon
+        g.fillStyle(this.cfg.darkColor, 1);
+        g.fillCircle(this.x, this.y, 10);
+        g.fillStyle(this.cfg.color, 1);
+        g.fillCircle(this.x + 5, this.y - 3, 8);
         break;
     }
   }

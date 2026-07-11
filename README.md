@@ -27,9 +27,10 @@ npm run preview  # dist/ lokal serven
 ## Run-Struktur
 
 R1 Häscher · R2 Schütze · R3 Wächter · **R4 Usurpator (Mini-Boss)** ·
-R5–7 Duos + Arena-Modifikator (Feuerring / Heilblumen / Bruchzone) ·
-**R8 Usurpator (Finale)**. Runden-Niederlagen kosten Leben (−15/−25/−40)
-aus einem Pool von 100; bei 0 ist der Run vorbei.
+R5–7 Duos (ab R6 auch mit dem **Hexer**: Fluchzonen + Blink) + Arena-Modifikator
+(Feuerring / Heilblumen / Bruchzone / Blitzsturm) · **R8 Usurpator (Finale)**.
+Runden-Niederlagen kosten Leben (−15/−25/−40) aus einem Pool von 100;
+bei 0 ist der Run vorbei.
 
 Der Usurpator trägt eigene, **sichtbare Augmente** (2 im Mini-, 4 im Finalkampf)
 — sie stehen zu Rundenbeginn oben im HUD.

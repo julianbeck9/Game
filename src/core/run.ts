@@ -16,6 +16,7 @@ export interface RunState {
   /** Run summary bookkeeping */
   totalDamageDealt: number;
   kills: number;
+  maxHit: number;
 }
 
 export let run: RunState = newRunState();
@@ -35,6 +36,7 @@ function newRunState(): RunState {
     memory: {},
     totalDamageDealt: 0,
     kills: 0,
+    maxHit: 0,
   };
 }
 

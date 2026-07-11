@@ -20,6 +20,8 @@ export const COLORS = {
   bg: 0x0a0a12,
   arenaFloor: 0x1a1a2a,
   arenaLine: 0x3a3a55,
+  arenaRim: 0x8a6a2a,
+  torch: 0xffaa44,
   pillar: 0x2e2e44,
   pillarLine: 0x55557a,
   player: 0xffc832,

@@ -2,6 +2,13 @@ import type Phaser from 'phaser';
 import { EnemyConfig, Enemy, EnemyAbilitySpec } from './Enemy';
 import { COLORS } from '../config';
 import { AUGMENTS } from '../augments/registry';
+import { clampToArena, resolvePillars } from '../core/geometry';
+
+/** Valid blink destination: inside the arena, outside any pillar. */
+function clampBlink(x: number, y: number, r: number): { x: number; y: number } {
+  const p = resolvePillars(x, y, r);
+  return clampToArena(p.x, p.y, r);
+}
 
 /** Per-round difficulty knobs applied to archetype templates. */
 export interface DifficultyScale {
@@ -176,6 +183,84 @@ export function makeWaechter(s: DifficultyScale): EnemyConfig {
     aggression: 0.65,
     melee: { range: 70, dmg: 14, intervalMs: 1200 },
     abilities: [slamAbility(34, 165), summonAbility(0.6, s)],
+  };
+}
+
+export function makeHexer(s: DifficultyScale): EnemyConfig {
+  return {
+    name: 'Hexer',
+    kind: 'hexer',
+    radius: 24,
+    color: 0xb04ad0,
+    darkColor: 0x5c2070,
+    stats: { maxHP: 200 * s.hp, moveSpeed: 255, damage: s.dmg },
+    preferredRange: 330,
+    rangeBand: 60,
+    reactionMs: s.reactionMs,
+    dodgeChance: s.dodgeChance,
+    aggression: 0.5,
+    rangedAuto: { range: 470, dmg: 8, intervalMs: 1250, projSpeed: 720 },
+    abilities: [
+      {
+        // Fluchzone: curses the ground under the player — punishes standing still
+        id: 'fluch',
+        cd: 7000,
+        condition: (_e, d) => d <= 560,
+        telegraphMs: 850,
+        drawTelegraph: (e, g, prog) => {
+          if (!e.memory.fluchSet) {
+            e.memory.fluchSet = 1;
+            e.memory.fluchX = e.target.x;
+            e.memory.fluchY = e.target.y;
+          }
+          g.lineStyle(3, 0xb04ad0, 0.9);
+          g.strokeCircle(e.memory.fluchX, e.memory.fluchY, 130);
+          g.fillStyle(0xb04ad0, 0.08 + prog * 0.2);
+          g.fillCircle(e.memory.fluchX, e.memory.fluchY, 130 * prog);
+        },
+        execute: (e) => {
+          e.memory.fluchSet = 0;
+          e.combat.addHazard({
+            x: e.memory.fluchX,
+            y: e.memory.fluchY,
+            r: 125,
+            until: e.combat.now + 2600,
+            dps: 14 * e.dmgScale(),
+            team: 'enemy',
+            color: 0xb04ad0,
+          });
+        },
+      },
+      {
+        // Blinzeln: teleports away when dived — punishes greedy chases
+        id: 'blink',
+        cd: 6500,
+        condition: (_e, d) => d < 190,
+        telegraphMs: 260,
+        drawTelegraph: (e, g, prog) => {
+          g.lineStyle(3, 0xd88aff, 0.5 + prog * 0.5);
+          g.strokeCircle(e.x, e.y, e.radius + 6 + prog * 10);
+        },
+        execute: (e) => {
+          const t = e.target;
+          const ox = e.x;
+          const oy = e.y;
+          // Try a handful of far-away spots, keep the first valid one
+          for (let i = 0; i < 8; i++) {
+            const a = Math.atan2(e.y - t.y, e.x - t.x) + (Math.random() - 0.5) * 2.2;
+            const nx = t.x + Math.cos(a) * 430;
+            const ny = t.y + Math.sin(a) * 430;
+            const p = clampBlink(nx, ny, e.radius);
+            if (Math.hypot(p.x - t.x, p.y - t.y) > 300) {
+              e.x = p.x;
+              e.y = p.y;
+              break;
+            }
+          }
+          e.combat.flashLine(ox, oy, e.x, e.y, 0xd88aff);
+        },
+      },
+    ],
   };
 }
 

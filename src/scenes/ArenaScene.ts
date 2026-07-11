@@ -17,6 +17,7 @@ import { dist, pointInPillar, Vec } from '../core/geometry';
 import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H, ABILITIES } from '../config';
 import { STR } from '../core/strings';
 import { initAudio, sfx } from '../core/sfx';
+import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/draw';
 
 export class ArenaScene extends Phaser.Scene implements Combat {
   readonly bus = new EventBus();
@@ -37,6 +38,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private flashes: { x1: number; y1: number; x2: number; y2: number; color: number; until: number }[] = [];
 
   // Juice
+  private ambientGfx!: Phaser.GameObjects.Graphics;
+  private embers: Ember[] = [];
   private slowmoUntil = 0;
   private dashTrail: { x: number; y: number; until: number }[] = [];
   private deathBursts: { x: number; y: number; start: number; color: number }[] = [];
@@ -49,6 +52,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private flowers: { x: number; y: number }[] = [];
   private nextFlowerAt = 0;
   private bruchzone: { x: number; y: number; r: number } | null = null;
+  private strikes: { x: number; y: number; at: number }[] = [];
+  private nextStrikeAt = 0;
 
   constructor() {
     super('arena');
@@ -102,6 +107,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.projGfx = this.add.graphics().setDepth(9);
     this.aimGfx = this.add.graphics().setDepth(8);
     this.hazardGfx = this.add.graphics().setDepth(3);
+    this.ambientGfx = this.add.graphics().setDepth(2);
+    this.embers = [];
     this.input.addPointer(3);
     this.joystick = new Joystick(this);
     this.createButtons();
@@ -135,6 +142,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.flowers = [];
     this.nextFlowerAt = this.now + 6000;
     this.bruchzone = null;
+    this.strikes = [];
+    this.nextStrikeAt = this.now + 4500;
     if (mod === 'bruchzone') {
       const ang = Math.random() * Math.PI * 2;
       this.bruchzone = {
@@ -209,6 +218,35 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         }
         break;
       }
+      case 'blitzsturm': {
+        // Telegraphed lightning aimed near a random champion — keep moving
+        if (this.now >= this.nextStrikeAt) {
+          this.nextStrikeAt = this.now + 3200 + Math.random() * 1600;
+          const targets = this.units.filter((u) => u.alive && u.radius >= 16);
+          const t = targets[Math.floor(Math.random() * targets.length)];
+          if (t) {
+            this.strikes.push({
+              x: t.x + (Math.random() - 0.5) * 140,
+              y: t.y + (Math.random() - 0.5) * 140,
+              at: this.now + 950,
+            });
+          }
+        }
+        for (const s of this.strikes) {
+          if (this.now < s.at) continue;
+          for (const u of this.units) {
+            if (!u.alive) continue;
+            if (dist(u.x, u.y, s.x, s.y) <= 140 + u.radius * 0.4) {
+              this.dealDamage(null, u, 24, 'other');
+            }
+          }
+          this.flashLine(s.x, s.y - 620, s.x, s.y, 0xaaddff);
+          this.deathBursts.push({ x: s.x, y: s.y, start: this.now, color: 0xaaddff });
+          this.cameras.main.shake(100, 0.005);
+        }
+        this.strikes = this.strikes.filter((s) => this.now < s.at);
+        break;
+      }
     }
   }
 
@@ -243,20 +281,63 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         g.strokeCircle(z.x, z.y, z.r);
         break;
       }
+      case 'blitzsturm': {
+        for (const s of this.strikes) {
+          const prog = 1 - (s.at - this.now) / 950;
+          g.lineStyle(3, 0xaaddff, 0.85);
+          g.strokeCircle(s.x, s.y, 140);
+          g.fillStyle(0xaaddff, 0.08 + prog * 0.2);
+          g.fillCircle(s.x, s.y, 140 * prog);
+        }
+        break;
+      }
     }
   }
 
   private createHud(boss: boolean, title: string, bossAugments?: string[]): void {
-    const style = { fontFamily: 'sans-serif', fontSize: '32px', color: '#c8d0e8' };
-    this.add.text(30, 24, `${STR.round} ${run.round} / ${MAX_ROUND}`, style).setDepth(100);
+    const style = { fontFamily: 'sans-serif', fontSize: '32px', color: '#e8ecf8' };
+    const hud = this.add.graphics().setDepth(99);
+
+    // Left panel: round + modifier
+    const leftW = this.modifier ? 300 : 230;
+    hud.fillStyle(0x0a0a14, 0.72);
+    hud.fillRoundedRect(18, 16, leftW, this.modifier ? 96 : 58, 14);
+    hud.lineStyle(2, 0x3a3a55, 0.8);
+    hud.strokeRoundedRect(18, 16, leftW, this.modifier ? 96 : 58, 14);
+    this.add.text(38, 27, `${STR.round} ${run.round} / ${MAX_ROUND}`, style).setDepth(100);
     if (this.modifier) {
       this.add
-        .text(30, 66, MODIFIER_NAMES[this.modifier], { ...style, fontSize: '26px', color: '#cba6ff' })
+        .text(38, 70, `✦ ${MODIFIER_NAMES[this.modifier]}`, { ...style, fontSize: '26px', color: '#cba6ff' })
         .setDepth(100);
     }
+
+    // Right panel: run-HP as a bar with number
+    const rw = 320;
+    const rx = GAME_W - rw - 18;
+    hud.fillStyle(0x0a0a14, 0.72);
+    hud.fillRoundedRect(rx, 16, rw, 58, 14);
+    hud.lineStyle(2, 0x3a3a55, 0.8);
+    hud.strokeRoundedRect(rx, 16, rw, 58, 14);
     this.add
-      .text(GAME_W - 30, 24, `${STR.life}: ${run.runHP}`, { ...style, color: '#7ee08a' })
-      .setOrigin(1, 0)
+      .text(rx + 18, 27, STR.life, { ...style, fontSize: '26px', color: '#9aa8c0' })
+      .setDepth(100);
+    const barX = rx + 116;
+    const barW = rw - 134;
+    hud.fillStyle(0x111118, 1);
+    hud.fillRoundedRect(barX, 32, barW, 26, 8);
+    const pct = Math.max(0, run.runHP) / 100;
+    hud.fillStyle(pct > 0.4 ? 0x44dd66 : pct > 0.2 ? 0xffaa44 : 0xdd3344, 1);
+    if (pct > 0) hud.fillRoundedRect(barX, 32, Math.max(14, barW * pct), 26, 8);
+    this.add
+      .text(barX + barW / 2, 45, `${run.runHP}`, {
+        fontFamily: 'sans-serif',
+        fontSize: '24px',
+        fontStyle: 'bold',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
       .setDepth(100);
 
     // "Know your enemy": the Usurpator's augments stay visible all round
@@ -315,35 +396,51 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     const bx = GAME_W - 190;
     const by = GAME_H - 190;
     this.buttons.push(
-      // Dash — biggest, corner anchor
+      // Dash — biggest, corner anchor; double chevron icon
       new AbilityButton(this, {
         x: bx + 60,
         y: by + 60,
         r: 84,
-        label: '⇢',
+        label: 'SPACE',
         color: 0x4488dd,
+        drawIcon: (g, x, y, r) => {
+          g.fillStyle(0xffffff, 0.95);
+          for (const off of [-r * 0.42, r * 0.18]) {
+            g.fillTriangle(x + off - r * 0.3, y - r * 0.55, x + off - r * 0.3, y + r * 0.55, x + off + r * 0.42, y);
+          }
+        },
         onCast: () => this.player.dash(),
         getCooldownPct: () => this.player.cooldownPct('Dash'),
+        getCharges: () => ({ avail: this.player.dashChargesAvail, max: this.player.maxDashCharges }),
       }),
-      // Q — aimable
+      // Q — aimable; thrown-blade icon
       new AbilityButton(this, {
         x: bx - 150,
         y: by + 40,
         r: 68,
         label: 'Q',
         color: 0xcc8833,
+        drawIcon: (g, x, y, r) => {
+          g.fillStyle(0xffffff, 0.95);
+          g.fillTriangle(x - r * 0.7, y + r * 0.55, x - r * 0.25, y + r * 0.1, x + r * 0.75, y - r * 0.65);
+          g.fillTriangle(x - r * 0.7, y + r * 0.55, x + r * 0.1, y + r * 0.28, x + r * 0.75, y - r * 0.65);
+          g.fillCircle(x - r * 0.62, y + r * 0.5, r * 0.16);
+        },
         aimable: true,
         onCast: (dir) => this.player.castQ(dir ?? undefined),
         onAimPreview: (dir) => (this.aimPreview = dir),
         getCooldownPct: () => this.player.cooldownPct('Q'),
       }),
-      // E
+      // E — crown icon
       new AbilityButton(this, {
         x: bx + 40,
         y: by - 150,
         r: 68,
         label: 'E',
         color: 0xbbaa33,
+        drawIcon: (g, x, y, r) => {
+          crown(g, x, y + r * 0.4, r * 1.3, 0xffffff, 0.95);
+        },
         onCast: () => this.player.castE(),
         getCooldownPct: () => this.player.cooldownPct('E'),
       }),
@@ -388,6 +485,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     if (source === this.player) {
       run.totalDamageDealt += dealt;
+      if (dealt > run.maxHit) run.maxHit = dealt;
       this.bus.emit('damageDealt', { target, dmg: dealt, type });
       const ls = this.player.stats.get('lifesteal');
       if (ls > 0 && type !== 'reflect') this.player.heal(dealt * ls);
@@ -608,6 +706,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.checkFightEnd();
     }
 
+    this.drawAmbient(dt);
     this.render();
   }
 
@@ -698,8 +797,18 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     this.projGfx.clear();
     for (const p of this.projectiles) {
+      // Motion streak + glow + bright core
+      this.projGfx.lineStyle(p.radius, p.color, 0.3);
+      this.projGfx.beginPath();
+      this.projGfx.moveTo(p.x - p.dir.x * p.radius * 3.2, p.y - p.dir.y * p.radius * 3.2);
+      this.projGfx.lineTo(p.x, p.y);
+      this.projGfx.strokePath();
+      this.projGfx.fillStyle(p.color, 0.22);
+      this.projGfx.fillCircle(p.x, p.y, p.radius * 2);
       this.projGfx.fillStyle(p.color, 1);
       this.projGfx.fillCircle(p.x, p.y, p.radius);
+      this.projGfx.fillStyle(0xffffff, 0.8);
+      this.projGfx.fillCircle(p.x - p.dir.x * 2, p.y - p.dir.y * 2, p.radius * 0.45);
     }
     this.flashes = this.flashes.filter((f) => f.until > this.now);
     for (const f of this.flashes) {
@@ -726,19 +835,111 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
   private drawArenaFloor(): void {
     const g = this.add.graphics().setDepth(0);
+
+    // Outer glow under the arena so it sits in the void, not on it
+    g.fillStyle(0x151522, 0.7);
+    g.fillCircle(ARENA_X, ARENA_Y, ARENA_R + 26);
+
+    // Sand floor in three tonal steps
     g.fillStyle(COLORS.arenaFloor, 1);
     g.fillCircle(ARENA_X, ARENA_Y, ARENA_R);
-    g.lineStyle(6, COLORS.arenaLine, 1);
-    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R);
-    // Subtle inner ring for depth
-    g.lineStyle(2, COLORS.arenaLine, 0.4);
-    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R * 0.65);
+    g.fillStyle(0x1e1e30, 1);
+    g.fillCircle(ARENA_X, ARENA_Y, ARENA_R * 0.78);
+    g.fillStyle(0x222236, 1);
+    g.fillCircle(ARENA_X, ARENA_Y, ARENA_R * 0.5);
 
+    // Deterministic gravel speckles (cheap LCG so every run looks identical)
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 260; i++) {
+      const a = rnd() * Math.PI * 2;
+      const r = Math.sqrt(rnd()) * (ARENA_R - 18);
+      g.fillStyle(rnd() < 0.5 ? 0x2c2c44 : 0x14141f, 0.5 + rnd() * 0.4);
+      g.fillCircle(ARENA_X + Math.cos(a) * r, ARENA_Y + Math.sin(a) * r, 1.5 + rnd() * 3.5);
+    }
+
+    // Faint combat rings + cross ticks, like painted arena markings
+    g.lineStyle(2, COLORS.arenaLine, 0.5);
+    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R * 0.65);
+    g.lineStyle(1, COLORS.arenaLine, 0.3);
+    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R * 0.32);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const r1 = ARENA_R * 0.65 - 12;
+      const r2 = ARENA_R * 0.65 + 12;
+      g.lineStyle(2, COLORS.arenaLine, 0.35);
+      g.beginPath();
+      g.moveTo(ARENA_X + Math.cos(a) * r1, ARENA_Y + Math.sin(a) * r1);
+      g.lineTo(ARENA_X + Math.cos(a) * r2, ARENA_Y + Math.sin(a) * r2);
+      g.strokePath();
+    }
+
+    // Faded crown inlay at the center — the prize everyone is fighting over
+    crown(g, ARENA_X, ARENA_Y + 26, 120, 0x8a6a2a, 0.09);
+
+    // Gilded rim: dark band + gold edge
+    g.lineStyle(14, 0x111119, 1);
+    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R + 7);
+    g.lineStyle(4, COLORS.arenaRim, 0.9);
+    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R + 1);
+    g.lineStyle(2, shade(COLORS.arenaRim, 0.35), 0.5);
+    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R + 13);
+
+    // Pillars with shading + brick courses
     for (const p of PILLARS) {
+      g.fillStyle(0x000000, 0.35);
+      g.fillEllipse(p.x, p.y + p.r * 0.55, p.r * 2.3, p.r * 0.9);
+      g.fillStyle(shade(COLORS.pillar, -0.4), 1);
+      g.fillCircle(p.x, p.y, p.r + 4);
       g.fillStyle(COLORS.pillar, 1);
       g.fillCircle(p.x, p.y, p.r);
-      g.lineStyle(4, COLORS.pillarLine, 1);
+      g.fillStyle(shade(COLORS.pillar, 0.25), 0.5);
+      g.fillCircle(p.x - p.r * 0.3, p.y - p.r * 0.32, p.r * 0.5);
+      g.lineStyle(2, COLORS.pillarLine, 0.8);
       g.strokeCircle(p.x, p.y, p.r);
+      g.lineStyle(1, COLORS.pillarLine, 0.4);
+      g.strokeCircle(p.x, p.y, p.r * 0.62);
+      g.strokeCircle(p.x, p.y, p.r * 0.3);
     }
+
+    // Torch poles (static part; flames animate in the ambient layer)
+    for (const t of this.torchSpots()) {
+      g.fillStyle(0x2a2a3a, 1);
+      g.fillRect(t.x - 4, t.y, 8, 26);
+      g.fillStyle(0x3a3a4e, 1);
+      g.fillCircle(t.x, t.y + 2, 7);
+    }
+  }
+
+  /** Torch positions around the rim (upper half — thumbs own the lower corners). */
+  private torchSpots(): { x: number; y: number }[] {
+    const spots: { x: number; y: number }[] = [];
+    for (const deg of [200, 250, 290, 340]) {
+      const a = (deg * Math.PI) / 180;
+      spots.push({
+        x: ARENA_X + Math.cos(a) * (ARENA_R + 46),
+        y: ARENA_Y + Math.sin(a) * (ARENA_R + 46),
+      });
+    }
+    return spots;
+  }
+
+  /** Animated ambience: torch flames + drifting embers, redrawn each frame. */
+  private drawAmbient(dt: number): void {
+    const g = this.ambientGfx;
+    g.clear();
+    for (const t of this.torchSpots()) {
+      const flick = Math.sin(this.now / 90 + t.x) * 2 + Math.sin(this.now / 41 + t.y) * 1.5;
+      g.fillStyle(COLORS.torch, 0.14);
+      g.fillCircle(t.x, t.y - 10, 26 + flick * 2);
+      g.fillStyle(COLORS.torch, 0.85);
+      g.fillEllipse(t.x, t.y - 10 - flick / 2, 12, 18 + flick);
+      g.fillStyle(0xffe08a, 0.9);
+      g.fillEllipse(t.x, t.y - 8, 6, 9 + flick / 2);
+      if (Math.random() < dt * 2.2) {
+        this.embers.push(spawnEmber(this.now, t.x + (Math.random() - 0.5) * 10, t.y - 16, COLORS.torch));
+      }
+    }
+    this.embers = updateAndDrawEmbers(g, this.embers, this.now, dt);
   }
 }
