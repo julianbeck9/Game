@@ -194,6 +194,9 @@ export class PickScene extends Phaser.Scene {
     this.picked = true;
     sfx.pick();
     addAugment(def);
-    this.time.delayedCall(180, () => this.scene.start('shop'));
+    // Der Händler öffnet nur nach dem Zahltag (jede 2. Runde); run.round wurde
+    // in endFight bereits erhöht, die gespielte Runde ist also run.round - 1.
+    const shopDay = (run.round - 1) % 2 === 0;
+    this.time.delayedCall(180, () => this.scene.start(shopDay ? 'shop' : 'arena'));
   }
 }

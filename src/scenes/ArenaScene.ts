@@ -840,20 +840,23 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.bus.emit('roundEnd', { win });
     this.projectiles = [];
 
-    // Round gold: winning pays properly, losing pays consolation
-    const reward = win ? 120 + 12 * run.round : 80;
-    earnGold(reward);
-    this.add
-      .text(ARENA_X, ARENA_Y + 110, `+${reward} Gold`, {
-        fontFamily: 'sans-serif',
-        fontSize: '34px',
-        fontStyle: 'bold',
-        color: '#ffd24a',
-        stroke: '#000000',
-        strokeThickness: 5,
-      })
-      .setOrigin(0.5)
-      .setDepth(200);
+    // Zahltag nur jede 2. Runde (dafür doppelt) — Kills bleiben Kleingeld
+    const payday = run.round % 2 === 0;
+    const reward = payday ? (win ? 240 + 24 * run.round : 160) : 0;
+    if (reward > 0) {
+      earnGold(reward);
+      this.add
+        .text(ARENA_X, ARENA_Y + 110, `+${reward} Gold`, {
+          fontFamily: 'sans-serif',
+          fontSize: '34px',
+          fontStyle: 'bold',
+          color: '#ffd24a',
+          stroke: '#000000',
+          strokeThickness: 5,
+        })
+        .setOrigin(0.5)
+        .setDepth(200);
+    }
 
     this.add
       .text(ARENA_X, ARENA_Y - 60, win ? STR.victory : STR.defeat, {

@@ -4,9 +4,15 @@ import { run } from '../core/run';
 
 /** Tier gating per pick (after round N): early Silber · midgame Silber/Gold · lategame Gold/Prisma. */
 function allowedTiers(round: number): Tier[] {
-  if (round <= 3) return ['silber'];
-  if (round <= 8) return ['silber', 'gold'];
-  return ['gold', 'prisma'];
+  // Wagemut: alle künftigen Angebote eine Stufe höher
+  const boost = run.memory.tierBoost ?? 0;
+  const shift = (t: Tier): Tier =>
+    boost <= 0 ? t : t === 'silber' ? 'gold' : 'prisma';
+  let tiers: Tier[];
+  if (round <= 3) tiers = ['silber'];
+  else if (round <= 8) tiers = ['silber', 'gold'];
+  else tiers = ['gold', 'prisma'];
+  return [...new Set(tiers.map(shift))];
 }
 
 /**
@@ -18,9 +24,14 @@ export function rollOffers(round: number, count = 3): AugmentDef[] {
   const ownedPrisma = run.augments.filter((a) => a.tier === 'prisma').length;
   const prismaAllowed = ownedPrisma < run.flags.prismaSlots;
 
-  const basePool = AUGMENTS.filter(
+  let basePool = AUGMENTS.filter(
     (a) => !run.augments.some((o) => o.id === a.id) && tiers.includes(a.tier),
   );
+  // Fallback (z.B. Wagemut drückt alles auf Prisma, aber der Prisma-Slot ist belegt):
+  // dann bleibt der Pool nutzbar, statt leere Angebote zu zeigen.
+  if (basePool.filter((a) => a.tier !== 'prisma' || prismaAllowed).length < count) {
+    basePool = AUGMENTS.filter((a) => !run.augments.some((o) => o.id === a.id));
+  }
 
   const ownedTags = new Set(
     (Object.keys(run.tagCounts) as (keyof typeof run.tagCounts)[]).filter(

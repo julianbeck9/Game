@@ -107,7 +107,9 @@ export class Player extends Unit {
   cooldownDuration(ability: AbilityId): number {
     const haste = this.stats.get('abilityHaste');
     const base = ability === 'Dash' ? ABILITIES.Dash.cd : this.champ.cds[ability];
-    return base * Math.max(0.05, this.stats.get('cooldown')) * (100 / (100 + haste));
+    const flagMult =
+      ability === 'Q' ? run.flags.qCdMult : ability === 'E' ? run.flags.eCdMult : run.flags.dashCdMult;
+    return base * flagMult * Math.max(0.05, this.stats.get('cooldown')) * (100 / (100 + haste));
   }
 
   get maxDashCharges(): number {

@@ -21,14 +21,6 @@ export class AugmentManager {
       power: (def: AugmentDef): number => {
         let p = 1;
         if (def.tier === 'silber' && run.flags.silverHalved) p *= 0.5;
-        // Blutmond: Blut effects act twice as strongly below 50% HP
-        if (
-          def.tags.includes('Blut') &&
-          run.augments.some((a) => a.id === 'blutmond') &&
-          player.hpPct < 0.5
-        ) {
-          p *= 2;
-        }
         return p;
       },
       grantTemp: (def: AugmentDef) => this.activate(def),

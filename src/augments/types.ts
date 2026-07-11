@@ -18,6 +18,10 @@ export interface RuleFlags {
   dashCharges: number;
   /** Phönixherz: revives per run; the combat core consumes them on death. */
   revives: number;
+  /** Per-ability cooldown multipliers (Q-/E-Fokus-Augmente, Windläufer). */
+  qCdMult: number;
+  eCdMult: number;
+  dashCdMult: number;
 }
 
 export const DEFAULT_FLAGS: RuleFlags = {
@@ -28,6 +32,9 @@ export const DEFAULT_FLAGS: RuleFlags = {
   silverHalved: false,
   dashCharges: 1,
   revives: 0,
+  qCdMult: 1,
+  eCdMult: 1,
+  dashCdMult: 1,
 };
 
 /** Everything an augment hook may touch. Handlers never reach into scene internals. */
