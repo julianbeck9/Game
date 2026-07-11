@@ -72,4 +72,6 @@ export function earnGold(amount: number): void {
 export function addItem(item: ItemDef): void {
   run.gold -= item.cost;
   run.items.push(item);
+  // Items may break rules too (Schutzengel: +1 Wiederbelebung)
+  if (item.ruleFlags) Object.assign(run.flags, item.ruleFlags);
 }

@@ -7,6 +7,7 @@ import { EndScene } from './scenes/EndScene';
 import { ShopScene } from './scenes/ShopScene';
 import { run, addAugment } from './core/run';
 import { augmentById } from './augments/registry';
+import { itemById } from './items/registry';
 
 const game = new Phaser.Game({
   // ?renderer=canvas — headless test environments render Canvas2D far faster
@@ -48,6 +49,7 @@ declare global {
       scenes: () => string[];
       goto: (round: number) => void;
       grant: (id: string) => boolean;
+      grantItem: (id: string) => boolean;
       arena: () => unknown;
     };
   }
@@ -69,6 +71,14 @@ window.__CC = {
     const def = augmentById(id);
     if (!def) return false;
     addAugment(def);
+    return true;
+  },
+  // Test helper: grant an item by id without paying (takes effect on next goto/round)
+  grantItem: (id: string) => {
+    const def = itemById(id);
+    if (!def) return false;
+    run.items.push(def);
+    if (def.ruleFlags) Object.assign(run.flags, def.ruleFlags);
     return true;
   },
 };
