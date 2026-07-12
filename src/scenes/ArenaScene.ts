@@ -1054,6 +1054,32 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
   /** Fullscreen 16-bit map: seeded tile floor, region decals, themed obstacles. */
   private drawMap(m: MapDef): void {
+    // Painted region art: render the uploaded image fullscreen instead of the
+    // procedural floor. Coded walls/water (if any) still render on top.
+    if (m.bgImage) {
+      const key = `map:${m.bgImage}`;
+      const placeArt = () => {
+        const img = this.add.image(GAME_W / 2, GAME_H / 2, key).setDepth(0);
+        img.setDisplaySize(GAME_W, GAME_H);
+        const fg = this.add.graphics().setDepth(0);
+        fg.lineStyle(10, 0x0a0a10, 1);
+        fg.strokeRect(5, 5, GAME_W - 10, GAME_H - 10);
+      };
+      if (this.textures.exists(key)) {
+        placeArt();
+      } else {
+        // Fallback floor now; swap in the art once it finishes loading
+        this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, m.floor[0]).setDepth(0);
+        this.load.image(key, `maps/${m.bgImage}.png`);
+        this.load.once('complete', () => this.scene.isActive() && placeArt());
+        this.load.start();
+      }
+      this.terrainZones = m.terrain;
+      this.motes = [];
+      for (let i = 0; i < 26; i++) this.motes.push(this.spawnMote(true));
+      return;
+    }
+
     const g = this.add.graphics().setDepth(0);
     let seed = m.seed;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;

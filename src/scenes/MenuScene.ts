@@ -6,6 +6,7 @@ import { initAudio } from '../core/sfx';
 import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/draw';
 import { CHAMPIONS, ensureChampionTextures } from '../champions/registry';
 import { addFullscreenButton } from '../core/fullscreen';
+import { MAP_IMAGE_KEYS } from '../core/maps';
 
 export class MenuScene extends Phaser.Scene {
   private embers: Ember[] = [];
@@ -13,6 +14,13 @@ export class MenuScene extends Phaser.Scene {
 
   constructor() {
     super('menu');
+  }
+
+  preload(): void {
+    // Region background art — loaded once up front so the arena has it ready.
+    for (const key of MAP_IMAGE_KEYS) {
+      this.load.image(`map:${key}`, `maps/${key}.png`);
+    }
   }
 
   create(): void {
