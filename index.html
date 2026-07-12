@@ -9,6 +9,11 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen" />
+    <meta name="apple-mobile-web-app-title" content="Crown &amp; Clash" />
+    <meta name="theme-color" content="#0a0a12" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="./icon-192.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>Crown &amp; Clash</title>
     <style>
       html,
@@ -32,5 +37,13 @@
   <body>
     <div id="game"></div>
     <script type="module" src="/src/main.ts"></script>
+    <script>
+      // Register the service worker so the game installs as a PWA / runs offline.
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js').catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>
