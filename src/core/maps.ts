@@ -86,6 +86,20 @@ export const MAP_IMAGE_KEYS = [
 /** Playable field bounds (units clamp to this rect). */
 export const FIELD = { x1: 26, y1: 26, x2: GAME_W - 26, y2: GAME_H - 26 };
 
+const CY = GAME_H / 2;
+
+// Cover blocks placed on the side AWAY from each map's water (so a wall never
+// sits next to a hazard), off the central lane and spawn rows. Solid stone:
+// blocks walking, dashing and shots.
+const leftCover = (yc = CY): MapWall[] => [
+  { x: 640, y: yc, w: 46, h: 230 },
+  { x: 730, y: yc - 110, w: 190, h: 46 },
+];
+const rightCover = (yc = CY): MapWall[] => [
+  { x: 1280, y: yc, w: 46, h: 230 },
+  { x: 1190, y: yc + 110, w: 190, h: 46 },
+];
+
 // Water/lava traced to each painting's visible liquid, kept off the central
 // lane (x ~800..1120) and the spawn rows so the bot AI can always reach you.
 // Walls stay empty for now — painted stone reads at an isometric angle that a
@@ -112,7 +126,7 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'baum',
     obstacleColor: 0xe89ab8,
     obstacles: [],
-    walls: [],
+    walls: rightCover(),
     wallColor: 0xcdd2c0,
     terrain: [{ kind: 'water', x: 560, y: 520, w: 240, h: 380 }],
     ambient: 'petals',
@@ -130,7 +144,7 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'saeule',
     obstacleColor: 0xc8cfe0,
     obstacles: [],
-    walls: [],
+    walls: leftCover(),
     wallColor: 0xe6e9f2,
     terrain: [{ kind: 'water', x: 1360, y: 520, w: 200, h: 400 }],
     ambient: 'motes',
@@ -148,7 +162,7 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'stachel',
     obstacleColor: 0x8fd0f0,
     obstacles: [],
-    walls: [],
+    walls: leftCover(430),
     wallColor: 0x9aa6bc,
     terrain: [{ kind: 'water', x: 1420, y: 440, w: 320, h: 340 }, { kind: 'water', x: 600, y: 780, w: 300, h: 240 }],
     ambient: 'motes',
@@ -166,7 +180,7 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'stachel',
     obstacleColor: 0xaad8f0,
     obstacles: [],
-    walls: [],
+    walls: leftCover(),
     wallColor: 0xb8c4d4,
     terrain: [{ kind: 'water', x: 1450, y: 460, w: 340, h: 460 }],
     ambient: 'motes',
@@ -184,7 +198,7 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'stachel',
     obstacleColor: 0x7a3a34,
     obstacles: [],
-    walls: [],
+    walls: leftCover(),
     wallColor: 0x6a5a52,
     terrain: [{ kind: 'lava', x: 1300, y: 430, w: 220, h: 360 }],
     ambient: 'embers',
@@ -202,7 +216,7 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'obelisk',
     obstacleColor: 0xd8b060,
     obstacles: [],
-    walls: [],
+    walls: leftCover(480),
     wallColor: 0xc9a86a,
     terrain: [{ kind: 'water', x: 1360, y: 820, w: 280, h: 240 }],
     ambient: 'sand',
@@ -220,7 +234,7 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'saeule',
     obstacleColor: 0x5a6a4a,
     obstacles: [],
-    walls: [],
+    walls: leftCover(),
     wallColor: 0x4a5240,
     terrain: [{ kind: 'lava', x: 1280, y: 500, w: 260, h: 360 }],
     ambient: 'embers',
@@ -238,7 +252,7 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'baum',
     obstacleColor: 0x2a4a44,
     obstacles: [],
-    walls: [],
+    walls: [...leftCover(), ...rightCover()],
     wallColor: 0x2c4340,
     terrain: [],
     ambient: 'motes',
@@ -256,7 +270,7 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'stachel',
     obstacleColor: 0x9a5cff,
     obstacles: [],
-    walls: [],
+    walls: rightCover(500),
     wallColor: 0x281d3f,
     terrain: [{ kind: 'lava', x: 560, y: 720, w: 360, h: 220 }],
     ambient: 'motes',

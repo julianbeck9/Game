@@ -1072,17 +1072,27 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       g.lineStyle(2, water ? 0x9fd8ff : 0xffb35a, 0.3);
       g.strokeRoundedRect(x, y, t.w, t.h, 30);
     }
+    // Solid stone cover blocks (opaque, with a raised lit top + cast shadow)
     for (const w of m.walls) {
       const x = w.x - w.w / 2;
       const y = w.y - w.h / 2;
-      g.fillStyle(0x000000, 0.3);
-      g.fillRect(x + 3, y - 6, w.w, w.h + 6);
-      g.fillStyle(shade(m.wallColor, -0.1), 0.62);
-      g.fillRect(x, y - 10, w.w, w.h);
-      g.fillStyle(shade(m.wallColor, 0.3), 0.6);
-      g.fillRect(x, y - 10, w.w, 6);
-      g.lineStyle(2, shade(m.wallColor, -0.5), 0.7);
-      g.strokeRect(x, y - 10, w.w, w.h);
+      const lip = 12;
+      g.fillStyle(0x000000, 0.34);
+      g.fillEllipse(w.x + 6, y + w.h + 2, w.w * 1.05, 26);
+      g.fillStyle(shade(m.wallColor, -0.5), 1);
+      g.fillRect(x, y - lip, w.w, w.h + lip);
+      g.fillStyle(m.wallColor, 1);
+      g.fillRect(x, y - lip, w.w, w.h - lip);
+      g.fillStyle(shade(m.wallColor, 0.3), 1);
+      g.fillRect(x, y - lip, w.w, 6);
+      g.lineStyle(2, shade(m.wallColor, -0.6), 0.85);
+      const horiz = w.w >= w.h;
+      if (horiz) {
+        for (let sx = x + 40; sx < x + w.w - 8; sx += 40) g.lineBetween(sx, y - lip, sx, y + w.h - lip);
+      } else {
+        for (let sy = y + 40 - lip; sy < y + w.h - 8; sy += 40) g.lineBetween(x, sy, x + w.w, sy);
+      }
+      g.strokeRect(x, y - lip, w.w, w.h);
     }
   }
 
