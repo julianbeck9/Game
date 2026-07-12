@@ -3,6 +3,7 @@ import { procDamage, enemiesWithin, slowUnit, unitCounterAdd } from '../augments
 import type { ItemIconKind } from './icons';
 // Laufzeit-sicher: core/run importiert von hier nur Typen (wird wegkompiliert)
 import { run } from '../core/run';
+import { isDeleted } from '../core/balance';
 
 /**
  * Items: purchasable stat packages with optional passives. Technically they
@@ -952,7 +953,7 @@ export function itemById(id: string): ItemDef | undefined {
 export function rollShop(round: number, count = 6): ItemDef[] {
   const owned = (id: string) => run.items.some((it) => it.id === id);
   // The pre-round-1 starter shop only stocks cheap gear (boots, basic pieces)
-  const pool = ITEMS.filter((i) => !owned(i.id) && (round <= 2 ? i.cost <= 400 : true));
+  const pool = ITEMS.filter((i) => !owned(i.id) && !isDeleted(i.id) && (round <= 2 ? i.cost <= 400 : true));
   const offers: ItemDef[] = [];
   const bag = [...pool];
   // From round 3 on: at least 2 budget offers so small gold is never wasted

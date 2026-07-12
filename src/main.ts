@@ -7,6 +7,11 @@ import { EndScene } from './scenes/EndScene';
 import { ShopScene } from './scenes/ShopScene';
 import { BuildScene } from './scenes/BuildScene';
 import { EditorScene } from './scenes/EditorScene';
+import { AdminScene } from './scenes/AdminScene';
+import { applyBalance } from './core/balance';
+
+// Fold any admin balance overrides into the registries before the game starts.
+applyBalance();
 import { run, addAugment } from './core/run';
 import { augmentById } from './augments/registry';
 import { itemById } from './items/registry';
@@ -26,7 +31,7 @@ const game = new Phaser.Game({
   input: {
     activePointers: 4,
   },
-  scene: [MenuScene, ArenaScene, PickScene, ShopScene, BuildScene, EditorScene, EndScene],
+  scene: [MenuScene, ArenaScene, PickScene, ShopScene, BuildScene, EditorScene, AdminScene, EndScene],
 });
 
 // iOS Safari leaves the canvas offset/mis-scaled after rotating the device:

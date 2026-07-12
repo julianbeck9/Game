@@ -1,5 +1,6 @@
 import { AugmentDef, Tier } from './types';
 import { AUGMENTS } from './registry';
+import { isDeleted } from '../core/balance';
 import { run } from '../core/run';
 
 /** Tier gating per pick (after round N): early Silber · midgame Silber/Gold · lategame Gold/Prisma. */
@@ -38,12 +39,13 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
     (a) =>
       !owns(a.id) &&
       !exclude.has(a.id) &&
+      !isDeleted(a.id) &&
       tiers.includes(a.tier) &&
       (a.tier !== 'prisma' || prismaAllowed),
   );
   // Fallback: if the gated pool is empty, open up to anything not owned/excluded
   if (pool.length === 0) {
-    pool = AUGMENTS.filter((a) => !owns(a.id) && !exclude.has(a.id) && (a.tier !== 'prisma' || prismaAllowed));
+    pool = AUGMENTS.filter((a) => !owns(a.id) && !exclude.has(a.id) && !isDeleted(a.id) && (a.tier !== 'prisma' || prismaAllowed));
     if (pool.length === 0) return null;
   }
 
