@@ -333,6 +333,10 @@ export class Enemy extends Unit {
   // ---- Rendering ----
 
   protected drawBody(g: Phaser.GameObjects.Graphics): void {
+    // Grounding drop shadow so the unit reads as standing on the map (3D feel)
+    g.fillStyle(0x000000, 0.32);
+    g.fillEllipse(this.x + 2, this.y + this.radius * 0.92, this.radius * 2.1, this.radius * 0.68);
+
     // Boss aura: slow-pulsing ring so the Usurpator dominates the frame
     if (this.isBoss) {
       const pulse = Math.sin(this.combat.now / 300) * 3;

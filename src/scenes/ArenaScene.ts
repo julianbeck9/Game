@@ -1053,6 +1053,39 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   }
 
   /** Fullscreen 16-bit map: seeded tile floor, region decals, themed obstacles. */
+  /**
+   * Subtle collision markers over painted-art maps: translucent tinted pools
+   * for water/lava (shimmer is added by the ambient layer) and a faint raised
+   * slab for each cover wall — enough to read the cover without hiding the art.
+   */
+  private drawCollisionOverlay(m: MapDef): void {
+    const g = this.add.graphics().setDepth(1);
+    for (const t of m.terrain) {
+      const x = t.x - t.w / 2;
+      const y = t.y - t.h / 2;
+      const water = t.kind === 'water';
+      // Soft glow rather than a hard box, so it blends into the painted liquid
+      g.fillStyle(water ? 0x2a6ad0 : 0xd8480e, 0.16);
+      g.fillRoundedRect(x - 8, y - 8, t.w + 16, t.h + 16, 40);
+      g.fillStyle(water ? 0x2a6ad0 : 0xd8480e, 0.16);
+      g.fillRoundedRect(x, y, t.w, t.h, 30);
+      g.lineStyle(2, water ? 0x9fd8ff : 0xffb35a, 0.3);
+      g.strokeRoundedRect(x, y, t.w, t.h, 30);
+    }
+    for (const w of m.walls) {
+      const x = w.x - w.w / 2;
+      const y = w.y - w.h / 2;
+      g.fillStyle(0x000000, 0.3);
+      g.fillRect(x + 3, y - 6, w.w, w.h + 6);
+      g.fillStyle(shade(m.wallColor, -0.1), 0.62);
+      g.fillRect(x, y - 10, w.w, w.h);
+      g.fillStyle(shade(m.wallColor, 0.3), 0.6);
+      g.fillRect(x, y - 10, w.w, 6);
+      g.lineStyle(2, shade(m.wallColor, -0.5), 0.7);
+      g.strokeRect(x, y - 10, w.w, w.h);
+    }
+  }
+
   private drawMap(m: MapDef): void {
     // Painted region art: render the uploaded image fullscreen instead of the
     // procedural floor. Coded walls/water (if any) still render on top.
@@ -1074,6 +1107,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         this.load.once('complete', () => this.scene.isActive() && placeArt());
         this.load.start();
       }
+      this.drawCollisionOverlay(m);
       this.terrainZones = m.terrain;
       this.motes = [];
       for (let i = 0; i < 26; i++) this.motes.push(this.spawnMote(true));

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ChampionDef } from './types';
 import { COLORS } from '../config';
 import { norm } from '../core/geometry';
+import { shade } from '../core/draw';
 import type { Unit } from '../entities/Unit';
 import type { Player } from '../entities/Player';
 
@@ -643,21 +644,47 @@ export function championById(id: string): ChampionDef {
   return CHAMPIONS.find((c) => c.id === id) ?? koenig;
 }
 
-/** Bake each champion's pixel map into a texture once (16-bit look, zero per-frame cost). */
-export function ensureChampionTextures(scene: Phaser.Scene, px = 5): void {
+/**
+ * Bake each champion's pixel map into a texture once. Beyond the flat pixels
+ * we add a dark contour and per-pixel top-light / bottom-shade so the sprite
+ * reads with volume (a crisper, more "3D" look) at zero per-frame cost.
+ */
+export function ensureChampionTextures(scene: Phaser.Scene, px = 6): void {
+  const PAD = 3; // room for the contour
   for (const c of CHAMPIONS) {
     const key = `champ:${c.id}`;
     if (scene.textures.exists(key)) continue;
+    const rows = c.sprite;
+    const W = rows[0].length;
+    const H = rows.length;
+    const filled = (x: number, y: number): boolean =>
+      x >= 0 && x < W && y >= 0 && y < H && c.palette[rows[y][x]] !== undefined;
+
     const g = scene.add.graphics();
-    c.sprite.forEach((row, ry) => {
+
+    // 1) Dark contour: a chunky halo behind every solid pixel reads as an ink outline
+    g.fillStyle(0x0a0a12, 1);
+    rows.forEach((row, ry) => {
+      [...row].forEach((ch, rx) => {
+        if (c.palette[ch] === undefined) return;
+        g.fillRect(PAD + rx * px - 2, PAD + ry * px - 2, px + 4, px + 4);
+      });
+    });
+
+    // 2) Colored pixels, lit on their top edge and shaded on their bottom edge
+    rows.forEach((row, ry) => {
       [...row].forEach((ch, rx) => {
         const color = c.palette[ch];
         if (color === undefined) return;
-        g.fillStyle(color, 1);
-        g.fillRect(rx * px, ry * px, px, px);
+        let col = color;
+        if (!filled(rx, ry - 1)) col = shade(color, 0.4); // top-lit rim
+        else if (!filled(rx, ry + 1)) col = shade(color, -0.32); // grounded shade
+        g.fillStyle(col, 1);
+        g.fillRect(PAD + rx * px, PAD + ry * px, px, px);
       });
     });
-    g.generateTexture(key, c.sprite[0].length * px, c.sprite.length * px);
+
+    g.generateTexture(key, W * px + PAD * 2, H * px + PAD * 2);
     g.destroy();
   }
 }

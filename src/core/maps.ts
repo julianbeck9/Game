@@ -86,6 +86,11 @@ export const MAP_IMAGE_KEYS = [
 /** Playable field bounds (units clamp to this rect). */
 export const FIELD = { x1: 26, y1: 26, x2: GAME_W - 26, y2: GAME_H - 26 };
 
+// Water/lava traced to each painting's visible liquid, kept off the central
+// lane (x ~800..1120) and the spawn rows so the bot AI can always reach you.
+// Walls stay empty for now — painted stone reads at an isometric angle that a
+// top-down box can't match cleanly, so we don't fake it.
+
 /**
  * Nine hand-painted region arenas. Each renders its uploaded artwork
  * fullscreen (public/maps/<bgImage>.png); the floor/line/rim colours are
@@ -109,7 +114,7 @@ export const MAPS: MapDef[] = [
     obstacles: [],
     walls: [],
     wallColor: 0xcdd2c0,
-    terrain: [],
+    terrain: [{ kind: 'water', x: 560, y: 520, w: 240, h: 380 }],
     ambient: 'petals',
     ambientColor: 0xf0b8cc,
     seed: 11,
@@ -127,7 +132,7 @@ export const MAPS: MapDef[] = [
     obstacles: [],
     walls: [],
     wallColor: 0xe6e9f2,
-    terrain: [],
+    terrain: [{ kind: 'water', x: 1360, y: 520, w: 200, h: 400 }],
     ambient: 'motes',
     ambientColor: 0xf0e4b0,
     seed: 67,
@@ -145,7 +150,7 @@ export const MAPS: MapDef[] = [
     obstacles: [],
     walls: [],
     wallColor: 0x9aa6bc,
-    terrain: [],
+    terrain: [{ kind: 'water', x: 1420, y: 440, w: 320, h: 340 }, { kind: 'water', x: 600, y: 780, w: 300, h: 240 }],
     ambient: 'motes',
     ambientColor: 0xbfe4ff,
     seed: 29,
@@ -163,7 +168,7 @@ export const MAPS: MapDef[] = [
     obstacles: [],
     walls: [],
     wallColor: 0xb8c4d4,
-    terrain: [],
+    terrain: [{ kind: 'water', x: 1450, y: 460, w: 340, h: 460 }],
     ambient: 'motes',
     ambientColor: 0xdff0ff,
     seed: 31,
@@ -181,7 +186,7 @@ export const MAPS: MapDef[] = [
     obstacles: [],
     walls: [],
     wallColor: 0x6a5a52,
-    terrain: [],
+    terrain: [{ kind: 'lava', x: 1300, y: 430, w: 220, h: 360 }],
     ambient: 'embers',
     ambientColor: 0xd23a2a,
     seed: 53,
@@ -199,7 +204,7 @@ export const MAPS: MapDef[] = [
     obstacles: [],
     walls: [],
     wallColor: 0xc9a86a,
-    terrain: [],
+    terrain: [{ kind: 'water', x: 1360, y: 820, w: 280, h: 240 }],
     ambient: 'sand',
     ambientColor: 0xd8b878,
     seed: 37,
@@ -217,7 +222,7 @@ export const MAPS: MapDef[] = [
     obstacles: [],
     walls: [],
     wallColor: 0x4a5240,
-    terrain: [],
+    terrain: [{ kind: 'lava', x: 1280, y: 500, w: 260, h: 360 }],
     ambient: 'embers',
     ambientColor: 0x8fe23a,
     seed: 71,
@@ -253,7 +258,7 @@ export const MAPS: MapDef[] = [
     obstacles: [],
     walls: [],
     wallColor: 0x281d3f,
-    terrain: [],
+    terrain: [{ kind: 'lava', x: 560, y: 720, w: 360, h: 220 }],
     ambient: 'motes',
     ambientColor: 0xb87aff,
     seed: 97,

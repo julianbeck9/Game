@@ -287,9 +287,9 @@ export class Player extends Unit {
   // ---- Rendering (8-bit sprite + effect overlays) ----
 
   protected drawBody(g: Phaser.GameObjects.Graphics): void {
-    // Drop shadow under the sprite
-    g.fillStyle(0x000000, 0.28);
-    g.fillEllipse(this.x, this.y + this.radius * 0.95, this.radius * 2.1, this.radius * 0.7);
+    // Drop shadow under the sprite (stays grounded while the sprite bobs — 3D feel)
+    g.fillStyle(0x000000, 0.32);
+    g.fillEllipse(this.x + 2, this.y + this.radius * 0.95, this.radius * 2.15, this.radius * 0.7);
 
     // Königsruf glow while empowered
     if (this.empoweredAutos > 0) {
