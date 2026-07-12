@@ -3,7 +3,7 @@ import { Unit } from './Unit';
 import { StatBlock, StatName } from '../core/stats';
 import { Combat } from '../core/combat';
 import { AbilityId } from '../core/events';
-import { norm, len, Vec } from '../core/geometry';
+import { norm, len, Vec, pointInTerrain } from '../core/geometry';
 import { COLORS, ABILITIES } from '../config';
 import { run } from '../core/run';
 import { crown } from '../core/draw';
@@ -95,6 +95,23 @@ export class Player extends Unit {
       const speed = this.stats.get('moveSpeed');
       this.moveBy(n.x * speed * mag * dt, n.y * speed * mag * dt);
     }
+  }
+
+  /**
+   * If a dash ends inside water/lava, carry the champion the rest of the way
+   * out along the dash direction so the dash "completes across" instead of
+   * dumping them mid-pool and snapping them back.
+   */
+  private ejectFromTerrain(): void {
+    if (!pointInTerrain(this.x, this.y, this.radius)) return;
+    const d = this.dashDir;
+    for (let i = 0; i < 40 && pointInTerrain(this.x, this.y, this.radius); i++) {
+      const px = this.x;
+      const py = this.y;
+      this.moveBy(d.x * 12, d.y * 12, true); // keep crossing forward
+      if (this.x === px && this.y === py) break; // blocked by a wall / field edge
+    }
+    if (pointInTerrain(this.x, this.y, this.radius)) this.moveBy(0, 0, false); // dead-ended: normal push-out
   }
 
   /** Phasenschritt cuts everything the champion phases through. */
@@ -221,6 +238,7 @@ export class Player extends Unit {
 
     if (this.dashing && time >= this.dashUntil) {
       this.dashing = false;
+      this.ejectFromTerrain();
       this.combat.bus.emit('dashEnd', undefined);
     }
 

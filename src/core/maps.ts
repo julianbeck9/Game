@@ -1,4 +1,5 @@
 import { GAME_W, GAME_H } from '../config';
+import { getEdit } from './mapEdits';
 
 /**
  * Fullscreen battle maps. Each map is a themed rectangle: the whole screen
@@ -300,11 +301,11 @@ export function activeObstacles(): MapObstacle[] {
 }
 
 export function activeWalls(): MapWall[] {
-  return active.walls;
+  return getEdit(active.id)?.walls ?? active.walls;
 }
 
 export function activeTerrain(): TerrainZone[] {
-  return active.terrain;
+  return getEdit(active.id)?.terrain ?? active.terrain;
 }
 
 /** Pick a random map, never the same twice in a row. */

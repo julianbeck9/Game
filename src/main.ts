@@ -6,6 +6,7 @@ import { MenuScene } from './scenes/MenuScene';
 import { EndScene } from './scenes/EndScene';
 import { ShopScene } from './scenes/ShopScene';
 import { BuildScene } from './scenes/BuildScene';
+import { EditorScene } from './scenes/EditorScene';
 import { run, addAugment } from './core/run';
 import { augmentById } from './augments/registry';
 import { itemById } from './items/registry';
@@ -25,7 +26,7 @@ const game = new Phaser.Game({
   input: {
     activePointers: 4,
   },
-  scene: [MenuScene, ArenaScene, PickScene, ShopScene, BuildScene, EndScene],
+  scene: [MenuScene, ArenaScene, PickScene, ShopScene, BuildScene, EditorScene, EndScene],
 });
 
 // iOS Safari leaves the canvas offset/mis-scaled after rotating the device:

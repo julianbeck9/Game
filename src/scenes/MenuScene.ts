@@ -88,6 +88,23 @@ export class MenuScene extends Phaser.Scene {
 
     addFullscreenButton(this, GAME_W - 56, 56);
 
+    // Map Editor: draw walls/water/lava onto the painted maps
+    const edit = this.add
+      .rectangle(GAME_W - 150, GAME_H - 44, 250, 60, 0x1e2a44, 1)
+      .setStrokeStyle(3, 0x6a8ac0, 1)
+      .setDepth(20)
+      .setInteractive({ useHandCursor: true });
+    this.add
+      .text(GAME_W - 150, GAME_H - 44, '🛠  Map Editor', {
+        fontFamily: 'sans-serif',
+        fontSize: '28px',
+        fontStyle: 'bold',
+        color: '#cfe0ff',
+      })
+      .setOrigin(0.5)
+      .setDepth(21);
+    edit.on('pointerdown', () => this.scene.start('editor'));
+
     const start = (championId: string) => {
       initAudio();
       newRun();

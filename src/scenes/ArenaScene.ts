@@ -16,7 +16,7 @@ import { rollOffers } from '../augments/offers';
 import { run, earnGold } from '../core/run';
 import { dist, pointInPillar, Vec } from '../core/geometry';
 import { ARENA_X, ARENA_Y, COLORS, GAME_W, GAME_H } from '../config';
-import { MapDef, FIELD, setActiveMap } from '../core/maps';
+import { MapDef, FIELD, setActiveMap, activeWalls, activeTerrain } from '../core/maps';
 import { drawItemIcon } from '../items/icons';
 import { STR } from '../core/strings';
 import { initAudio, sfx } from '../core/sfx';
@@ -1060,7 +1060,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
    */
   private drawCollisionOverlay(m: MapDef): void {
     const g = this.add.graphics().setDepth(1);
-    for (const t of m.terrain) {
+    for (const t of activeTerrain()) {
       const x = t.x - t.w / 2;
       const y = t.y - t.h / 2;
       const water = t.kind === 'water';
@@ -1073,7 +1073,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       g.strokeRoundedRect(x, y, t.w, t.h, 30);
     }
     // Solid stone cover blocks (opaque, with a raised lit top + cast shadow)
-    for (const w of m.walls) {
+    for (const w of activeWalls()) {
       const x = w.x - w.w / 2;
       const y = w.y - w.h / 2;
       const lip = 12;
@@ -1118,7 +1118,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         this.load.start();
       }
       this.drawCollisionOverlay(m);
-      this.terrainZones = m.terrain;
+      this.terrainZones = activeTerrain();
       this.motes = [];
       for (let i = 0; i < 26; i++) this.motes.push(this.spawnMote(true));
       return;
