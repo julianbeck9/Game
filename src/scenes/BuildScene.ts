@@ -3,6 +3,7 @@ import { GAME_W, GAME_H, COLORS } from '../config';
 import { run, levelOf } from '../core/run';
 import type { Player } from '../entities/Player';
 import type { Tier } from '../augments/types';
+import { drawStatIcon, IconKey } from '../core/icons';
 
 const TIER_COLOR: Record<Tier, number> = {
   silber: COLORS.silver,
@@ -24,7 +25,7 @@ export class BuildScene extends Phaser.Scene {
     this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.92);
 
     this.add
-      .text(GAME_W / 2, 54, 'Build & Werte', {
+      .text(GAME_W / 2, 54, 'Build & Stats', {
         fontFamily: 'Georgia, serif',
         fontSize: '54px',
         fontStyle: 'bold',
@@ -35,37 +36,39 @@ export class BuildScene extends Phaser.Scene {
     const arena = this.scene.get('arena') as Phaser.Scene & { player?: Player };
     const p = arena.player;
 
-    // ---- Left: live stats ----
-    const sx = 90;
+    // ---- Left: live stats with icons ----
+    const sx = 116;
     let sy = 150;
     this.panel(40, 120, 480, 850);
-    this.add.text(sx, sy, 'Werte', this.h2()).setOrigin(0, 0.5);
+    this.add.text(76, sy, 'Stats', this.h2()).setOrigin(0, 0.5);
     sy += 56;
     if (p) {
       const s = p.stats;
-      const rows: [string, string][] = [
-        ['Leben', `${Math.round(p.hp)} / ${Math.round(p.maxHP)}`],
-        ['Angriffsschaden', `${s.get('damage').toFixed(1)}`],
-        ['Fähigkeitsstärke', `${s.get('abilityPower').toFixed(1)}`],
-        ['Angriffstempo', `${s.get('attackSpeed').toFixed(2)} / s`],
-        ['Kritchance', `${Math.round(s.get('critChance') * 100)}%`],
-        ['Rüstung', `${Math.round(s.get('armor'))}`],
-        ['Magieresistenz', `${Math.round(s.get('magicResist'))}`],
-        ['Fähigkeitentempo', `${Math.round(s.get('abilityHaste'))}`],
-        ['Fähigkeitsschaden', `${Math.round(s.get('abilityDamage') * 100)}%`],
-        ['Lauftempo', `${Math.round(s.get('moveSpeed'))}`],
-        ['Lebensraub', `${Math.round(s.get('lifesteal') * 100)}%`],
-        ['Reichweite', `${Math.round(s.get('attackRange'))}`],
-        ['Gold', `${run.gold}`],
+      const rows: [IconKey, string, string][] = [
+        ['maxHP', 'Health', `${Math.round(p.hp)} / ${Math.round(p.maxHP)}`],
+        ['damage', 'Attack Damage', `${s.get('damage').toFixed(1)}`],
+        ['abilityPower', 'Ability Power', `${s.get('abilityPower').toFixed(1)}`],
+        ['attackSpeed', 'Attack Speed', `${s.get('attackSpeed').toFixed(2)} / s`],
+        ['critChance', 'Crit Chance', `${Math.round(s.get('critChance') * 100)}%`],
+        ['armor', 'Armor', `${Math.round(s.get('armor'))}`],
+        ['magicResist', 'Magic Resist', `${Math.round(s.get('magicResist'))}`],
+        ['abilityHaste', 'Ability Haste', `${Math.round(s.get('abilityHaste'))}`],
+        ['abilityDamage', 'Ability Damage', `${Math.round(s.get('abilityDamage') * 100)}%`],
+        ['moveSpeed', 'Move Speed', `${Math.round(s.get('moveSpeed'))}`],
+        ['lifesteal', 'Life Steal', `${Math.round(s.get('lifesteal') * 100)}%`],
+        ['attackRange', 'Range', `${Math.round(s.get('attackRange'))}`],
+        ['gold', 'Gold', `${run.gold}`],
       ];
-      for (const [label, value] of rows) {
+      const ig = this.add.graphics();
+      for (const [icon, label, value] of rows) {
+        drawStatIcon(ig, icon, 76, sy, 26);
         this.add
-          .text(sx, sy, label, { fontFamily: 'sans-serif', fontSize: '27px', color: '#8a94b0' })
+          .text(sx, sy, label, { fontFamily: 'sans-serif', fontSize: '26px', color: '#8a94b0' })
           .setOrigin(0, 0.5);
         this.add
-          .text(470, sy, value, {
+          .text(492, sy, value, {
             fontFamily: 'sans-serif',
-            fontSize: '28px',
+            fontSize: '27px',
             fontStyle: 'bold',
             color: '#e8ecf8',
           })
@@ -76,7 +79,7 @@ export class BuildScene extends Phaser.Scene {
 
     // ---- Middle: augments ----
     this.panel(560, 120, 660, 850);
-    this.add.text(600, 150, `Augmente (${run.augments.length} / 6)`, this.h2()).setOrigin(0, 0.5);
+    this.add.text(600, 150, `Augments (${run.augments.length} / 6)`, this.h2()).setOrigin(0, 0.5);
     let ay = 208;
     for (const a of run.augments) {
       const lvl = levelOf(a.id);
@@ -100,7 +103,7 @@ export class BuildScene extends Phaser.Scene {
       if (ay > 920) break;
     }
     if (run.augments.length === 0) {
-      this.add.text(600, 210, '— noch keine —', { fontFamily: 'sans-serif', fontSize: '24px', color: '#5a6480' });
+      this.add.text(600, 210, '— none yet —', { fontFamily: 'sans-serif', fontSize: '24px', color: '#5a6480' });
     }
 
     // ---- Right: items ----
@@ -128,7 +131,7 @@ export class BuildScene extends Phaser.Scene {
       if (iy > 920) break;
     }
     if (run.items.length === 0) {
-      this.add.text(1300, 210, '— noch keine —', { fontFamily: 'sans-serif', fontSize: '24px', color: '#5a6480' });
+      this.add.text(1300, 210, '— none yet —', { fontFamily: 'sans-serif', fontSize: '24px', color: '#5a6480' });
     }
 
     // ---- Close ----
@@ -137,7 +140,7 @@ export class BuildScene extends Phaser.Scene {
       .setStrokeStyle(3, 0xa8d8ff, 1)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(GAME_W / 2, GAME_H - 52, 'Zurück zum Kampf', {
+      .text(GAME_W / 2, GAME_H - 52, 'Back to Battle', {
         fontFamily: 'sans-serif',
         fontSize: '30px',
         fontStyle: 'bold',

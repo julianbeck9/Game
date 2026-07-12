@@ -71,11 +71,11 @@ export class EndScene extends Phaser.Scene {
     panel.strokeRoundedRect(cx - pw / 2, py - ph / 2, pw, ph, 18);
 
     const rows: [string, string][] = [
-      ['Runde erreicht', run.round > 20 ? `${run.round} (Endlos)` : `${run.round} / 20`],
-      ['Gesamtschaden', `${Math.round(run.totalDamageDealt)}`],
-      ['Größter Treffer', `${Math.round(run.maxHit)}`],
-      ['Tötungen', `${run.kills}`],
-      ['Gold verdient', `${run.goldEarned}`],
+      ['Round reached', run.round > 20 ? `${run.round} (Endless)` : `${run.round} / 20`],
+      ['Total damage', `${Math.round(run.totalDamageDealt)}`],
+      ['Biggest hit', `${Math.round(run.maxHit)}`],
+      ['Kills', `${run.kills}`],
+      ['Gold earned', `${run.goldEarned}`],
     ];
     rows.forEach(([label, value], i) => {
       const ry = py - ph / 2 + 44 + i * 62;
@@ -95,7 +95,7 @@ export class EndScene extends Phaser.Scene {
     });
 
     // Augment chips
-    const augs = run.augments.length ? run.augments.map((a) => a.name) : ['— keine Augmente —'];
+    const augs = run.augments.length ? run.augments.map((a) => a.name) : ['— no augments —'];
     this.add
       .text(cx, py + ph / 2 + 46, augs.join('  ·  '), {
         fontFamily: 'sans-serif',
@@ -135,7 +135,7 @@ export class EndScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true })
         .setDepth(10);
       this.add
-        .text(cx + 260, GAME_H - 92, '∞ Endlosmodus', {
+        .text(cx + 260, GAME_H - 92, '∞ Endless Mode', {
           fontFamily: 'sans-serif',
           fontSize: '38px',
           fontStyle: 'bold',

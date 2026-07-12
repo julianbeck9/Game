@@ -90,30 +90,30 @@ export function roundSpec(round: number): RoundSpec {
       ? pick<ModifierId>(['feuerring', 'heilblumen', 'bruchzone', 'blitzsturm'])
       : undefined;
 
-  // Endlosmodus: exponential squads, boss every 5th round
+  // Endless mode: exponential squads, boss every 5th round
   if (round > MAX_ROUND) {
     if (round % 5 === 0) {
       const boss = makeUsurpator(s, true);
       return {
-        enemies: [boss, ...squad(1 + Math.floor((round - MAX_ROUND) / 10), s)],
+        enemies: [boss, ...squad(2 + Math.floor((round - MAX_ROUND) / 10), s)],
         boss: true,
-        title: `Endlos ${round} — Der Usurpator`,
+        title: `Endless ${round} — The Usurper`,
         map,
         bossAugments: boss.visibleAugments,
         modifier,
       };
     }
-    const n = Math.min(5, 2 + Math.floor((round - MAX_ROUND - 1) / 6));
-    return { enemies: squad(n, s), boss: false, title: `Endlos ${round}`, map, modifier };
+    const n = Math.min(7, 3 + Math.floor((round - MAX_ROUND - 1) / 6));
+    return { enemies: squad(n, s), boss: false, title: `Endless ${round}`, map, modifier };
   }
 
   if (round === 7 || round === 14 || round === MAX_ROUND) {
     const final = round === MAX_ROUND;
     const boss = makeUsurpator(s, final);
     return {
-      enemies: round === 14 ? [boss, ...squad(1, s)] : [boss],
+      enemies: round === 14 ? [boss, ...squad(2, s)] : [boss, ...(final ? squad(2, s) : [])],
       boss: true,
-      title: `Runde ${round} — Der Usurpator`,
+      title: `Round ${round} — The Usurper`,
       map,
       bossAugments: boss.visibleAugments,
       modifier,
@@ -121,14 +121,14 @@ export function roundSpec(round: number): RoundSpec {
   }
 
   let enemies: EnemyConfig[];
-  if (round <= 2) enemies = [pick([makeHaescher, makeSchuetze, makeHexer])(s)]; // sanfter Einstieg
-  else if (round === 3) enemies = [makeBerserker(s)];
-  else if (round === 4) enemies = [makeSpeermaid(s)];
-  else if (round <= 6) enemies = squad(round === 5 ? 1 : 2, s);
-  else if (round <= 10) enemies = squad(2, s);
-  else if (round <= 13) enemies = pick([squad(2, s), squad(3, s)]);
-  else if (round <= 17) enemies = squad(3, s);
-  else enemies = pick([squad(3, s), squad(4, s)]);
+  if (round <= 2) enemies = [pick([makeHaescher, makeSchuetze, makeHexer])(s)]; // gentle intro
+  else if (round === 3) enemies = squad(2, s);
+  else if (round === 4) enemies = [makeBerserker(s), makeSpeermaid(s)];
+  else if (round <= 6) enemies = squad(3, s);
+  else if (round <= 10) enemies = squad(3, s);
+  else if (round <= 13) enemies = squad(4, s);
+  else if (round <= 17) enemies = squad(4, s);
+  else enemies = squad(5, s);
 
-  return { enemies, boss: false, title: `Runde ${round}`, map, modifier };
+  return { enemies, boss: false, title: `Round ${round}`, map, modifier };
 }

@@ -111,10 +111,10 @@ export class ShopScene extends Phaser.Scene {
     const y = GAME_H - 220;
     this.hintText.setText(
       this.upgradeTarget
-        ? 'Wähle das Item, das du dafür WEGGIBST'
+        ? 'Choose the item you GIVE UP for it'
         : full
-          ? 'Eigene Items: 1× tippen = Verkauf vormerken · 2× = verkaufen (70%) · lange Karte unten: Aufwerten'
-          : 'Eigene Items: 1× tippen = Verkauf vormerken · 2× tippen = verkaufen (70%)',
+          ? 'Your items: tap once = arm sell · twice = sell (70%) · button below: level up'
+          : 'Your items: tap once = arm sell · tap twice = sell (70%)',
     );
 
     run.items.forEach((it, i) => {
@@ -136,7 +136,7 @@ export class ShopScene extends Phaser.Scene {
         .setOrigin(0.5);
       this.ownedRow.add(glyph);
       const sub = this.add
-        .text(x, y + 26, armed ? 'Verkaufen?' : `★${levelOf(it.id)}`, {
+        .text(x, y + 26, armed ? 'Sell?' : `★${levelOf(it.id)}`, {
           fontFamily: 'sans-serif',
           fontSize: '17px',
           color: armed ? '#ff9a8a' : '#8a94b0',
@@ -168,7 +168,7 @@ export class ShopScene extends Phaser.Scene {
           sfx.pick();
           this.refreshLabels();
           this.rebuildOwnedRow();
-          this.hintText.setText(`${it.name} verkauft: +${refund} Gold`);
+          this.hintText.setText(`Sold ${it.name}: +${refund} Gold`);
           return;
         }
         this.armedSell = it.id;
@@ -178,7 +178,7 @@ export class ShopScene extends Phaser.Scene {
       // Voll (6/6): Aufwerten-Knopf unter jedem Item mit Stufe < 3
       if (full && !this.upgradeTarget && levelOf(it.id) < 3) {
         const up = this.add
-          .text(x, y + 62, '⬆ Aufwerten', {
+          .text(x, y + 62, '⬆ Level Up', {
             fontFamily: 'sans-serif',
             fontSize: '18px',
             fontStyle: 'bold',

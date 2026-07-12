@@ -123,6 +123,7 @@ export class Enemy extends Unit {
     if (!t.alive) return;
     const d = dist(this.x, this.y, t.x, t.y);
     this.facing = norm(t.x - this.x, t.y - this.y);
+    this.trackVelocity(time);
 
     // 1) Committed actions first
     if (this.lunge) {
@@ -279,19 +280,41 @@ export class Enemy extends Unit {
     if (this.cfg.rangedAuto && d <= this.cfg.rangedAuto.range && time >= this.nextSwingAt) {
       const r = this.cfg.rangedAuto;
       this.nextSwingAt = time + r.intervalMs;
+      // Non-homing, lightly lead the target so it's a dodgeable straight shot
+      const lead = Math.min(0.35, d / r.projSpeed / 2);
+      const aimX = t.x + this.predVX(t) * lead;
+      const aimY = t.y + this.predVY(t) * lead;
       this.combat.spawnProjectile({
         x: this.x,
         y: this.y,
-        dirX: t.x - this.x,
-        dirY: t.y - this.y,
+        dirX: aimX - this.x,
+        dirY: aimY - this.y,
         speed: r.projSpeed,
-        radius: 8,
+        radius: 9,
         color: COLORS.enemyProj,
         team: 'enemy',
-        homing: t,
-        maxDist: r.range + 200,
+        maxDist: r.range + 260,
         onHit: (u) => this.combat.dealDamage(this, u, r.dmg * this.dmgScale(), 'auto'),
       });
+    }
+  }
+
+  // Rough per-frame velocity estimate of a unit, for shot leading
+  private lastSeen = new Map<Unit, { x: number; y: number; vx: number; vy: number; t: number }>();
+  private predVX(u: Unit): number {
+    return this.lastSeen.get(u)?.vx ?? 0;
+  }
+  private predVY(u: Unit): number {
+    return this.lastSeen.get(u)?.vy ?? 0;
+  }
+  private trackVelocity(time: number): void {
+    const u = this.target;
+    const prev = this.lastSeen.get(u);
+    if (prev && time > prev.t) {
+      const dts = (time - prev.t) / 1000;
+      this.lastSeen.set(u, { x: u.x, y: u.y, vx: (u.x - prev.x) / dts, vy: (u.y - prev.y) / dts, t: time });
+    } else {
+      this.lastSeen.set(u, { x: u.x, y: u.y, vx: 0, vy: 0, t: time });
     }
   }
 

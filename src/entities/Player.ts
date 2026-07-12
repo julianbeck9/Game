@@ -56,6 +56,13 @@ export class Player extends Unit {
     super(scene, x, y, 'player', new StatBlock({ ...CHAMP_DEFAULTS, ...champ.base }));
     this.champ = champ;
     this.sprite = scene.add.image(x, y, `champ:${champ.id}`).setDepth(11);
+    // Passive setup (reset per combat — Player is recreated each round)
+    this.champ.onCombatInit?.(this);
+  }
+
+  /** Passive reaction to taking damage (routed from the combat core). */
+  onDamageTaken(dmg: number, source: Unit | null): void {
+    this.champ.onDamageTaken?.(this, dmg, source);
   }
 
   get qRange(): number {
@@ -206,9 +213,10 @@ export class Player extends Unit {
 
   // ---- Frame ----
 
-  update(time: number, _dt: number): void {
+  update(time: number, dt: number): void {
     if (!this.alive) return;
     this.stats.update(time);
+    this.champ.passiveTick?.(this, dt);
 
     if (this.dashing && time >= this.dashUntil) {
       this.dashing = false;

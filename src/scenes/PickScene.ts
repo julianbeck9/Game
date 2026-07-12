@@ -11,7 +11,7 @@ const TIER_COLOR: Record<Tier, number> = {
   prisma: COLORS.prisma,
 };
 const TIER_LABEL: Record<Tier, string> = {
-  silber: 'Silber',
+  silber: 'Silver',
   gold: 'Gold',
   prisma: 'Prisma',
 };
@@ -179,14 +179,14 @@ export class PickScene extends Phaser.Scene {
   private renderSelect(): void {
     const full = run.augments.length >= MAX_AUGMENTS;
     this.title(
-      full ? 'Werte ein Augment auf' : 'Wähle ein Augment',
-      full ? 'Slots voll (6/6) — jede Karte levelt ein eigenes Augment' : undefined,
+      full ? 'Level up an Augment' : 'Choose an Augment',
+      full ? 'Slots full (6/6) — every card levels one of your augments' : undefined,
     );
 
     if (this.offers.length === 0) {
       // Nothing to level and nothing to add: allow a graceful continue
       this.add
-        .text(GAME_W / 2, GAME_H / 2, 'Alles auf Maximalstufe — weiter geht’s', {
+        .text(GAME_W / 2, GAME_H / 2, 'Everything is max level — onward', {
           fontFamily: 'sans-serif',
           fontSize: '30px',
           color: '#a8b0c8',
@@ -212,7 +212,7 @@ export class PickScene extends Phaser.Scene {
         .text(
           GAME_W / 2,
           GAME_H - 40,
-          `Deine Augmente: ${run.augments.map((a) => `${a.name} ${'★'.repeat(levelOf(a.id))}`).join(' · ')}`,
+          `Your augments: ${run.augments.map((a) => `${a.name} ${'★'.repeat(levelOf(a.id))}`).join(' · ')}`,
           {
             fontFamily: 'sans-serif',
             fontSize: '23px',
@@ -234,7 +234,7 @@ export class PickScene extends Phaser.Scene {
       .setStrokeStyle(3, COLORS.gold, 0.9)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(GAME_W / 2, y, '♻  Silber-Augment gegen Gold-Auswahl eintauschen', {
+      .text(GAME_W / 2, y, '♻  Trade a Silver augment for a Gold pick', {
         fontFamily: 'sans-serif',
         fontSize: '26px',
         fontStyle: 'bold',
@@ -254,7 +254,7 @@ export class PickScene extends Phaser.Scene {
       .setStrokeStyle(3, COLORS.player, 1)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(GAME_W / 2, GAME_H - 108, 'Weiter', {
+      .text(GAME_W / 2, GAME_H - 108, 'Continue', {
         fontFamily: 'sans-serif',
         fontSize: '30px',
         fontStyle: 'bold',
@@ -269,7 +269,7 @@ export class PickScene extends Phaser.Scene {
   }
 
   private renderTradeRemove(): void {
-    this.title('Welches Silber-Augment gibst du weg?', 'Danach folgt eine Gold-Auswahl', '#f5c542');
+    this.title('Which Silver augment do you give up?', 'A Gold pick follows', '#f5c542');
     const silvers = run.augments.filter((a) => a.tier === 'silber');
     const cardW = 300;
     const cardH = 360;
@@ -306,7 +306,7 @@ export class PickScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
       this.add
-        .text(x, y + cardH / 2 - 32, 'Eintauschen', {
+        .text(x, y + cardH / 2 - 32, 'Trade in', {
           fontFamily: 'sans-serif',
           fontSize: '23px',
           fontStyle: 'bold',
@@ -324,7 +324,7 @@ export class PickScene extends Phaser.Scene {
       .setStrokeStyle(3, 0x556, 1)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(GAME_W / 2, GAME_H - 90, 'Zurück', {
+      .text(GAME_W / 2, GAME_H - 90, 'Back', {
         fontFamily: 'sans-serif',
         fontSize: '26px',
         color: '#c8d0e4',
@@ -355,7 +355,7 @@ export class PickScene extends Phaser.Scene {
   }
 
   private renderTradePick(): void {
-    this.title('Wähle dein Gold-Augment', undefined);
+    this.title('Choose your Gold augment', undefined);
     if (this.tradeGold.length === 0) {
       this.continueButton();
       return;
@@ -405,7 +405,7 @@ export class PickScene extends Phaser.Scene {
     // Tier band
     this.add.rectangle(x, y - h / 2 + 44, w - 8, 80, isLevel ? 0x7ee08a : tierColor, isLevel ? 0.12 : 0.1);
     this.add
-      .text(x - w / 2 + 30, y - h / 2 + 44, isLevel ? 'Aufwerten' : TIER_LABEL[def.tier], {
+      .text(x - w / 2 + 30, y - h / 2 + 44, isLevel ? 'Level Up' : TIER_LABEL[def.tier], {
         fontFamily: 'sans-serif',
         fontSize: '28px',
         fontStyle: 'bold',
@@ -453,7 +453,7 @@ export class PickScene extends Phaser.Scene {
         .text(
           x,
           y + h / 2 - 74,
-          `Stufe ${levelOf(def.id)} → ${levelOf(def.id) + 1}   (Wirkung ×${(1 + 0.6 * levelOf(def.id)).toFixed(1)})`,
+          `Level ${levelOf(def.id)} → ${levelOf(def.id) + 1}   (effect ×${(1 + 0.6 * levelOf(def.id)).toFixed(1)})`,
           { fontFamily: 'sans-serif', fontSize: '25px', fontStyle: 'bold', color: '#7ee08a' },
         )
         .setOrigin(0.5);

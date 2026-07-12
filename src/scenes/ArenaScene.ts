@@ -311,7 +311,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     hud.lineStyle(2, 0x3a3a55, 0.8);
     hud.strokeRoundedRect(18, 16, leftW, leftH, 14);
     const roundLabel =
-      run.round > MAX_ROUND ? `Endlos · Runde ${run.round}` : `${STR.round} ${run.round} / ${MAX_ROUND}`;
+      run.round > MAX_ROUND ? `Endless · Round ${run.round}` : `${STR.round} ${run.round} / ${MAX_ROUND}`;
     this.add.text(38, 27, roundLabel, style).setDepth(100);
     hud.fillStyle(0xffd24a, 1);
     hud.fillCircle(50, 84, 11);
@@ -340,7 +340,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     hud.lineStyle(2, 0x3a3a55, 0.9);
     hud.strokeRoundedRect(18, buildY - 26, 200, 52, 12);
     const buildTxt = this.add
-      .text(118, buildY, '☰ Build & Werte', { ...style, fontSize: '25px', color: '#a8d8ff' })
+      .text(118, buildY, '☰ Build & Stats', { ...style, fontSize: '25px', color: '#a8d8ff' })
       .setOrigin(0.5)
       .setDepth(100);
     const buildZone = this.add
@@ -376,20 +376,13 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         .setDepth(100);
     });
 
-    // Right panel: one life — the heart is all you get
-    const rw = 110;
-    const rx = GAME_W - rw - 18;
-    hud.fillStyle(0x0a0a14, 0.72);
-    hud.fillRoundedRect(rx, 16, rw, 64, 14);
-    hud.lineStyle(2, 0x3a3a55, 0.8);
-    hud.strokeRoundedRect(rx, 16, rw, 64, 14);
-    this.drawHeart(hud, rx + rw / 2, 48, 22, run.lives > 0);
-    addFullscreenButton(this, GAME_W - 56, 128);
+    // One life — no heart HUD needed; just the fullscreen button
+    addFullscreenButton(this, GAME_W - 56, 56);
 
     // "Know your enemy": the Usurpator's augments stay visible all round
     if (bossAugments?.length) {
       this.add
-        .text(ARENA_X, 26, `Usurpator: ${bossAugments.join(' · ')}`, {
+        .text(ARENA_X, 26, `Usurper: ${bossAugments.join(' · ')}`, {
           fontFamily: 'sans-serif',
           fontSize: '28px',
           color: '#ff9a8a',
@@ -552,6 +545,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     if (target === this.player) {
       const melee = source !== null && dist(source.x, source.y, target.x, target.y) < 120;
       this.bus.emit('damageTaken', { source, dmg: dealt, melee });
+      this.player.onDamageTaken(dealt, source);
       // Threshold events (Zweiter Wind etc.): fire when crossing downward
       for (const pct of [0.5, 0.15]) {
         if (prevPct > pct && this.player.hpPct <= pct && this.player.alive) {
@@ -1180,23 +1174,6 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       size: 2.5 + Math.random() * 3.5,
       phase: Math.random() * Math.PI * 2,
     };
-  }
-
-  /** Two circles + a triangle = a heart. Filled red or a dark husk. */
-  private drawHeart(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number, full: boolean): void {
-    const color = full ? 0xe0445e : 0x2a2a3a;
-    g.fillStyle(color, 1);
-    g.fillCircle(x - s * 0.42, y - s * 0.3, s * 0.48);
-    g.fillCircle(x + s * 0.42, y - s * 0.3, s * 0.48);
-    g.fillTriangle(x - s * 0.85, y - s * 0.12, x + s * 0.85, y - s * 0.12, x, y + s * 0.85);
-    if (full) {
-      g.fillStyle(0xffffff, 0.45);
-      g.fillCircle(x - s * 0.45, y - s * 0.38, s * 0.16);
-    } else {
-      g.lineStyle(2, 0x44445c, 1);
-      g.strokeCircle(x - s * 0.42, y - s * 0.3, s * 0.48);
-      g.strokeCircle(x + s * 0.42, y - s * 0.3, s * 0.48);
-    }
   }
 
   /** Animated ambience: the map's particle weather (petals / sand / embers / motes). */

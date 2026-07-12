@@ -90,6 +90,76 @@ export class MenuScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown-ENTER', () => start('koenig'));
   }
 
+  /** Detail overlay: full kit (passive + Q/E/Dash) with a Play button. */
+  private showDetail(index: number): void {
+    const c = CHAMPIONS[index];
+    const cx = GAME_W / 2;
+    const layer = this.add.container(0, 0).setDepth(50);
+    layer.add(this.add.rectangle(cx, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.9));
+
+    const panelW = 1180;
+    const panelX = cx - panelW / 2;
+    const g = this.add.graphics();
+    g.fillStyle(0x11111c, 0.98);
+    g.fillRoundedRect(panelX, 120, panelW, 840, 20);
+    g.lineStyle(3, COLORS.player, 0.8);
+    g.strokeRoundedRect(panelX, 120, panelW, 840, 20);
+    layer.add(g);
+
+    const sprite = this.add.image(panelX + 130, 250, `champ:${c.id}`).setScale(3.4);
+    layer.add(sprite);
+    layer.add(
+      this.add
+        .text(panelX + 260, 200, c.name, { fontFamily: 'Georgia, serif', fontSize: '54px', fontStyle: 'bold', color: '#ffffff' })
+        .setOrigin(0, 0.5),
+    );
+    layer.add(
+      this.add
+        .text(panelX + 260, 252, `${c.tagline} · ${c.region} · ${c.ranged ? 'Ranged' : 'Melee'}`, {
+          fontFamily: 'sans-serif', fontSize: '26px', fontStyle: 'italic', color: '#9aa3bb',
+        })
+        .setOrigin(0, 0.5),
+    );
+
+    const slots: [string, { name: string; desc: string }, number][] = [
+      ['Passive', c.info.passive, 0xcc9bff],
+      ['Q', c.info.q, 0xffc36a],
+      ['E', c.info.e, 0xffe680],
+      ['Dash / Space', c.info.dash, 0x6ab8ff],
+    ];
+    let yy = 350;
+    for (const [key, info, col] of slots) {
+      layer.add(
+        this.add.text(panelX + 60, yy, `${key} — ${info.name}`, {
+          fontFamily: 'sans-serif', fontSize: '30px', fontStyle: 'bold',
+          color: '#' + col.toString(16).padStart(6, '0'),
+        }),
+      );
+      const d = this.add.text(panelX + 60, yy + 40, info.desc, {
+        fontFamily: 'sans-serif', fontSize: '24px', color: '#d0d6e4',
+        wordWrap: { width: panelW - 120 }, lineSpacing: 5,
+      });
+      layer.add(d);
+      yy += 52 + d.height + 22;
+    }
+
+    const play = this.add
+      .rectangle(cx - 200, 900, 320, 78, 0x1a3a24, 1)
+      .setStrokeStyle(3, 0x5fd06a, 1)
+      .setInteractive({ useHandCursor: true });
+    layer.add(play);
+    layer.add(this.add.text(cx - 200, 900, `▶ Play ${c.name}`, { fontFamily: 'sans-serif', fontSize: '32px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5));
+    play.on('pointerdown', () => this.startFn(c.id));
+
+    const back = this.add
+      .rectangle(cx + 200, 900, 320, 78, 0x2a2a40, 1)
+      .setStrokeStyle(3, 0x556, 1)
+      .setInteractive({ useHandCursor: true });
+    layer.add(back);
+    layer.add(this.add.text(cx + 200, 900, 'Back', { fontFamily: 'sans-serif', fontSize: '32px', color: '#c8d0e4' }).setOrigin(0.5));
+    back.on('pointerdown', () => layer.destroy());
+  }
+
   private startFn!: (id: string) => void;
 
   private makeChampCard(id: string, x: number, y: number, w: number, h: number, index: number): void {
@@ -144,13 +214,22 @@ export class MenuScene extends Phaser.Scene {
         .setOrigin(0.5),
     );
 
-    const statLine = `${champ.region} · LP ${champ.base.maxHP} · AD ${champ.base.damage} · ${champ.ranged ? 'Fernkampf' : 'Nahkampf'}`;
+    const statLine = `${champ.region} · HP ${champ.base.maxHP} · AD ${champ.base.damage} · ${champ.ranged ? 'Ranged' : 'Melee'}`;
     zone.add(
       this.add
-        .text(0, h / 2 - 30, statLine, {
+        .text(0, h / 2 - 52, statLine, {
           fontFamily: 'sans-serif',
           fontSize: '18px',
           color: '#7a86a5',
+        })
+        .setOrigin(0.5),
+    );
+    zone.add(
+      this.add
+        .text(0, h / 2 - 26, 'Tap to view abilities', {
+          fontFamily: 'sans-serif',
+          fontSize: '17px',
+          color: '#6a9ad0',
         })
         .setOrigin(0.5),
     );
@@ -158,9 +237,9 @@ export class MenuScene extends Phaser.Scene {
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => bg.setFillStyle(0x1f1f30));
     bg.on('pointerout', () => bg.setFillStyle(0x14141f));
-    bg.on('pointerdown', () => this.startFn(id));
+    bg.on('pointerdown', () => this.showDetail(index));
     const key = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT'][index];
-    if (key) this.input.keyboard?.addKey(key).on('down', () => this.startFn(id));
+    if (key) this.input.keyboard?.addKey(key).on('down', () => this.showDetail(index));
   }
 
   update(time: number, deltaMs: number): void {

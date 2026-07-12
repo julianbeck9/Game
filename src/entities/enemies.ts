@@ -137,7 +137,7 @@ function summonAbility(hpPct: number, s: DifficultyScale): EnemyAbilitySpec {
 
 export function makeHaescher(s: DifficultyScale): EnemyConfig {
   return {
-    name: 'Häscher',
+    name: 'Stalker',
     kind: 'haescher',
     radius: 26,
     color: COLORS.enemy,
@@ -155,7 +155,7 @@ export function makeHaescher(s: DifficultyScale): EnemyConfig {
 
 export function makeSchuetze(s: DifficultyScale): EnemyConfig {
   return {
-    name: 'Schütze',
+    name: 'Marksman',
     kind: 'schuetze',
     radius: 24,
     color: 0xe0663c,
@@ -247,7 +247,7 @@ export function makeBerserker(s: DifficultyScale): EnemyConfig {
 
 export function makeSpeermaid(s: DifficultyScale): EnemyConfig {
   return {
-    name: 'Speermaid',
+    name: 'Spearmaiden',
     kind: 'speermaid',
     radius: 24,
     color: 0x44aa88,
@@ -316,7 +316,7 @@ export function makeSpeermaid(s: DifficultyScale): EnemyConfig {
 
 export function makeWaechter(s: DifficultyScale): EnemyConfig {
   return {
-    name: 'Wächter',
+    name: 'Warden',
     kind: 'waechter',
     radius: 38,
     color: 0xb03060,
@@ -357,7 +357,7 @@ export function makeWaechter(s: DifficultyScale): EnemyConfig {
 
 export function makeHexer(s: DifficultyScale): EnemyConfig {
   return {
-    name: 'Hexer',
+    name: 'Warlock',
     kind: 'hexer',
     radius: 24,
     color: 0xb04ad0,
@@ -435,7 +435,7 @@ export function makeHexer(s: DifficultyScale): EnemyConfig {
 
 export function makeDiener(s: DifficultyScale): EnemyConfig {
   return {
-    name: 'Diener',
+    name: 'Thrall',
     kind: 'diener',
     radius: 14,
     color: 0xd06a6a,
@@ -465,7 +465,7 @@ export function makeUsurpator(s: DifficultyScale, final: boolean): EnemyConfig {
   }
 
   const cfg: EnemyConfig = {
-    name: 'Usurpator',
+    name: 'The Usurper',
     kind: 'usurpator',
     radius: 32,
     color: 0xcc2244,
