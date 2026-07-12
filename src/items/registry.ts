@@ -30,20 +30,20 @@ function item(def: Omit<ItemDef, 'tier' | 'tags'>): ItemDef {
 const BUDGET: ItemDef[] = [
   item({
     id: 'it_windsohlen',
-    name: 'Windsohlen',
+    name: 'Wind Boots',
     cost: 280,
     glyph: 'W',
     color: 0xbfeef8,
-    description: '+18% Tempo',
+    description: '+18% move speed',
     statMods: [{ stat: 'moveSpeed', pct: 0.18 }],
   }),
   item({
     id: 'it_waechterhorn',
-    name: 'Wächterhorn',
+    name: "Guardian's Horn",
     cost: 300,
     glyph: 'H',
     color: 0xc9b98a,
-    description: '+15 max. LP · blockt 2 Schaden von jedem Treffer',
+    description: '+15 max HP · blocks 2 damage from every hit',
     statMods: [{ stat: 'maxHP', flat: 15 }],
     hooks: {
       damageTaken: ({ dmg }, ctx) => ctx.player.heal(Math.min(dmg, 2)),
@@ -51,11 +51,11 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_waechterklinge',
-    name: 'Wächterklinge',
+    name: "Guardian's Blade",
     cost: 330,
     glyph: 'K',
     color: 0xc0c8d8,
-    description: '+10 AD · +15 max. LP · +15 Fähigkeitentempo',
+    description: '+10 AD · +15 max HP · +15 ability haste',
     statMods: [
       { stat: 'damage', flat: 10 },
       { stat: 'maxHP', flat: 15 },
@@ -64,11 +64,11 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_waechterkugel',
-    name: 'Wächterkugel',
+    name: "Guardian's Orb",
     cost: 320,
     glyph: 'O',
     color: 0xbf8aff,
-    description: '+17 AP · +15 max. LP',
+    description: '+17 AP · +15 max HP',
     statMods: [
       { stat: 'abilityPower', flat: 17 },
       { stat: 'maxHP', flat: 15 },
@@ -76,11 +76,11 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_waechterhammer',
-    name: 'Wächterhammer',
+    name: "Guardian's Hammer",
     cost: 320,
     glyph: 'M',
     color: 0xd8a070,
-    description: '+8 AD · +15 max. LP · +5% Lebensraub',
+    description: '+8 AD · +15 max HP · +5% life steal',
     statMods: [
       { stat: 'damage', flat: 8 },
       { stat: 'maxHP', flat: 15 },
@@ -89,11 +89,11 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_sporensohlen',
-    name: 'Sporensohlen',
+    name: 'Spur Boots',
     cost: 360,
     glyph: 'S',
     color: 0xd8d0a0,
-    description: '+40% Angriffstempo · +13% Tempo · +5% Lebensraub',
+    description: '+40% attack speed · +13% move speed · +5% life steal',
     statMods: [
       { stat: 'attackSpeed', pct: 0.4 },
       { stat: 'moveSpeed', pct: 0.13 },
@@ -102,11 +102,11 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_panzerstiefel',
-    name: 'Panzerstiefel',
+    name: 'Plated Boots',
     cost: 340,
     glyph: 'P',
     color: 0x9fb4cc,
-    description: '+35 Rüstung · +13% Tempo',
+    description: '+35 armor · +13% move speed',
     statMods: [
       { stat: 'armor', flat: 35 },
       { stat: 'moveSpeed', pct: 0.13 },
@@ -114,11 +114,11 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_kettenschuhe',
-    name: 'Kettenschuhe',
+    name: 'Mercury Boots',
     cost: 330,
     glyph: 'C',
     color: 0x8adfff,
-    description: '+30 Magieresistenz · +13% Tempo',
+    description: '+30 magic resist · +13% move speed',
     statMods: [
       { stat: 'magicResist', flat: 30 },
       { stat: 'moveSpeed', pct: 0.13 },
@@ -126,11 +126,11 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_seelendieb',
-    name: 'Seelendieb',
+    name: 'Soulstealer',
     cost: 350,
     glyph: '✦',
     color: 0xcc66ff,
-    description: '+7 AP · +10 LP · Tötungen: +1,7 AP dauerhaft (max. 25); ab 10: +10% Tempo',
+    description: '+7 AP · +10 HP · takedowns: +1.7 AP permanently (max 25); at 10: +10% move speed',
     statMods: [
       { stat: 'abilityPower', flat: 7 },
       { stat: 'maxHP', flat: 10 },
@@ -158,11 +158,11 @@ function applySeelendieb(ctx: AugmentCtx): void {
 const KERN: ItemDef[] = [
   item({
     id: 'it_dornenwall',
-    name: 'Dornenwall',
+    name: 'Thornwall',
     cost: 640,
     glyph: '♠',
     color: 0x88cc88,
-    description: '+30 LP · +60 Rüstung · Angreifer erleiden 3 + 15% Rüstung als magischen Schaden',
+    description: '+30 HP · +60 armor · attackers take 3 + 15% of armor as magic damage',
     statMods: [
       { stat: 'maxHP', flat: 30 },
       { stat: 'armor', flat: 60 },
@@ -177,11 +177,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_unendlichkeit',
-    name: 'Unendlichkeitsschneide',
+    name: 'Infinity Edge',
     cost: 780,
     glyph: '∞',
     color: 0xffd24a,
-    description: '+25 AD · +25% Kritchance · Angriffe: +25% Bonus × Kritchance',
+    description: '+25 AD · +25% crit chance · attacks: +25% bonus × crit chance',
     statMods: [
       { stat: 'damage', flat: 25 },
       { stat: 'critChance', flat: 0.25 },
@@ -196,11 +196,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_blutduerster',
-    name: 'Blutdürster',
+    name: 'Bloodthirster',
     cost: 720,
     glyph: 'B',
     color: 0xe05070,
-    description: '+23 AD · +18% Lebensraub · Überheilung wird zu Schild (bis 20% max. LP)',
+    description: '+23 AD · +18% life steal · overheal becomes a shield (up to 20% max HP)',
     statMods: [
       { stat: 'damage', flat: 23 },
       { stat: 'lifesteal', flat: 0.18 },
@@ -214,11 +214,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_rabenhut',
-    name: 'Rabenhut',
+    name: 'Deathcap',
     cost: 780,
     glyph: '♜',
     color: 0x9f5fff,
-    description: '+22 AP · erhöht deine gesamte Fähigkeitsstärke um 30%',
+    description: '+22 AP · increases your total ability power by 30%',
     statMods: [
       { stat: 'abilityPower', flat: 22 },
       { stat: 'abilityPower', pct: 0.3 },
@@ -226,11 +226,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_leerenstab',
-    name: 'Leerenstab',
+    name: 'Void Staff',
     cost: 680,
     glyph: '∅',
     color: 0xb388ff,
-    description: '+22 AP · Fähigkeiten: +15% als wahrer Schaden',
+    description: '+22 AP · abilities: +15% as true damage',
     statMods: [{ stat: 'abilityPower', flat: 22 }],
     hooks: {
       abilityHit: ({ target, dmg }, ctx) => {
@@ -240,11 +240,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_basiliskenzahn',
-    name: 'Basiliskenzahn',
+    name: 'Basilisk Fang',
     cost: 700,
     glyph: 'Z',
     color: 0x88ffaa,
-    description: '+23 AP · +45% Angriffstempo · Angriffe: +2 (+20% AP) magischer Schaden',
+    description: '+23 AP · +45% attack speed · attacks: +2 (+20% AP) magic damage',
     statMods: [
       { stat: 'abilityPower', flat: 23 },
       { stat: 'attackSpeed', pct: 0.45 },
@@ -258,11 +258,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_lichklinge',
-    name: 'Lichklinge',
+    name: 'Lich Blade',
     cost: 720,
     glyph: 'L',
     color: 0x9fd8ff,
-    description: '+27 AP · +10% Tempo · +20 Haste · Nach einer Fähigkeit: nächster Angriff +75% AP magisch',
+    description: '+27 AP · +10% move speed · +20 haste · after an ability: next attack +75% AP magic',
     statMods: [
       { stat: 'abilityPower', flat: 27 },
       { stat: 'moveSpeed', pct: 0.1 },
@@ -282,11 +282,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_lavamantel',
-    name: 'Lavamantel',
+    name: 'Lava Cloak',
     cost: 660,
     glyph: 'F',
     color: 0xff7722,
-    description: '+35 LP · +40 Rüstung · Gegner in deiner Nähe (350) brennen: 2 + 0,5% deiner max. LP pro Sekunde',
+    description: '+35 HP · +40 armor · enemies near you (350) burn: 2 + 0.5% of your max HP per second',
     statMods: [
       { stat: 'maxHP', flat: 35 },
       { stat: 'armor', flat: 40 },
@@ -301,11 +301,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_geistermaske',
-    name: 'Geistermaske',
+    name: 'Spirit Visage',
     cost: 640,
     glyph: 'G',
     color: 0x88ddcc,
-    description: '+30 LP · +40 MR · +10 Haste · Lebensraub wirkt 30% stärker',
+    description: '+30 HP · +40 MR · +10 haste · life steal is 30% stronger',
     statMods: [
       { stat: 'maxHP', flat: 30 },
       { stat: 'magicResist', flat: 40 },
@@ -315,11 +315,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_warmherz',
-    name: 'Warmherz',
+    name: 'Warmheart',
     cost: 700,
     glyph: '♥',
     color: 0x7ee08a,
-    description: '+65 max. LP · Nach 3s ohne erlittenen Schaden: regeneriere 2% max. LP pro Sekunde',
+    description: '+65 max HP · after 3s without taking damage: regenerate 2% max HP per second',
     statMods: [{ stat: 'maxHP', flat: 65 }],
     hooks: {
       damageTaken: (_p, ctx) => {
@@ -333,11 +333,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_schwarzbeil',
-    name: 'Schwarzbeil',
+    name: 'Black Cleaver',
     cost: 700,
     glyph: '⚒',
     color: 0xaa4444,
-    description: '+13 AD · +35 LP · +20 Haste · phys. Treffer: −6% Rüstung (5 Stapel) und +6% Tempo (2s)',
+    description: '+13 AD · +35 HP · +20 haste · physical hits: −6% armor (5 stacks) and +6% move speed (2s)',
     statMods: [
       { stat: 'damage', flat: 13 },
       { stat: 'maxHP', flat: 35 },
@@ -364,11 +364,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_koenigsklinge',
-    name: 'Klinge des gefallenen Königs',
+    name: "Blade of the Fallen King",
     cost: 750,
     glyph: '†',
     color: 0x66dd88,
-    description: '+13 AD · +25% Angriffstempo · +10% Lebensraub · Angriffe: +6% aktueller LP des Ziels phys.',
+    description: "+13 AD · +25% attack speed · +10% life steal · attacks: +6% of target's current HP as physical",
     statMods: [
       { stat: 'damage', flat: 13 },
       { stat: 'attackSpeed', pct: 0.25 },
@@ -383,11 +383,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_phantomtaenzer',
-    name: 'Phantomtänzer',
+    name: 'Phantom Dancer',
     cost: 700,
     glyph: '♪',
     color: 0xaadfff,
-    description: '+60% Angriffstempo · +25% Kritchance · +8% Tempo',
+    description: '+60% attack speed · +25% crit chance · +8% move speed',
     statMods: [
       { stat: 'attackSpeed', pct: 0.6 },
       { stat: 'critChance', flat: 0.25 },
@@ -396,11 +396,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_sturmklinge',
-    name: 'Sturmklinge',
+    name: 'Storm Blade',
     cost: 700,
     glyph: '⚡',
     color: 0xffee88,
-    description: '+15 AD · +15 AP · +30% AS · Jeder 4. Angriff: Kettenblitz (12 magisch, bis zu 3 Ziele)',
+    description: '+15 AD · +15 AP · +30% AS · every 4th attack: chain lightning (12 magic, up to 3 targets)',
     statMods: [
       { stat: 'damage', flat: 15 },
       { stat: 'abilityPower', flat: 15 },
@@ -439,11 +439,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_runenbogen',
-    name: 'Runenbogen',
+    name: 'Rune Bow',
     cost: 720,
     glyph: '⇶',
     color: 0xbbeeff,
-    description: '+45% AS · +25% Kritchance · Angriffe feuern Bolzen auf bis zu 2 weitere Gegner (30% AD)',
+    description: '+45% AS · +25% crit chance · attacks fire bolts at up to 2 other enemies (30% AD)',
     statMods: [
       { stat: 'attackSpeed', pct: 0.45 },
       { stat: 'critChance', flat: 0.25 },
@@ -479,11 +479,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_rasende',
-    name: 'Rasende Klinge',
+    name: 'Rageblade',
     cost: 700,
     glyph: 'R',
     color: 0xff9955,
-    description: '+7 AD · +8 AP · +25% AS · Angriffe: +4 magisch und +8% AS bis Rundenende (max. 4 Stapel)',
+    description: '+7 AD · +8 AP · +25% AS · attacks: +4 magic and +8% AS until end of round (max 4 stacks)',
     statMods: [
       { stat: 'damage', flat: 7 },
       { stat: 'abilityPower', flat: 8 },
@@ -506,11 +506,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_witzende',
-    name: 'Witzende',
+    name: "Wit's End",
     cost: 680,
     glyph: 'X',
     color: 0x66ccff,
-    description: '+45 MR · +50% Angriffstempo · Angriffe: +5 magischer Schaden',
+    description: '+45 MR · +50% attack speed · attacks: +5 magic damage',
     statMods: [
       { stat: 'magicResist', flat: 45 },
       { stat: 'attackSpeed', pct: 0.5 },
@@ -523,11 +523,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_frostherz',
-    name: 'Frostherz',
+    name: 'Frozen Heart',
     cost: 700,
     glyph: '❄',
     color: 0x99ddff,
-    description: '+75 Rüstung · +20 Haste · Aura (450): Gegner greifen 20% langsamer an',
+    description: '+75 armor · +20 haste · aura (450): enemies attack 20% slower',
     statMods: [
       { stat: 'armor', flat: 75 },
       { stat: 'abilityHaste', flat: 20 },
@@ -545,11 +545,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_steinwall',
-    name: 'Steinwall',
+    name: 'Stone Wall',
     cost: 690,
     glyph: '▣',
     color: 0xaa9977,
-    description: '+30 LP · +65 Rüstung · Alle 10s: Gegner im Umkreis (350) −70% Tempo für 2s',
+    description: '+30 HP · +65 armor · every 10s: enemies within 350 are slowed −70% for 2s',
     statMods: [
       { stat: 'maxHP', flat: 30 },
       { stat: 'armor', flat: 65 },
@@ -565,11 +565,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_frostzepter',
-    name: 'Frostzepter',
+    name: 'Frost Scepter',
     cost: 660,
     glyph: '¥',
     color: 0x88bbff,
-    description: '+23 AP · +35 LP · Fähigkeitstreffer verlangsamen um 30% (1s)',
+    description: '+23 AP · +35 HP · ability hits slow by 30% (1s)',
     statMods: [
       { stat: 'abilityPower', flat: 23 },
       { stat: 'maxHP', flat: 35 },
@@ -582,11 +582,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_schattenflamme',
-    name: 'Schattenflamme',
+    name: 'Shadowflame',
     cost: 700,
     glyph: '🔥',
     color: 0x7766aa,
-    description: '+25 AP · Fähigkeiten gegen Gegner unter 40% LP: +20% magischer Schaden',
+    description: '+25 AP · abilities vs enemies below 40% HP: +20% magic damage',
     statMods: [{ stat: 'abilityPower', flat: 25 }],
     hooks: {
       abilityHit: ({ target, dmg }, ctx) => {
@@ -597,11 +597,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_spaltklinge',
-    name: 'Spaltklinge',
+    name: 'Riftmaker',
     cost: 720,
     glyph: '◊',
     color: 0xcc88aa,
-    description: '+25 AP · +30 LP · +8% Lebensraub · Im Kampf: +2% Schaden/s (bis +10%)',
+    description: '+25 AP · +30 HP · +8% life steal · in combat: +2% damage/s (up to +10%)',
     statMods: [
       { stat: 'abilityPower', flat: 25 },
       { stat: 'maxHP', flat: 30 },
@@ -623,11 +623,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_todestanz',
-    name: 'Todestanz',
+    name: "Death's Dance",
     cost: 760,
     glyph: '☠',
     color: 0xdd6666,
-    description: '+18 AD · +45 Rüstung · +15 Haste · 30% Schaden wird über 3s gestundet · Tötungen heilen 15% max. LP',
+    description: '+18 AD · +45 armor · +15 haste · 30% of damage is deferred over 3s · takedowns heal 15% max HP',
     statMods: [
       { stat: 'damage', flat: 18 },
       { stat: 'armor', flat: 45 },
@@ -666,11 +666,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_riesenfaust',
-    name: 'Riesenfaust',
+    name: "Giant's Fist",
     cost: 720,
     glyph: '✊',
     color: 0xddaa66,
-    description: '+30 LP · +45% deines Basis-AD · Unter 30% LP: Schild (60% max. LP), 1× pro Runde',
+    description: '+30 HP · +45% of your base AD · below 30% HP: shield (60% max HP), once per round',
     statMods: [{ stat: 'maxHP', flat: 30 }],
     onCombatInit: (ctx) => {
       ctx.run.memory.itFaustUsed = 0;
@@ -684,17 +684,17 @@ const KERN: ItemDef[] = [
       if (!ctx.run.memory.itFaustUsed && ctx.player.alive && ctx.player.hpPct < 0.3) {
         ctx.run.memory.itFaustUsed = 1;
         ctx.player.addShield(ctx.player.maxHP * 0.6);
-        ctx.combat.announce('Riesenfaust!', '#ddaa66');
+        ctx.combat.announce("Giant's Fist!", '#ddaa66');
       }
     },
   }),
   item({
     id: 'it_kriegsspeer',
-    name: 'Kriegsspeer',
+    name: 'War Spear',
     cost: 680,
     glyph: '↟',
     color: 0xd0d4e0,
-    description: '+15 AD · +35 LP · +25 Fähigkeitentempo',
+    description: '+15 AD · +35 HP · +25 ability haste',
     statMods: [
       { stat: 'damage', flat: 15 },
       { stat: 'maxHP', flat: 35 },
@@ -703,11 +703,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_sanduhr',
-    name: 'Goldene Sanduhr',
+    name: 'Golden Hourglass',
     cost: 780,
     glyph: '⌛',
     color: 0xffcc66,
-    description: '+25 AP · +45 Rüstung · Unter 30% LP: 2s unverwundbar (1× pro Runde)',
+    description: '+25 AP · +45 armor · below 30% HP: 2s invulnerable (once per round)',
     statMods: [
       { stat: 'abilityPower', flat: 25 },
       { stat: 'armor', flat: 45 },
@@ -720,7 +720,7 @@ const KERN: ItemDef[] = [
       ctx.run.memory.itUhrUsed = 1;
       const granted = ctx.player.maxHP * 3;
       ctx.player.addShield(granted);
-      ctx.combat.announce('Sanduhr!', '#ffcc66');
+      ctx.combat.announce('Hourglass!', '#ffcc66');
       ctx.combat.delay(2000, () => {
         ctx.player.shield = Math.max(0, ctx.player.shield - granted);
       });
@@ -728,11 +728,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_schutzengel',
-    name: 'Schutzengel',
+    name: 'Guardian Angel',
     cost: 850,
     glyph: '✝',
     color: 0xffffff,
-    description: '+18 AD · +45 Rüstung · Einmal pro Run: Stirbst du, kämpfst du weiter',
+    description: '+18 AD · +45 armor · once per run: on death, keep fighting',
     statMods: [
       { stat: 'damage', flat: 18 },
       { stat: 'armor', flat: 45 },
@@ -741,11 +741,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_kollektor',
-    name: 'Kollektor',
+    name: 'The Collector',
     cost: 720,
     glyph: '$',
     color: 0xffd24a,
-    description: '+11 AD · +25% Kritchance · Gegner unter 5% LP werden hingerichtet · Tötungen: +8 Gold',
+    description: '+11 AD · +25% crit chance · enemies below 5% HP are executed · takedowns: +8 gold',
     statMods: [
       { stat: 'damage', flat: 11 },
       { stat: 'critChance', flat: 0.25 },
@@ -755,7 +755,7 @@ const KERN: ItemDef[] = [
         if (!target.alive || target.team !== 'enemy' || target.isBoss) return;
         if (target.hpPct <= 0.05) {
           ctx.combat.dealDamage(ctx.player, target, target.hp + target.shield, 'other');
-          ctx.combat.announce('Eingesammelt!', '#ffd24a');
+          ctx.combat.announce('Collected!', '#ffd24a');
         }
       },
       killWindow: (_p, ctx) => {
@@ -766,11 +766,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_nachtschneide',
-    name: 'Nachtschneide',
+    name: 'Nightblade',
     cost: 660,
     glyph: '☾',
     color: 0x8888cc,
-    description: '+14 AD · +35 LP · Alle 20s negiert ein Schleier den nächsten erlittenen Treffer',
+    description: '+14 AD · +35 HP · every 20s a veil negates the next hit you take',
     statMods: [
       { stat: 'damage', flat: 14 },
       { stat: 'maxHP', flat: 35 },
@@ -791,11 +791,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_herzstahl',
-    name: 'Herzstahl',
+    name: 'Heartsteel',
     cost: 750,
     glyph: '♦',
     color: 0xff8899,
-    description: '+70 max. LP · Alle 8s: nächster Angriff +3% max. LP phys. und +2 max. LP dauerhaft',
+    description: '+70 max HP · every 8s: next attack +3% max HP physical and +2 max HP permanently',
     statMods: [{ stat: 'maxHP', flat: 70 }],
     onCombatInit: (ctx) => {
       ctx.run.memory.itHerzReady = 1;
@@ -821,11 +821,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_titanenaxt',
-    name: 'Titanenaxt',
+    name: "Titan's Axe",
     cost: 720,
     glyph: 'T',
     color: 0xcc9966,
-    description: '+45 LP · +15 AD · Angriffe treffen den Umkreis (200) für 1,5% deiner max. LP',
+    description: '+45 HP · +15 AD · attacks hit the area (200) for 1.5% of your max HP',
     statMods: [
       { stat: 'maxHP', flat: 45 },
       { stat: 'damage', flat: 15 },
@@ -841,11 +841,11 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_raubtierhydra',
-    name: 'Raubtierhydra',
+    name: 'Ravenous Hydra',
     cost: 750,
     glyph: '龍',
     color: 0xdd7755,
-    description: '+23 AD · +15% Lebensraub · +15 Haste · Angriffe treffen den Umkreis (250) für 40% AD',
+    description: '+23 AD · +15% life steal · +15 haste · attacks hit the area (250) for 40% AD',
     statMods: [
       { stat: 'damage', flat: 23 },
       { stat: 'lifesteal', flat: 0.15 },
@@ -871,11 +871,11 @@ let itTanzTicking = false;
 const LUXUS: ItemDef[] = [
   item({
     id: 'it_goldspatel',
-    name: 'Goldener Kochlöffel',
+    name: 'Golden Spatula',
     cost: 1100,
     glyph: '★',
     color: 0xffe9a0,
-    description: 'Von allem etwas: +8 AD · +8 AP · +20 LP · +15% AS · +10 Rüstung & MR · +10 Haste · +10% Krit · +6% Tempo · +5% Lebensraub',
+    description: 'A bit of everything: +8 AD · +8 AP · +20 HP · +15% AS · +10 armor & MR · +10 haste · +10% crit · +6% move speed · +5% life steal',
     statMods: [
       { stat: 'damage', flat: 8 },
       { stat: 'abilityPower', flat: 8 },

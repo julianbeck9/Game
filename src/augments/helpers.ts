@@ -23,7 +23,7 @@ export function grantRandomAugment(ctx: AugmentCtx, tier: Tier | null, announce 
   ctx.run.augments.push(rolled);
   for (const t of rolled.tags) ctx.run.tagCounts[t]++;
   if (rolled.ruleFlags) Object.assign(ctx.run.flags, rolled.ruleFlags);
-  if (announce) ctx.combat.announce(`Neu: ${rolled.name}`, '#ddaaff');
+  if (announce) ctx.combat.announce(`New: ${rolled.name}`, '#ddaaff');
   return rolled;
 }
 
@@ -147,7 +147,7 @@ export function statRolls(ctx: AugmentCtx, key: string, n: number): void {
       const memKey = `${key}:${stat}${isPct ? ':p' : ''}`;
       ctx.run.memory[memKey] = (ctx.run.memory[memKey] ?? 0) + val;
     }
-    ctx.combat.announce(`Werte: ${names.join(' · ')}`, '#a8d8ff');
+    ctx.combat.announce(`Stats: ${names.join(' · ')}`, '#a8d8ff');
   }
   for (const [, stat, , isPct] of STAT_ROLLS) {
     const memKey = `${key}:${stat}${isPct ? ':p' : ''}`;

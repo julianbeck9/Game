@@ -12,10 +12,10 @@ import { pp, ppDmg, msPct, procDamage, procActive, slowUnit, enemiesWithin, unit
 // Umpolung (Konzept: Bonus-AD → AP wandeln)
 const umpolung: AugmentDef = {
   id: 'umpolung',
-  name: 'Umpolung',
+  name: 'Reversal',
   tier: 'silber',
   tags: ['Arkan'],
-  description: 'Dein Bonus-Angriffsschaden wird zu Fähigkeitsstärke (×1,67). +10% Fähigkeitsstärke.',
+  description: 'Your bonus attack damage becomes ability power (×1.67). +10% ability power.',
   onUpdate: (_dt, ctx) => {
     const s = ctx.player.stats;
     s.remove('dyn:umpolung-ad');
@@ -31,10 +31,10 @@ const umpolung: AugmentDef = {
 // Eisenhaut (Konzept: Kontrolle gewährt Widerstände, stapelbar)
 const eisenhaut: AugmentDef = {
   id: 'eisenhaut',
-  name: 'Eisenhaut',
+  name: 'Ironhide',
   tier: 'silber',
   tags: ['Ward'],
-  description: 'Verlangsamst du einen Gegner: +2–10 Rüstung & MR für 10s (bis zu 10 Stapel).',
+  description: 'Slowing an enemy grants +2–10 armor & MR for 10s (up to 10 stacks).',
   onCombatInit: (ctx) => {
     ctx.run.memory.eisenhautStacks = 0;
   },
@@ -53,20 +53,20 @@ const eisenhaut: AugmentDef = {
 // Wucht (Konzept: % Gesamt-AD)
 const wucht: AugmentDef = {
   id: 'wucht',
-  name: 'Wucht',
+  name: 'Brute Force',
   tier: 'silber',
   tags: ['Bruch'],
-  description: '+10% Gesamt-Angriffsschaden.',
+  description: '+10% total attack damage.',
   statMods: [{ stat: 'damage', pct: 0.1 }],
 };
 
 // Wagemut (Konzept: künftige Angebote eine Stufe höher)
 const wagemut: AugmentDef = {
   id: 'wagemut',
-  name: 'Wagemut',
+  name: 'Daring',
   tier: 'silber',
   tags: [],
-  description: 'Alle zukünftigen Augment-Angebote sind eine Stufe höher.',
+  description: 'All future augment offers are one tier higher.',
   onCombatInit: (ctx) => {
     ctx.run.memory.tierBoost = 1;
   },
@@ -76,10 +76,10 @@ const wagemut: AugmentDef = {
 let kopfgeldMark: Unit | null = null;
 const kopfgeld: AugmentDef = {
   id: 'kopfgeld',
-  name: 'Kopfgeld',
+  name: 'Bounty',
   tier: 'silber',
   tags: ['Bruch'],
-  description: 'Zu Rundenbeginn wird ein Gegner markiert: +15% Schaden gegen ihn, +40 Gold bei Tötung.',
+  description: 'At round start an enemy is marked: +15% damage to them, +40 gold on takedown.',
   onCombatInit: () => {
     kopfgeldMark = null;
   },
@@ -100,7 +100,7 @@ const kopfgeld: AugmentDef = {
       kopfgeldMark = null;
       ctx.run.gold += 40;
       ctx.run.goldEarned += 40;
-      ctx.combat.announce('Kopfgeld kassiert! +40', '#ffd24a');
+      ctx.combat.announce('Bounty claimed! +40', '#ffd24a');
     },
   },
 };
@@ -108,10 +108,10 @@ const kopfgeld: AugmentDef = {
 // Berstschild (Konzept: brechende Schilde explodieren)
 const berstschild: AugmentDef = {
   id: 'berstschild',
-  name: 'Berstschild',
+  name: 'Burst Shield',
   tier: 'silber',
   tags: ['Ward', 'Bruch'],
-  description: 'Bricht dein Schild, explodiert er: 100% der absorbierten Menge als magischer Schaden.',
+  description: 'When your shield breaks it explodes for 100% of the amount absorbed as magic damage.',
   onCombatInit: (ctx) => {
     ctx.run.memory.berstAbsorbed = 0;
     ctx.run.memory.berstPrev = ctx.player.shield;
@@ -138,10 +138,10 @@ const berstschild: AugmentDef = {
 // Zerlegung (Konzept: Tötungen geben dauerhaft adaptive Kraft)
 const zerlegung: AugmentDef = {
   id: 'zerlegung',
-  name: 'Zerlegung',
+  name: 'Dismantle',
   tier: 'silber',
   tags: ['Blut'],
-  description: 'Tötungen gewähren dauerhaft +1,5 AD und +2,5 AP (ganzer Run).',
+  description: 'Takedowns permanently grant +1.5 AD and +2.5 AP (whole run).',
   onCombatInit: (ctx) => applyZerlegung(ctx),
   hooks: {
     killWindow: (_p, ctx) => {
@@ -161,20 +161,20 @@ function applyZerlegung(ctx: Parameters<NonNullable<AugmentDef['onCombatInit']>>
 // Flinkhand (Konzept: flaches Angriffstempo)
 const flinkhand: AugmentDef = {
   id: 'flinkhand',
-  name: 'Flinkhand',
+  name: 'Nimble Hands',
   tier: 'silber',
   tags: ['Sturm'],
-  description: '+40% Angriffstempo.',
+  description: '+40% attack speed.',
   statMods: [{ stat: 'attackSpeed', pct: 0.4 }],
 };
 
 // Windvorteil (Konzept: Tempo-Differenz = Schaden)
 const windvorteil: AugmentDef = {
   id: 'windvorteil',
-  name: 'Windvorteil',
+  name: 'Tailwind',
   tier: 'silber',
   tags: ['Sturm'],
-  description: '+1% Schaden je 10 Tempo, das du schneller bist als dein Ziel.',
+  description: '+1% damage per 10 move speed you have over your target.',
   hooks: {
     damageDealt: ({ target, dmg, type }, ctx) => {
       if (procActive() || type === 'other' || !target.alive) return;
@@ -189,10 +189,10 @@ const windvorteil: AugmentDef = {
 // Giftspur (Konzept: giftige Wolke hinter dir)
 const giftspur: AugmentDef = {
   id: 'giftspur',
-  name: 'Giftspur',
+  name: 'Poison Trail',
   tier: 'silber',
   tags: ['Bruch'],
-  description: 'Du ziehst eine Giftwolke hinter dir her (2–16 Schaden/s, 3s Verweildauer).',
+  description: 'You trail a poison cloud behind you (2–16 damage/s, lasts 3s).',
   onUpdate: (_dt, ctx) => {
     if ((ctx.run.memory.giftspurNext ?? 0) > ctx.combat.now) return;
     ctx.run.memory.giftspurNext = ctx.combat.now + 300;
@@ -211,10 +211,10 @@ const giftspur: AugmentDef = {
 // Zermürbung (Konzept: Treffer senken Widerstände, stapelbar)
 const zermuerbung: AugmentDef = {
   id: 'zermuerbung',
-  name: 'Zermürbung',
+  name: 'Attrition',
   tier: 'silber',
   tags: ['Bruch'],
-  description: 'Jeder Treffer senkt Rüstung & MR des Ziels um 1 (4s, bis zu 20 Stapel).',
+  description: "Each hit lowers the target's armor & MR by 1 (4s, up to 20 stacks).",
   hooks: {
     damageDealt: ({ target, type }, ctx) => {
       if (type === 'other' || !target.alive) return;
@@ -230,10 +230,10 @@ const zermuerbung: AugmentDef = {
 // Klingenfokus (Konzept: AP → AD wandeln)
 const klingenfokus: AugmentDef = {
   id: 'klingenfokus',
-  name: 'Klingenfokus',
+  name: 'Blade Focus',
   tier: 'silber',
   tags: ['Bruch'],
-  description: 'Deine Fähigkeitsstärke wird zu Angriffsschaden (×0,6). +10% Gesamt-AD.',
+  description: 'Your ability power becomes attack damage (×0.6). +10% total AD.',
   onUpdate: (_dt, ctx) => {
     const s = ctx.player.stats;
     s.remove('dyn:klingenfokus-ap');
@@ -251,10 +251,10 @@ const klingenfokus: AugmentDef = {
 // Notausgang (Konzept: Tief-LP-Panikknopf)
 const notausgang: AugmentDef = {
   id: 'notausgang',
-  name: 'Notausgang',
+  name: 'Escape Hatch',
   tier: 'silber',
   tags: ['Ward', 'Sturm'],
-  description: 'Fällst du unter 35% LP: Schild (65% max. LP) und +150% Tempo, 5s abklingend. 1× pro Kampf.',
+  description: 'On dropping below 35% HP: shield (65% max HP) and +150% move speed, decaying over 5s. Once per fight.',
   onCombatInit: (ctx) => {
     ctx.run.memory.notausgangUsed = 0;
   },
@@ -269,17 +269,17 @@ const notausgang: AugmentDef = {
       pct: 1.5 * p,
       expiresAt: ctx.combat.now + 5000,
     });
-    ctx.combat.announce('Notausgang!', '#7ee08a');
+    ctx.combat.announce('Escape Hatch!', '#7ee08a');
   },
 };
 
 // Bannschild (Konzept: Rundenstart-Schild)
 const bannschild: AugmentDef = {
   id: 'bannschild',
-  name: 'Bannschild',
+  name: 'Ward Shield',
   tier: 'silber',
   tags: ['Ward'],
-  description: 'Beginne jeden Kampf mit einem Schild (15–30 Stärke, wächst mit den Runden).',
+  description: 'Start each fight with a shield (15–30 strength, grows with the rounds).',
   hooks: {
     roundStart: (_p, ctx) => ctx.player.addShield(pp(ctx, 15, 30) * ctx.power(bannschild)),
   },
@@ -288,10 +288,10 @@ const bannschild: AugmentDef = {
 // Fuchsfeuer (Konzept: automatische Heimsuch-Flammen)
 const fuchsfeuer: AugmentDef = {
   id: 'fuchsfeuer',
-  name: 'Fuchsfeuer',
+  name: 'Foxfire',
   tier: 'silber',
   tags: ['Arkan'],
-  description: 'Alle 7s: 3 Feuer verfolgen den nächsten Gegner (4–20 magischer Schaden, Folgetreffer 30%).',
+  description: 'Every 7s: 3 flames chase the nearest enemy (4–20 magic damage, 30% on follow-up hits).',
   onUpdate: (_dt, ctx) => {
     if ((ctx.run.memory.fuchsfeuerNext ?? 0) > ctx.combat.now) return;
     const t = ctx.combat.nearestEnemy(ctx.player, 550);
@@ -324,10 +324,10 @@ const fuchsfeuer: AugmentDef = {
 // Frostgeist (Konzept: periodischer Wurzel-Impuls)
 const frostgeist: AugmentDef = {
   id: 'frostgeist',
-  name: 'Frostgeist',
+  name: 'Frost Spirit',
   tier: 'silber',
   tags: ['Arkan', 'Ward'],
-  description: 'Alle 6,5s: Kältepuls wurzelt Gegner im Umkreis (450) für 1,25s fest.',
+  description: 'Every 6.5s: a cold pulse roots enemies within 450 for 1.25s.',
   onUpdate: (_dt, ctx) => {
     if ((ctx.run.memory.frostgeistNext ?? 0) > ctx.combat.now) return;
     const targets = enemiesWithin(ctx, ctx.player.x, ctx.player.y, 450);
@@ -341,20 +341,20 @@ const frostgeist: AugmentDef = {
 // Blutkelch (Konzept: Allesraub)
 const blutkelch: AugmentDef = {
   id: 'blutkelch',
-  name: 'Blutkelch',
+  name: 'Blood Chalice',
   tier: 'silber',
   tags: ['Blut'],
-  description: '+15% Lebensraub auf all deinen Schaden.',
+  description: '+15% life steal on all your damage.',
   statMods: [{ stat: 'lifesteal', flat: 0.15 }],
 };
 
 // Kaltblut (Konzept: Kontrolle heilt)
 const kaltblut: AugmentDef = {
   id: 'kaltblut',
-  name: 'Kaltblut',
+  name: 'Cold Blood',
   tier: 'silber',
   tags: ['Blut', 'Arkan'],
-  description: 'Verlangsamst du einen Gegner, heilst du 1–19 LP (+1% max. LP). 5s Sperrzeit pro Ziel.',
+  description: 'Slowing an enemy heals you for 1–19 HP (+1% max HP). 5s cooldown per target.',
   onUpdate: (_dt, ctx) => {
     for (const u of ctx.combat.units) {
       if (!u.alive || u.team !== 'enemy' || !u.stats.hasPrefix('slow:')) continue;
@@ -367,10 +367,10 @@ const kaltblut: AugmentDef = {
 // Schwergewicht (Konzept: max. LP als Zusatzschaden)
 const schwergewicht: AugmentDef = {
   id: 'schwergewicht',
-  name: 'Schwergewicht',
+  name: 'Heavyweight',
   tier: 'silber',
   tags: ['Ward', 'Bruch'],
-  description: 'Angriffe verursachen zusätzlich 5% deiner max. LP als physischen Schaden.',
+  description: 'Attacks deal an extra 5% of your max HP as physical damage.',
   hooks: {
     autoHit: ({ target }, ctx) => {
       if (!target.alive) return;
@@ -382,10 +382,10 @@ const schwergewicht: AugmentDef = {
 // Hextech-Kern (Konzept: periodischer Kettenschlag)
 const hextechKern: AugmentDef = {
   id: 'hextechkern',
-  name: 'Hextech-Kern',
+  name: 'Hextech Core',
   tier: 'silber',
   tags: ['Arkan'],
-  description: 'Alle 5s lädt sich dein nächster Angriff auf: +8–24 magischer Schaden und 40% Verlangsamung (1s).',
+  description: 'Every 5s your next attack charges up: +8–24 magic damage and a 40% slow (1s).',
   onUpdate: (_dt, ctx) => {
     if ((ctx.run.memory.hexReady ?? 1) === 0 && (ctx.run.memory.hexNext ?? 0) <= ctx.combat.now) {
       ctx.run.memory.hexReady = 1;
@@ -409,10 +409,10 @@ const hextechKern: AugmentDef = {
 // Glutkern (Konzept: periodische Feuer-Explosion am Ziel)
 const glutkern: AugmentDef = {
   id: 'glutkern',
-  name: 'Glutkern',
+  name: 'Ember Core',
   tier: 'silber',
   tags: ['Bruch'],
-  description: 'Alle 8s explodiert dein nächster Treffer: 10–28 magischer Schaden im Umkreis (200).',
+  description: 'Every 8s your next hit explodes for 10–28 magic damage within 200.',
   hooks: {
     roundStart: (_p, ctx) => {
       ctx.run.memory.glutNext = 0;
@@ -433,10 +433,10 @@ const glutkern: AugmentDef = {
 // Freilauf (Konzept: Tempo außerhalb des Kampfes)
 const freilauf: AugmentDef = {
   id: 'freilauf',
-  name: 'Freilauf',
+  name: 'Free Run',
   tier: 'silber',
   tags: ['Sturm'],
-  description: '+70% Tempo, solange du 3s weder Schaden ausgeteilt noch erlitten hast.',
+  description: "+70% move speed while you've neither dealt nor taken damage for 3s.",
   hooks: {
     damageDealt: (_p, ctx) => {
       ctx.run.memory.freilaufLast = ctx.combat.now;
@@ -458,10 +458,10 @@ const freilauf: AugmentDef = {
 // Eiseskälte (Konzept: deine Verlangsamungen wirken stärker)
 const eiseskaelte: AugmentDef = {
   id: 'eiseskaelte',
-  name: 'Eiseskälte',
+  name: 'Bitter Cold',
   tier: 'silber',
   tags: ['Arkan'],
-  description: 'Verlangsamte Gegner werden um weitere 21% verlangsamt.',
+  description: 'Slowed enemies are slowed by a further 21%.',
   onUpdate: (_dt, ctx) => {
     for (const u of ctx.combat.units) {
       if (!u.alive || u.team !== 'enemy') continue;
@@ -482,10 +482,10 @@ const eiseskaelte: AugmentDef = {
 // Beutewitterung (Konzept: Tempo auf angeschlagene Ziele)
 const beutewitterung: AugmentDef = {
   id: 'beutewitterung',
-  name: 'Beutewitterung',
+  name: 'Bloodscent',
   tier: 'silber',
   tags: ['Blut', 'Sturm'],
-  description: '+100% Tempo, solange der nächste Gegner unter 40% LP ist.',
+  description: '+100% move speed while the nearest enemy is below 40% HP.',
   onUpdate: (_dt, ctx) => {
     const t = ctx.combat.nearestEnemy(ctx.player);
     if (t && t.hpPct < 0.4) {
@@ -499,10 +499,10 @@ const beutewitterung: AugmentDef = {
 // Beintag (Konzept: Tempo + Verlangsamungs-Widerstand)
 const beintag: AugmentDef = {
   id: 'beintag',
-  name: 'Beintag',
+  name: 'Leg Day',
   tier: 'silber',
   tags: ['Sturm'],
-  description: '+11% Tempo. Bist du verlangsamt: +35% Tempo zusätzlich.',
+  description: '+11% move speed. While you are slowed: +35% move speed on top.',
   statMods: [{ stat: 'moveSpeed', pct: msPct(40) }],
   onUpdate: (_dt, ctx) => {
     if (ctx.player.stats.hasPrefix('slow:')) {
@@ -516,10 +516,10 @@ const beintag: AugmentDef = {
 // Feuerwerk (Konzept: jeder 4. Angriff feuert Raketen)
 const feuerwerk: AugmentDef = {
   id: 'feuerwerk',
-  name: 'Feuerwerk',
+  name: 'Fireworks',
   tier: 'silber',
   tags: ['Bruch', 'Sturm'],
-  description: 'Jeder 4. Angriff feuert 4 Raketen (je 1–9 magischer Schaden, 90% Wirkung).',
+  description: 'Every 4th attack fires 4 rockets (1–9 magic damage each, 90% effectiveness).',
   onCombatInit: (ctx) => {
     ctx.run.memory.feuerwerkCount = 0;
   },
@@ -554,10 +554,10 @@ const feuerwerk: AugmentDef = {
 // Trugbild (Konzept: Klone bei niedrigen LP)
 const trugbild: AugmentDef = {
   id: 'trugbild',
-  name: 'Trugbild',
+  name: 'Mirage',
   tier: 'silber',
   tags: ['Arkan', 'Ward'],
-  description: 'Fällst du unter 30% LP: 4 Trugbilder verwirren die Gegner (8s). 1× pro Kampf.',
+  description: 'On dropping below 30% HP: 4 mirages confuse enemies (8s). Once per fight.',
   onCombatInit: (ctx) => {
     ctx.run.memory.trugbildUsed = 0;
   },
@@ -572,17 +572,17 @@ const trugbild: AugmentDef = {
         8000 * ctx.power(trugbild),
       );
     }
-    ctx.combat.announce('Trugbild!', '#ddaaff');
+    ctx.combat.announce('Mirage!', '#ddaaff');
   },
 };
 
 // Bergkern (Konzept: Schild nach Ruhephase)
 const bergkern: AugmentDef = {
   id: 'bergkern',
-  name: 'Bergkern',
+  name: 'Mountain Core',
   tier: 'silber',
   tags: ['Ward'],
-  description: 'Nach 5s ohne erlittenen Schaden: Schild über 15% max. LP (alle 20s).',
+  description: 'After 5s without taking damage: a shield for 15% max HP (every 20s).',
   hooks: {
     damageTaken: (_p, ctx) => {
       ctx.run.memory.bergkernCalm = ctx.combat.now;
@@ -600,10 +600,10 @@ const bergkern: AugmentDef = {
 let taubheitTicking = false;
 const taubheit: AugmentDef = {
   id: 'taubheit',
-  name: 'Taubheit',
+  name: 'Numbness',
   tier: 'silber',
   tags: ['Ward'],
-  description: '35% erlittener Schaden wird gestundet und über 6s als wahrer Schaden nachgereicht.',
+  description: '35% of damage taken is deferred and repaid as true damage over 6s.',
   onCombatInit: (ctx) => {
     ctx.run.memory.taubheitPool = 0;
     ctx.run.memory.taubheitAcc = 0;
@@ -637,10 +637,10 @@ const taubheit: AugmentDef = {
 // Ozeankern (Konzept: Schaden austeilen heilt beständig)
 const ozeankern: AugmentDef = {
   id: 'ozeankern',
-  name: 'Ozeankern',
+  name: 'Ocean Core',
   tier: 'silber',
   tags: ['Blut'],
-  description: 'Schaden auszuteilen heilt dich um 3 LP/s für 3s (auffrischend).',
+  description: 'Dealing damage heals you 3 HP/s for 3s (refreshing).',
   hooks: {
     damageDealt: (_p, ctx) => {
       ctx.run.memory.ozeanUntil = ctx.combat.now + 3000;
@@ -656,10 +656,10 @@ const ozeankern: AugmentDef = {
 // Fluchtkammer (Konzept: einmal dem Tod entkommen)
 const fluchtkammer: AugmentDef = {
   id: 'fluchtkammer',
-  name: 'Fluchtkammer',
+  name: 'Escape Pod',
   tier: 'silber',
   tags: ['Ward'],
-  description: 'Einmal pro Run: Tödlicher Schaden lässt dich stattdessen mit 35% LP entkommen.',
+  description: 'Once per run: lethal damage instead lets you escape with 35% HP.',
   ruleFlags: { revives: 1 },
 };
 
@@ -669,7 +669,7 @@ const purist: AugmentDef = {
   name: 'Purist',
   tier: 'silber',
   tags: ['Arkan'],
-  description: 'Dein Bonus-Angriffstempo wird zu Fähigkeitentempo (0,3 je 1%). Abklingzeiten −10%.',
+  description: 'Your bonus attack speed becomes ability haste (0.3 per 1%). Cooldowns −10%.',
   statMods: [{ stat: 'cooldown', pct: -0.1 }],
   onUpdate: (_dt, ctx) => {
     const s = ctx.player.stats;
@@ -687,10 +687,10 @@ const purist: AugmentDef = {
 // Abstoßfeld (Konzept: Notfall-Rückstoß)
 const abstossfeld: AugmentDef = {
   id: 'abstossfeld',
-  name: 'Abstoßfeld',
+  name: 'Repulsor Field',
   tier: 'silber',
   tags: ['Ward', 'Sturm'],
-  description: 'Fällst du erstmals unter 60% bzw. 30% LP, werden alle Gegner im Umkreis (500) weggestoßen.',
+  description: 'The first time you drop below 60% and 30% HP, all enemies within 500 are knocked back.',
   onCombatInit: (ctx) => {
     ctx.run.memory.abstoss60 = 0;
     ctx.run.memory.abstoss30 = 0;
@@ -714,20 +714,20 @@ const abstossfeld: AugmentDef = {
 // Fernrohr (Konzept: Reichweite, Stufe 1)
 const fernrohr: AugmentDef = {
   id: 'fernrohr',
-  name: 'Fernrohr',
+  name: 'Spyglass',
   tier: 'silber',
   tags: ['Sturm'],
-  description: '+60 Angriffsreichweite.',
+  description: '+60 attack range.',
   statMods: [{ stat: 'attackRange', flat: 60 }],
 };
 
 // Zeitzünder (Konzept: periodische Selbst-Explosion)
 const zeitzuender: AugmentDef = {
   id: 'zeitzuender',
-  name: 'Zeitzünder',
+  name: 'Time Bomb',
   tier: 'silber',
   tags: ['Bruch'],
-  description: 'Alle 13s explodiert eine Bombe an dir: 15% der max. LP der Getroffenen als wahrer Schaden.',
+  description: "Every 13s a bomb explodes on you: 15% of struck enemies' max HP as true damage.",
   hooks: {
     roundStart: (_p, ctx) => {
       ctx.run.memory.bombeNext = ctx.combat.now + 13000;
@@ -748,10 +748,10 @@ const zeitzuender: AugmentDef = {
 // Schattenläufer (Konzept: Tempo nach dem Dash)
 const schattenlaeufer: AugmentDef = {
   id: 'schattenlaeufer',
-  name: 'Schattenläufer',
+  name: 'Shadow Runner',
   tier: 'silber',
   tags: ['Sturm'],
-  description: 'Nach jedem Dash: +57% Tempo für 2s.',
+  description: 'After each dash: +57% move speed for 2s.',
   hooks: {
     dashEnd: (_p, ctx) => {
       ctx.player.stats.set({
@@ -767,10 +767,10 @@ const schattenlaeufer: AugmentDef = {
 // Silberlöffel (Konzept: Silber-Synergie)
 const silberloeffel: AugmentDef = {
   id: 'silberloeffel',
-  name: 'Silberlöffel',
+  name: 'Silver Spoon',
   tier: 'silber',
   tags: [],
-  description: '+7,5% Schaden je Silber-Augment, das du trägst.',
+  description: '+7.5% damage per Silver augment you own.',
   onUpdate: (_dt, ctx) => {
     const n = ctx.run.augments.filter((a) => a.tier === 'silber').length;
     const v = 0.075 * n * ctx.power(silberloeffel);
@@ -782,10 +782,10 @@ const silberloeffel: AugmentDef = {
 // Nachdruck (Konzept: Kontrolle stapelt adaptive Kraft bis Rundenende)
 const nachdruck: AugmentDef = {
   id: 'nachdruck',
-  name: 'Nachdruck',
+  name: 'Emphasis',
   tier: 'silber',
   tags: ['Arkan'],
-  description: 'Verlangsamst du einen Gegner: +1,5 AD und +2,5 AP bis Rundenende (stapelt).',
+  description: 'Slowing an enemy grants +1.5 AD and +2.5 AP until end of round (stacks).',
   onCombatInit: (ctx) => {
     ctx.run.memory.nachdruckStacks = 0;
   },
@@ -805,10 +805,10 @@ const nachdruck: AugmentDef = {
 // Schleimzeit (Konzept: periodischer Nahbereichs-Rülpser)
 const schleimzeit: AugmentDef = {
   id: 'schleimzeit',
-  name: 'Schleimzeit',
+  name: 'Slime Time',
   tier: 'silber',
   tags: ['Bruch'],
-  description: 'Alle 7s: Schleimstoß im Umkreis (450) — 5–10 (+3–7% max. LP) magischer Schaden, heilt dich je Treffer um 5.',
+  description: 'Every 7s: a slime burst within 450 — 5–10 (+3–7% max HP) magic damage, healing you 5 per hit.',
   onUpdate: (_dt, ctx) => {
     if ((ctx.run.memory.schleimNext ?? 0) > ctx.combat.now) return;
     const targets = enemiesWithin(ctx, ctx.player.x, ctx.player.y, 450);
@@ -826,10 +826,10 @@ const schleimzeit: AugmentDef = {
 // Tempoteufel (Konzept: Fähigkeitstreffer geben Tempo-Schub)
 const tempoteufel: AugmentDef = {
   id: 'tempoteufel',
-  name: 'Tempoteufel',
+  name: 'Speed Demon',
   tier: 'silber',
   tags: ['Sturm', 'Arkan'],
-  description: 'Fähigkeitstreffer: +43% Tempo, 0,75s abklingend.',
+  description: 'Ability hits: +43% move speed, decaying over 0.75s.',
   hooks: {
     abilityHit: (_p, ctx) => {
       ctx.player.stats.set({
@@ -845,10 +845,10 @@ const tempoteufel: AugmentDef = {
 // Stapelsaurus (Konzept: permanente Stapel wachsen schneller)
 const stapelsaurus: AugmentDef = {
   id: 'stapelsaurus',
-  name: 'Stapelsaurus',
+  name: 'Stackosaurus',
   tier: 'silber',
   tags: [],
-  description: 'Permanente Stapel-Effekte wachsen 75% schneller.',
+  description: 'Permanent stack effects grow 75% faster.',
   onCombatInit: (ctx) => {
     ctx.run.memory.stackMult = 1.75;
   },
@@ -857,20 +857,20 @@ const stapelsaurus: AugmentDef = {
 // Statistik! (Konzept: sofortige zufällige Werteboni)
 const statistik: AugmentDef = {
   id: 'statistik1',
-  name: 'Statistik!',
+  name: 'Stats!',
   tier: 'silber',
   tags: [],
-  description: 'Sofort 2 zufällige permanente Werteboni.',
+  description: 'Instantly gain 2 random permanent stat bonuses.',
   onCombatInit: (ctx) => statRolls(ctx, 'stat1', 2),
 };
 
 // Panzerglück (Konzept: Kritchance verteidigt auch)
 const panzerglueck: AugmentDef = {
   id: 'panzerglueck',
-  name: 'Panzerglück',
+  name: 'Lucky Plating',
   tier: 'silber',
   tags: ['Ward'],
-  description: '+25% Kritchance. Erlittener Schaden wird im Schnitt um 20% × Kritchance gemindert.',
+  description: '+25% crit chance. Damage taken is reduced on average by 20% × crit chance.',
   statMods: [{ stat: 'critChance', flat: 0.25 }],
   hooks: {
     damageTaken: ({ dmg }, ctx) => {
@@ -883,10 +883,10 @@ const panzerglueck: AugmentDef = {
 // Knochenbrecher (Konzept: AD + Haste + Durchschlag)
 const knochenbrecher: AugmentDef = {
   id: 'knochenbrecher',
-  name: 'Knochenbrecher',
+  name: 'Bonebreaker',
   tier: 'silber',
   tags: ['Bruch'],
-  description: '+7 AD, +15 Fähigkeitentempo. Angriffe: +4 wahrer Schaden.',
+  description: '+7 AD, +15 ability haste. Attacks: +4 true damage.',
   statMods: [
     { stat: 'damage', flat: 7 },
     { stat: 'abilityHaste', flat: 15 },
@@ -901,10 +901,10 @@ const knochenbrecher: AugmentDef = {
 // Quälgeist (Konzept: Kontrolle brennt)
 const quaelgeist: AugmentDef = {
   id: 'quaelgeist',
-  name: 'Quälgeist',
+  name: 'Tormentor',
   tier: 'silber',
   tags: ['Bruch', 'Arkan'],
-  description: 'Verlangsamst du einen Gegner, brennt er: 3% seiner max. LP über 5s (5s Sperrzeit/Ziel).',
+  description: 'Slowing an enemy ignites them: 3% of their max HP over 5s (5s cooldown/target).',
   onUpdate: (_dt, ctx) => {
     for (const u of ctx.combat.units) {
       if (!u.alive || u.team !== 'enemy' || !u.stats.hasPrefix('slow:')) continue;
@@ -917,10 +917,10 @@ const quaelgeist: AugmentDef = {
 // Brandstifter (Konzept: Dash entzündet)
 const brandstifter: AugmentDef = {
   id: 'brandstifter',
-  name: 'Brandstifter',
+  name: 'Arsonist',
   tier: 'silber',
   tags: ['Sturm', 'Bruch'],
-  description: 'Dein Dash entzündet den nächsten Gegner (650): 3,5% seiner max. LP über 5s.',
+  description: 'Your dash ignites the nearest enemy (650): 3.5% of their max HP over 5s.',
   hooks: {
     dashStart: (_p, ctx) => {
       const t = ctx.combat.nearestEnemy(ctx.player, 650);
@@ -933,10 +933,10 @@ const brandstifter: AugmentDef = {
 // Transmutation: Gold (Konzept: zufälliges Gold-Augment)
 const transmutGold: AugmentDef = {
   id: 'transmutgold',
-  name: 'Transmutation: Gold',
+  name: 'Transmute: Gold',
   tier: 'silber',
   tags: [],
-  description: 'Du erhältst sofort ein zufälliges Gold-Augment.',
+  description: 'Instantly gain a random Gold augment.',
   onCombatInit: (ctx) => {
     if (ctx.run.memory.transmutGoldDone) return;
     ctx.run.memory.transmutGoldDone = 1;
@@ -947,10 +947,10 @@ const transmutGold: AugmentDef = {
 // Doppelzünder (Konzept: Fähigkeitstreffer feuern Knallkörper, krit-skaliert)
 const doppelzuender: AugmentDef = {
   id: 'doppelzuender',
-  name: 'Doppelzünder',
+  name: 'Double Detonator',
   tier: 'silber',
   tags: ['Arkan', 'Bruch'],
-  description: '+25% Kritchance. Fähigkeitstreffer feuern Knallkörper (je 1–4 Schaden, +1 je 50% Kritchance). 5s Sperrzeit.',
+  description: '+25% crit chance. Ability hits fire firecrackers (1–4 damage each, +1 per 50% crit chance). 5s cooldown.',
   statMods: [{ stat: 'critChance', flat: 0.25 }],
   hooks: {
     abilityHit: ({ target }, ctx) => {
@@ -970,10 +970,10 @@ const doppelzuender: AugmentDef = {
 // Taifun (Konzept: Angriffe treffen ein zweites Ziel)
 const taifun: AugmentDef = {
   id: 'taifun',
-  name: 'Taifun',
+  name: 'Typhoon',
   tier: 'silber',
   tags: ['Sturm'],
-  description: 'Angriffe feuern einen Bolzen auf ein zweites Ziel (20% AD, löst Treffer-Effekte aus).',
+  description: 'Attacks fire a bolt at a second target (20% AD, triggers on-hit effects).',
   hooks: {
     autoHit: ({ target }, ctx) => {
       if (ctx.run.memory.taifunLock) return;
@@ -1021,10 +1021,10 @@ const taifun: AugmentDef = {
 // Bannschleier (Konzept: periodischer Schadensblock)
 const bannschleier: AugmentDef = {
   id: 'bannschleier',
-  name: 'Bannschleier',
+  name: 'Warding Veil',
   tier: 'silber',
   tags: ['Ward', 'Arkan'],
-  description: 'Alle 20s negiert ein Schleier den nächsten erlittenen Treffer vollständig.',
+  description: 'Every 20s a veil fully negates the next hit you take.',
   hooks: {
     roundStart: (_p, ctx) => {
       ctx.run.memory.schleierReady = 1;
@@ -1033,7 +1033,7 @@ const bannschleier: AugmentDef = {
       if (!ctx.run.memory.schleierReady) return;
       ctx.run.memory.schleierReady = 0;
       ctx.player.heal(dmg);
-      ctx.combat.announce('Geblockt!', '#aaccff');
+      ctx.combat.announce('Blocked!', '#aaccff');
       ctx.combat.delay(20000, () => {
         ctx.run.memory.schleierReady = 1;
       });
@@ -1044,10 +1044,10 @@ const bannschleier: AugmentDef = {
 // Schwungrad (Konzept: Fähigkeitstreffer beschleunigen Abklingzeiten)
 const schwungrad: AugmentDef = {
   id: 'schwungrad',
-  name: 'Schwungrad',
+  name: 'Flywheel',
   tier: 'silber',
   tags: ['Arkan'],
-  description: 'Fähigkeitstreffer geben 6s lang Stapel (max. 6): Abklingzeiten laufen 2,5%/Stapel schneller.',
+  description: 'Ability hits grant stacks for 6s (max 6): cooldowns tick 2.5%/stack faster.',
   hooks: {
     abilityHit: (_p, ctx) => {
       ctx.run.memory.schwungradStacks = Math.min(6, (ctx.run.memory.schwungradStacks ?? 0) + 1);
@@ -1068,20 +1068,20 @@ const schwungrad: AugmentDef = {
 // Hexensinn (Konzept: flache AP)
 const hexensinn: AugmentDef = {
   id: 'hexensinn',
-  name: 'Hexensinn',
+  name: 'Witchcraft',
   tier: 'silber',
   tags: ['Arkan'],
-  description: '+20 Fähigkeitsstärke.',
+  description: '+20 ability power.',
   statMods: [{ stat: 'abilityPower', flat: 20 }],
 };
 
 // Eiferer (Konzept: AP füttert Angriffe)
 const eiferer: AugmentDef = {
   id: 'eiferer',
-  name: 'Eiferer',
+  name: 'Zealot',
   tier: 'silber',
   tags: ['Sturm', 'Arkan'],
-  description: '+25% Angriffstempo und +12,5% Kritchance, je +5% pro 33 AP.',
+  description: '+25% attack speed and +12.5% crit chance, each +5% per 33 AP.',
   statMods: [
     { stat: 'attackSpeed', pct: 0.25 },
     { stat: 'critChance', flat: 0.125 },

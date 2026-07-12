@@ -12,10 +12,10 @@ import { SILBER } from './silber';
 // Tempospirale (Konzept: Wirken stapelt Haste endlos)
 const tempospirale: AugmentDef = {
   id: 'tempospirale',
-  name: 'Tempospirale',
+  name: 'Tempo Spiral',
   tier: 'prisma',
   tags: ['Arkan'],
-  description: 'Jede gewirkte Fähigkeit: +8 Fähigkeitentempo bis Rundenende (stapelt endlos).',
+  description: 'Each ability cast: +8 ability haste until end of round (stacks infinitely).',
   onCombatInit: (ctx) => {
     ctx.run.memory.spiraleStacks = 0;
   },
@@ -34,10 +34,10 @@ const tempospirale: AugmentDef = {
 // Bodenständig (Konzept: verzichte auf den Dash, gewinne rohe Magie)
 const bodenstaendig: AugmentDef = {
   id: 'bodenstaendig',
-  name: 'Bodenständig',
+  name: 'Grounded',
   tier: 'prisma',
   tags: ['Arkan'],
-  description: 'Dein Dash ist gesperrt. Dafür: +25% Fähigkeitsschaden und +45 Fähigkeitentempo.',
+  description: 'Your dash is disabled. In return: +25% ability damage and +45 ability haste.',
   ruleFlags: { dashCharges: 0 },
   statMods: [
     { stat: 'abilityDamage', pct: 0.25 },
@@ -48,10 +48,10 @@ const bodenstaendig: AugmentDef = {
 // Klingenwalzer (Konzept: Dash endet in einem Hiebgewitter)
 const klingenwalzer: AugmentDef = {
   id: 'klingenwalzer',
-  name: 'Klingenwalzer',
+  name: 'Blade Waltz',
   tier: 'prisma',
   tags: ['Sturm', 'Bruch'],
-  description: 'Nach deinem Dash: 6 blitzschnelle Hiebe auf den nächsten Gegner (je 40% AD).',
+  description: 'After your dash: 6 lightning-fast strikes on the nearest enemy (40% AD each).',
   hooks: {
     dashEnd: (_p, ctx) => {
       for (let i = 0; i < 6; i++) {
@@ -75,10 +75,10 @@ const klingenwalzer: AugmentDef = {
 // Zuckerschock (Konzept: absurde Wirk-Geschwindigkeit)
 const zuckerschock: AugmentDef = {
   id: 'zuckerschock',
-  name: 'Zuckerschock',
+  name: 'Sugar Rush',
   tier: 'prisma',
   tags: ['Arkan', 'Sturm'],
-  description: '+200 Fähigkeitentempo. Wirken gewährt +40% Tempo für 2s.',
+  description: '+200 ability haste. Casting grants +40% move speed for 2s.',
   statMods: [{ stat: 'abilityHaste', flat: 200 }],
   hooks: {
     abilityCast: (_p, ctx) => {
@@ -95,10 +95,10 @@ const zuckerschock: AugmentDef = {
 // Unantastbar (Konzept: E gewährt Unverwundbarkeit)
 const unantastbar: AugmentDef = {
   id: 'unantastbar',
-  name: 'Unantastbar',
+  name: 'Untouchable',
   tier: 'prisma',
   tags: ['Ward'],
-  description: 'Deine E hüllt dich 2s in einen undurchdringlichen Schild (8s Sperrzeit).',
+  description: 'Your E wraps you in an impenetrable shield for 2s (8s cooldown).',
   hooks: {
     abilityCast: ({ ability }, ctx) => {
       if (ability !== 'E') return;
@@ -106,7 +106,7 @@ const unantastbar: AugmentDef = {
       ctx.run.memory.unantastbarNext = ctx.combat.now + 8000;
       const granted = ctx.player.maxHP * 3 * ctx.power(unantastbar);
       ctx.player.addShield(granted);
-      ctx.combat.announce('Unantastbar!', '#cfe8ff');
+      ctx.combat.announce('Untouchable!', '#cfe8ff');
       ctx.combat.delay(2000, () => {
         ctx.player.shield = Math.max(0, ctx.player.shield - granted);
       });
@@ -117,10 +117,10 @@ const unantastbar: AugmentDef = {
 // Sternenhof (Konzept: kreisende Sterne verletzen bei Berührung)
 const sternenhof: AugmentDef = {
   id: 'sternenhof',
-  name: 'Sternenhof',
+  name: 'Star Halo',
   tier: 'prisma',
   tags: ['Arkan'],
-  description: '6 Sterne kreisen um dich: Berührung kostet 1–20 magischen Schaden (0,5s Sperrzeit/Ziel).',
+  description: '6 stars orbit you: contact deals 1–20 magic damage (0.5s cooldown/target).',
   onUpdate: (_dt, ctx) => {
     const stars = 6;
     const orbitR = 150;
@@ -142,10 +142,10 @@ const sternenhof: AugmentDef = {
 // Funkenschlag (Konzept: Schaden springt als wahrer Funke weiter)
 const funkenschlag: AugmentDef = {
   id: 'funkenschlag',
-  name: 'Funkenschlag',
+  name: 'Spark Chain',
   tier: 'prisma',
   tags: ['Arkan', 'Bruch'],
-  description: 'Dein Schaden springt zu 25% als wahrer Schaden auf den nächsten weiteren Gegner über.',
+  description: '25% of your damage jumps to the next nearby enemy as true damage.',
   hooks: {
     damageDealt: ({ target, dmg, type }, ctx) => {
       if (procActive() || type === 'other' || !target.alive) return;
@@ -169,10 +169,10 @@ const funkenschlag: AugmentDef = {
 // Todeszirkel (Konzept: Heilung tut dem Feind weh)
 const todeszirkel: AugmentDef = {
   id: 'todeszirkel',
-  name: 'Todeszirkel',
+  name: 'Death Circle',
   tier: 'prisma',
   tags: ['Blut', 'Arkan'],
-  description: 'Erhaltene Heilung fügt dem nächsten Gegner (1000) 50% davon als magischen Schaden zu.',
+  description: 'Healing you receive deals 50% of it to the nearest enemy (1000) as magic damage.',
   onCombatInit: (ctx) => {
     ctx.run.memory.zirkelPrevHp = ctx.player.hp;
   },
@@ -191,10 +191,10 @@ const todeszirkel: AugmentDef = {
 // Brachialmagie (Konzept: langsamere, brutalere Zauber)
 const brachialmagie: AugmentDef = {
   id: 'brachialmagie',
-  name: 'Brachialmagie',
+  name: 'Brute Magic',
   tier: 'prisma',
   tags: ['Arkan', 'Bruch'],
-  description: '+100% Fähigkeitsschaden, aber −50 Fähigkeitentempo. Wirken: +40% Tempo für 2s.',
+  description: '+100% ability damage, but −50 ability haste. Casting: +40% move speed for 2s.',
   statMods: [
     { stat: 'abilityDamage', pct: 1.0 },
     { stat: 'abilityHaste', flat: -50 },
@@ -214,10 +214,10 @@ const brachialmagie: AugmentDef = {
 // Wallbrecher (Konzept: Kontrolle schenkt Schilde)
 const wallbrecher: AugmentDef = {
   id: 'wallbrecher',
-  name: 'Wallbrecher',
+  name: 'Wallbreaker',
   tier: 'prisma',
   tags: ['Ward'],
-  description: 'Verlangsamst du einen Gegner: Schild über 12–37 (+3% max. LP) für 3s (5s Sperrzeit/Ziel).',
+  description: 'Slowing an enemy grants a shield of 12–37 (+3% max HP) for 3s (5s cooldown/target).',
   onUpdate: (_dt, ctx) => {
     for (const u of ctx.combat.units) {
       if (!u.alive || u.team !== 'enemy' || !u.stats.hasPrefix('slow:')) continue;
@@ -234,20 +234,20 @@ const wallbrecher: AugmentDef = {
 // Windläufer (Konzept: der Dash lädt rasend schnell)
 const windlaeufer: AugmentDef = {
   id: 'windlaeufer',
-  name: 'Windläufer',
+  name: 'Windrunner',
   tier: 'prisma',
   tags: ['Sturm'],
-  description: 'Dein Dash lädt 3× so schnell.',
+  description: 'Your dash recharges 3× as fast.',
   ruleFlags: { dashCdMult: 1 / 3 },
 };
 
 // Teufelspakt (Konzept: LP-Tribut für wahre Macht)
 const teufelspakt: AugmentDef = {
   id: 'teufelspakt',
-  name: 'Teufelspakt',
+  name: "Devil's Pact",
   tier: 'prisma',
   tags: ['Blut', 'Bruch'],
-  description: 'Verliere 2% aktueller LP pro Sekunde (nie tödlich). Dafür: +10% wahrer Zusatzschaden, Tötungen heilen 12–31 LP.',
+  description: 'Lose 2% of current HP per second (never lethal). In return: +10% extra true damage, takedowns heal 12–31 HP.',
   onUpdate: (dt, ctx) => {
     if (!ctx.player.alive) return;
     const drain = Math.min(Math.max(0, ctx.player.hp - 1), ctx.player.hp * 0.02 * dt);
@@ -265,10 +265,10 @@ const teufelspakt: AugmentDef = {
 // Klingenschwur (Konzept: Fernkämpfer wird Klingentänzer)
 const klingenschwur: AugmentDef = {
   id: 'klingenschwur',
-  name: 'Klingenschwur',
+  name: 'Blade Oath',
   tier: 'prisma',
   tags: ['Blut', 'Sturm'],
-  description: 'Deine Reichweite sinkt auf Nahkampf. Dafür: +25% AD, +20% Angriffstempo, +25% LP, +15% Tempo, +25% Lebensraub.',
+  description: 'Your range drops to melee. In return: +25% AD, +20% attack speed, +25% HP, +15% move speed, +25% life steal.',
   statMods: [
     { stat: 'damage', pct: 0.25 },
     { stat: 'attackSpeed', pct: 0.2 },
@@ -287,10 +287,10 @@ const klingenschwur: AugmentDef = {
 // Grauensbringer (Konzept: Nähe zum Feind macht zäh)
 const grauensbringer: AugmentDef = {
   id: 'grauensbringer',
-  name: 'Grauensbringer',
+  name: 'Dreadbringer',
   tier: 'prisma',
   tags: ['Ward', 'Blut'],
-  description: 'Nähe zu Gegnern (500) sammelt Grauen (max. 40/Runde): dauerhaft +0,5 max. LP je Punkt.',
+  description: 'Proximity to enemies (500) gathers Dread (max 40/round): permanently +0.5 max HP per point.',
   hooks: {
     roundStart: (_p, ctx) => {
       ctx.run.memory.grauenRound = 0;
@@ -318,10 +318,10 @@ const grauensbringer: AugmentDef = {
 // Beidhändig (Konzept: zweite Klinge schlägt nach)
 const beidhaendig: AugmentDef = {
   id: 'beidhaendig',
-  name: 'Beidhändig',
+  name: 'Ambidextrous',
   tier: 'prisma',
   tags: ['Sturm', 'Bruch'],
-  description: '+20% Angriffstempo. Jeder Angriff schlägt ein zweites Mal mit 40% Schaden zu.',
+  description: '+20% attack speed. Each attack strikes a second time for 40% damage.',
   statMods: [{ stat: 'attackSpeed', pct: 0.2 }],
   hooks: {
     autoHit: ({ target, dmg }, ctx) => {
@@ -336,10 +336,10 @@ const beidhaendig: AugmentDef = {
 // Bebenspur (Konzept: der Dash reißt den Boden auf)
 const bebenspur: AugmentDef = {
   id: 'bebenspur',
-  name: 'Bebenspur',
+  name: 'Quake Trail',
   tier: 'prisma',
   tags: ['Sturm', 'Bruch'],
-  description: 'Dein Dash hinterlässt eine Spur, die nach 0,75s birst: 18–38 (+50% AD) physischer Schaden.',
+  description: 'Your dash leaves a trail that bursts after 0.75s: 18–38 (+50% AD) physical damage.',
   hooks: {
     dashStart: (_p, ctx) => {
       ctx.run.memory.bebenX = ctx.player.x;
@@ -369,10 +369,10 @@ const bebenspur: AugmentDef = {
 // Heureka (Konzept: AP wird auch zu Haste)
 const heureka: AugmentDef = {
   id: 'heureka',
-  name: 'Heureka',
+  name: 'Eureka',
   tier: 'prisma',
   tags: ['Arkan'],
-  description: '20% deiner Fähigkeitsstärke wirken zusätzlich als Fähigkeitentempo.',
+  description: '20% of your ability power also counts as ability haste.',
   onUpdate: (_dt, ctx) => {
     ctx.player.stats.set({
       id: 'dyn:heureka',
@@ -385,10 +385,10 @@ const heureka: AugmentDef = {
 // Endform (Konzept: E entfesselt die finale Gestalt)
 const endform: AugmentDef = {
   id: 'endform',
-  name: 'Endform',
+  name: 'Final Form',
   tier: 'prisma',
   tags: ['Blut', 'Ward'],
-  description: 'E entfesselt dich 7,5s: Schild (30% max. LP), +15% Lebensraub, +30% Tempo (20s Sperrzeit).',
+  description: 'E unleashes you for 7.5s: shield (30% max HP), +15% life steal, +30% move speed (20s cooldown).',
   hooks: {
     abilityCast: ({ ability }, ctx) => {
       if (ability !== 'E') return;
@@ -408,7 +408,7 @@ const endform: AugmentDef = {
         pct: 0.3 * p,
         expiresAt: ctx.combat.now + 7500,
       });
-      ctx.combat.announce('Endform!', '#ffb3f0');
+      ctx.combat.announce('Final Form!', '#ffb3f0');
     },
   },
 };
@@ -416,10 +416,10 @@ const endform: AugmentDef = {
 // Wichtelwut (Konzept: klein, flink, giftig gegen Große)
 const wichtelwut: AugmentDef = {
   id: 'wichtelwut',
-  name: 'Wichtelwut',
+  name: 'Imp Rage',
   tier: 'prisma',
   tags: ['Sturm', 'Bruch'],
-  description: 'Du bist winzig: +25% Tempo, und +20% Schaden gegen größere Gegner.',
+  description: 'You are tiny: +25% move speed, and +20% damage to larger enemies.',
   statMods: [{ stat: 'moveSpeed', pct: 0.25 }],
   onCombatInit: (ctx) => {
     ctx.player.radius = 18;
@@ -436,10 +436,10 @@ const wichtelwut: AugmentDef = {
 // Porzellankanone (Konzept: zerbrechlich, aber unaufhaltsam)
 const porzellankanone: AugmentDef = {
   id: 'porzellankanone',
-  name: 'Porzellankanone',
+  name: 'Porcelain Cannon',
   tier: 'prisma',
   tags: ['Bruch'],
-  description: '−70% max. LP. Dafür trägt all dein Schaden +15% wahren Zusatzschaden.',
+  description: '−70% max HP. In return all your damage carries +15% extra true damage.',
   statMods: [{ stat: 'maxHP', pct: -0.7 }],
   hooks: {
     damageDealt: ({ target, dmg, type }, ctx) => {
@@ -452,10 +452,10 @@ const porzellankanone: AugmentDef = {
 // Gigantwuchs (Konzept: schierer Wuchs)
 const gigantwuchs: AugmentDef = {
   id: 'gigantwuchs',
-  name: 'Gigantwuchs',
+  name: 'Gigantism',
   tier: 'prisma',
   tags: ['Ward'],
-  description: '+15% max. LP, +10% AD und AP, +30% Größe.',
+  description: '+15% max HP, +10% AD and AP, +30% size.',
   statMods: [
     { stat: 'maxHP', pct: 0.15 },
     { stat: 'damage', pct: 0.1 },
@@ -469,10 +469,10 @@ const gigantwuchs: AugmentDef = {
 // Bienenstock (Konzept: ein wachsender Schwarm sticht für dich)
 const bienenstock: AugmentDef = {
   id: 'bienenstock',
-  name: 'Bienenstock',
+  name: 'Beehive',
   tier: 'prisma',
   tags: ['Sturm'],
-  description: 'Start mit 1 Biene, +1 je Angriffstreffer (max. 8). Alle 1,5s sticht der Schwarm: 7–15 magisch pro Biene.',
+  description: 'Start with 1 bee, +1 per attack hit (max 8). Every 1.5s the swarm stings: 7–15 magic per bee.',
   onCombatInit: (ctx) => {
     ctx.run.memory.bienen = 1;
   },
@@ -495,10 +495,10 @@ const bienenstock: AugmentDef = {
 // Höllenkanal (Konzept: Brände kühlen deine Fähigkeiten)
 const hoellenkanal: AugmentDef = {
   id: 'hoellenkanal',
-  name: 'Höllenkanal',
+  name: 'Infernal Conduit',
   tier: 'prisma',
   tags: ['Bruch', 'Arkan'],
-  description: 'Fähigkeitstreffer entzünden (1–7/s für 5s, stapelnd). Solange etwas brennt, laden Fähigkeiten 0,3s/s schneller.',
+  description: 'Ability hits ignite (1–7/s for 5s, stacking). While anything burns, abilities recharge 0.3s/s faster.',
   hooks: {
     abilityHit: ({ target }, ctx) => {
       if (!target.alive) return;
@@ -515,10 +515,10 @@ const hoellenkanal: AugmentDef = {
 // Prunkfaust (Konzept: Fähigkeiten können kritisch treffen)
 const prunkfaust: AugmentDef = {
   id: 'prunkfaust',
-  name: 'Prunkfaust',
+  name: 'Jeweled Gauntlet',
   tier: 'prisma',
   tags: ['Arkan', 'Bruch'],
-  description: '+25% Kritchance (+4% je 33 AP). Fähigkeiten können kritisch treffen (+40% Schaden).',
+  description: '+25% crit chance (+4% per 33 AP). Abilities can crit (+40% damage).',
   statMods: [{ stat: 'critChance', flat: 0.25 }],
   onUpdate: (_dt, ctx) => {
     ctx.player.stats.set({
@@ -540,10 +540,10 @@ const prunkfaust: AugmentDef = {
 // Laserblick (Konzept: dauerhafter Blickstrahl)
 const laserblick: AugmentDef = {
   id: 'laserblick',
-  name: 'Laserblick',
+  name: 'Laser Eyes',
   tier: 'prisma',
   tags: ['Arkan'],
-  description: 'Dein Blick brennt: Gegner in Blickrichtung (700 lang, 80 breit) erleiden 2–30 magisch/s.',
+  description: 'Your gaze burns: enemies in your facing line (700 long, 80 wide) take 2–30 magic/s.',
   onUpdate: (_dt, ctx) => {
     if ((ctx.run.memory.laserNext ?? 0) > ctx.combat.now) return;
     ctx.run.memory.laserNext = ctx.combat.now + 250;
@@ -572,10 +572,10 @@ const laserblick: AugmentDef = {
 // Irrer Alchemist (Konzept: jede Runde ein anderes Elixier)
 const irrerAlchemist: AugmentDef = {
   id: 'irreralchemist',
-  name: 'Irrer Alchemist',
+  name: 'Mad Alchemist',
   tier: 'prisma',
   tags: [],
-  description: 'Zu Rundenbeginn zufällig: +20% LP & +30% AD/AP & Größe — oder +70 Haste, +40% Tempo & Schrumpfung.',
+  description: 'At round start, randomly: +20% HP & +30% AD/AP & size — or +70 haste, +40% move speed & shrink.',
   hooks: {
     roundStart: (_p, ctx) => {
       const p = ctx.power(irrerAlchemist);
@@ -585,12 +585,12 @@ const irrerAlchemist: AugmentDef = {
         ctx.player.stats.set({ id: 'dyn:alch-ap', stat: 'abilityPower', pct: 0.3 * p });
         ctx.player.radius = Math.round(26 * 1.4);
         ctx.player.heal(ctx.player.maxHP); // die neue Masse ist sofort gefüllt
-        ctx.combat.announce('Elixier des Kolosses!', '#a0ffb0');
+        ctx.combat.announce('Colossus Elixir!', '#a0ffb0');
       } else {
         ctx.player.stats.set({ id: 'dyn:alch-haste', stat: 'abilityHaste', flat: 70 * p });
         ctx.player.stats.set({ id: 'dyn:alch-ms', stat: 'moveSpeed', pct: 0.4 * p });
         ctx.player.radius = Math.round(26 * 0.6);
-        ctx.combat.announce('Elixier des Windes!', '#a0d8ff');
+        ctx.combat.announce('Wind Elixir!', '#a0d8ff');
       }
     },
   },
@@ -602,7 +602,7 @@ const dualist: AugmentDef = {
   name: 'Dualist',
   tier: 'prisma',
   tags: ['Sturm', 'Arkan'],
-  description: 'Angriffe: +1 AD bis Rundenende. Gewirkte Fähigkeiten: +2 AP bis Rundenende (stapelt endlos).',
+  description: 'Attacks: +1 AD until end of round. Ability casts: +2 AP until end of round (stacks infinitely).',
   onCombatInit: (ctx) => {
     ctx.run.memory.dualAd = 0;
     ctx.run.memory.dualAp = 0;
@@ -630,10 +630,10 @@ const dualist: AugmentDef = {
 // Zauberfaust (Konzept: Schläge kühlen ab)
 const zauberfaust: AugmentDef = {
   id: 'zauberfaust',
-  name: 'Zauberfaust',
+  name: 'Spellfist',
   tier: 'prisma',
   tags: ['Arkan', 'Sturm'],
-  description: 'Jeder Angriffstreffer verkürzt deine Abklingzeiten um 1,25s.',
+  description: 'Each attack hit reduces your cooldowns by 1.25s.',
   hooks: {
     autoHit: (_p, ctx) => ctx.player.reduceCooldowns(1250 * ctx.power(zauberfaust)),
   },
@@ -642,10 +642,10 @@ const zauberfaust: AugmentDef = {
 // Matroschka (Konzept: mehrschichtiges Weiterleben)
 const matroschka: AugmentDef = {
   id: 'matroschka',
-  name: 'Matroschka',
+  name: 'Matryoshka',
   tier: 'prisma',
   tags: ['Ward'],
-  description: 'Zweimal pro Run: Stirbst du, schälst du dich neu und kämpfst weiter.',
+  description: 'Twice per run: on death, you peel open anew and keep fighting.',
   ruleFlags: { revives: 2 },
 };
 
@@ -653,10 +653,10 @@ const matroschka: AugmentDef = {
 const ALLKERN_IDS = ['hextechkern', 'glutkern', 'bergkern', 'ozeankern'];
 const allkern: AugmentDef = {
   id: 'allkern',
-  name: 'Allkern',
+  name: 'Omni Core',
   tier: 'prisma',
   tags: [],
-  description: 'Jeder Kampf: 2 zufällige Elementarkerne (Hextech, Glut, Berg, Ozean) wirken für dich.',
+  description: 'Each fight: 2 random elemental cores (Hextech, Ember, Mountain, Ocean) work for you.',
   onCombatInit: (ctx) => {
     const pool = SILBER.filter(
       (a) => ALLKERN_IDS.includes(a.id) && !ctx.run.augments.some((o) => o.id === a.id),
@@ -664,7 +664,7 @@ const allkern: AugmentDef = {
     for (let i = 0; i < 2 && pool.length > 0; i++) {
       const rolled = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
       ctx.grantTemp(rolled);
-      ctx.combat.announce(`Allkern: ${rolled.name}`, '#c9f0ff');
+      ctx.combat.announce(`Omni Core: ${rolled.name}`, '#c9f0ff');
     }
   },
 };
@@ -672,10 +672,10 @@ const allkern: AugmentDef = {
 // Orbitalschlag (Konzept: Strahl aus dem Himmel)
 const orbitalschlag: AugmentDef = {
   id: 'orbitalschlag',
-  name: 'Orbitalschlag',
+  name: 'Orbital Strike',
   tier: 'prisma',
   tags: ['Arkan', 'Bruch'],
-  description: 'Alle 10s zielt ein Strahl auf den nächsten Gegner: nach 0,8s trifft er für 40 + AP (magisch, Umkreis 130).',
+  description: 'Every 10s a beam targets the nearest enemy: after 0.8s it hits for 40 + AP (magic, radius 130).',
   onUpdate: (_dt, ctx) => {
     if ((ctx.run.memory.orbitalNext ?? 0) > ctx.combat.now) return;
     const t = ctx.combat.nearestEnemy(ctx.player, 900);
@@ -698,10 +698,10 @@ const orbitalschlag: AugmentDef = {
 // Schicksalsschatulle (Konzept: alles wird prismatisch)
 const schicksalsschatulle: AugmentDef = {
   id: 'schicksalsschatulle',
-  name: 'Schicksalsschatulle',
+  name: "Fate's Casket",
   tier: 'prisma',
   tags: [],
-  description: 'Deine anderen Augmente verwandeln sich in zufällige Prisma-Augmente (ab der nächsten Runde).',
+  description: 'Your other augments turn into random Prisma augments (from next round on).',
   onCombatInit: (ctx) => {
     if (ctx.run.memory.schatulleDone) return;
     ctx.run.memory.schatulleDone = 1;
@@ -719,17 +719,17 @@ const schicksalsschatulle: AugmentDef = {
       if (rolled.ruleFlags) Object.assign(ctx.run.flags, rolled.ruleFlags);
       ctx.run.augments[i] = rolled;
     }
-    ctx.combat.announce('Die Schatulle öffnet sich …', '#ffb3f0');
+    ctx.combat.announce('The casket opens…', '#ffb3f0');
   },
 };
 
 // Prismaei (Konzept: Tötungen brüten etwas Prismatisches aus)
 const prismaei: AugmentDef = {
   id: 'prismaei',
-  name: 'Prismaei',
+  name: 'Prisma Egg',
   tier: 'prisma',
   tags: [],
-  description: 'Nach 5 Tötungen schlüpft ein zufälliges zusätzliches Prisma-Augment.',
+  description: 'After 5 takedowns a random extra Prisma augment hatches.',
   hooks: {
     killWindow: (_p, ctx) => {
       if (ctx.run.memory.eiHatched) return;
@@ -743,7 +743,7 @@ const prismaei: AugmentDef = {
       for (const t of rolled.tags) ctx.run.tagCounts[t]++;
       if (rolled.ruleFlags) Object.assign(ctx.run.flags, rolled.ruleFlags);
       ctx.grantTemp(rolled);
-      ctx.combat.announce(`Das Ei schlüpft: ${rolled.name}!`, '#ffe9a0');
+      ctx.combat.announce(`The egg hatches: ${rolled.name}!`, '#ffe9a0');
     },
   },
 };
@@ -751,10 +751,10 @@ const prismaei: AugmentDef = {
 // Endgegner (Konzept: erst Statue, dann Monster)
 const endgegner: AugmentDef = {
   id: 'endgegner',
-  name: 'Endgegner',
+  name: 'Final Boss',
   tier: 'prisma',
   tags: ['Ward', 'Bruch'],
-  description: 'Die ersten 5s jeder Runde bist du verwurzelt und gehärtet. Danach: +30% AD/AP/LP, Schild (25% max. LP).',
+  description: 'For the first 5s of each round you are rooted and hardened. Then: +30% AD/AP/HP, shield (25% max HP).',
   hooks: {
     roundStart: (_p, ctx) => {
       ctx.run.memory.endgegnerT = ctx.combat.now + 5000;
@@ -783,7 +783,7 @@ const endgegner: AugmentDef = {
         const d = Math.max(30, Math.hypot(u.x - ctx.player.x, u.y - ctx.player.y));
         u.moveBy(((u.x - ctx.player.x) / d) * 220, ((u.y - ctx.player.y) / d) * 220);
       }
-      ctx.combat.announce('DER ENDGEGNER ERWACHT', '#ff4455');
+      ctx.combat.announce('THE FINAL BOSS AWAKENS', '#ff4455');
     }
   },
 };
@@ -791,10 +791,10 @@ const endgegner: AugmentDef = {
 // Gerechter Zorn (Konzept: Heilung facht Zauberkraft an)
 const gerechterZorn: AugmentDef = {
   id: 'gerechterzorn',
-  name: 'Gerechter Zorn',
+  name: 'Righteous Wrath',
   tier: 'prisma',
   tags: ['Blut', 'Arkan'],
-  description: 'Jede erhaltene Heilung (3s Sperrzeit): +2% Fähigkeitsschaden bis Rundenende (stapelt endlos).',
+  description: 'Each heal you receive (3s cooldown): +2% ability damage until end of round (stacks infinitely).',
   onCombatInit: (ctx) => {
     ctx.run.memory.zornStacks = 0;
     ctx.run.memory.zornPrevHp = ctx.player.hp;
@@ -817,20 +817,20 @@ const gerechterZorn: AugmentDef = {
 // Adlerauge (Konzept: Reichweite, Endstufe)
 const adlerauge: AugmentDef = {
   id: 'adlerauge',
-  name: 'Adlerauge',
+  name: 'Eagle Eye',
   tier: 'prisma',
   tags: ['Sturm'],
-  description: '+150 Angriffsreichweite.',
+  description: '+150 attack range.',
   statMods: [{ stat: 'attackRange', flat: 150 }],
 };
 
 // Schmortopf (Konzept: brennende Aura)
 const schmortopf: AugmentDef = {
   id: 'schmortopf',
-  name: 'Schmortopf',
+  name: 'Slow Cooker',
   tier: 'prisma',
   tags: ['Bruch'],
-  description: 'Flammenaura (500): Gegner darin brennen für 1% ihrer max. LP pro Sekunde (stapelnd).',
+  description: 'Flame aura (500): enemies inside burn for 1% of their max HP per second (stacking).',
   onUpdate: (_dt, ctx) => {
     if ((ctx.run.memory.schmorNext ?? 0) > ctx.combat.now) return;
     ctx.run.memory.schmorNext = ctx.combat.now + 1000;
@@ -843,10 +843,10 @@ const schmortopf: AugmentDef = {
 // Nachhall (Konzept: Fähigkeitstreffer detonieren nach)
 const nachhall: AugmentDef = {
   id: 'nachhall',
-  name: 'Nachhall',
+  name: 'Reverb',
   tier: 'prisma',
   tags: ['Arkan'],
-  description: 'Fähigkeitstreffer hallen nach: nach 0,75s Detonation am Ziel (13–40 +50% AP magisch, 6s Sperrzeit).',
+  description: 'Ability hits reverberate: detonation on the target after 0.75s (13–40 +50% AP magic, 6s cooldown).',
   hooks: {
     abilityHit: ({ target }, ctx) => {
       if ((ctx.run.memory.nachhallNext ?? 0) > ctx.combat.now || !target.alive) return;
@@ -868,20 +868,20 @@ const nachhall: AugmentDef = {
 // Statistik hoch drei (Konzept: 4 zufällige Werteboni)
 const statistik3: AugmentDef = {
   id: 'statistik3',
-  name: 'Statistik hoch drei',
+  name: 'Stats Cubed',
   tier: 'prisma',
   tags: [],
-  description: 'Sofort 4 zufällige permanente Werteboni.',
+  description: 'Instantly gain 4 random permanent stat bonuses.',
   onCombatInit: (ctx) => statRolls(ctx, 'stat3', 4),
 };
 
 // Käfigkampf (Konzept: E zwingt zum Nahkampf mit dir)
 const kaefigkampf: AugmentDef = {
   id: 'kaefigkampf',
-  name: 'Käfigkampf',
+  name: 'Cage Match',
   tier: 'prisma',
   tags: ['Ward', 'Bruch'],
-  description: 'Deine E: Gegner im Umkreis (500) werden 2s stark verlangsamt, du erhältst +100 Rüstung & MR (30s Sperrzeit).',
+  description: 'Your E: enemies within 500 are heavily slowed for 2s, and you gain +100 armor & MR (30s cooldown).',
   hooks: {
     abilityCast: ({ ability }, ctx) => {
       if (ability !== 'E') return;
@@ -901,10 +901,10 @@ const kaefigkampf: AugmentDef = {
 // Stepptänzer (Konzept: Treffer machen schnell, Tempo macht schnell)
 const stepptaenzer: AugmentDef = {
   id: 'stepptaenzer',
-  name: 'Stepptänzer',
+  name: 'Tap Dancer',
   tier: 'prisma',
   tags: ['Sturm'],
-  description: 'Angriffstreffer: +8 Tempo bis Rundenende (stapelt endlos). Angriffstempo: +10% × Tempo-Verhältnis.',
+  description: 'Attack hits: +8 move speed until end of round (stacks infinitely). Attack speed: +10% × move-speed ratio.',
   onCombatInit: (ctx) => {
     ctx.run.memory.steppStacks = 0;
   },
@@ -931,10 +931,10 @@ const stepptaenzer: AugmentDef = {
 // Transmutation: Chaos (Konzept: zwei zufällige Augmente)
 const transmutChaos: AugmentDef = {
   id: 'transmutchaos',
-  name: 'Transmutation: Chaos',
+  name: 'Transmute: Chaos',
   tier: 'prisma',
   tags: [],
-  description: 'Du erhältst sofort zwei komplett zufällige Augmente.',
+  description: 'Instantly gain two completely random augments.',
   onCombatInit: (ctx) => {
     if (ctx.run.memory.chaosDone) return;
     ctx.run.memory.chaosDone = 1;
@@ -946,10 +946,10 @@ const transmutChaos: AugmentDef = {
 // Transmutation: Silber (Konzept: Masse statt Klasse)
 const transmutSilber: AugmentDef = {
   id: 'transmutsilber',
-  name: 'Transmutation: Silber',
+  name: 'Transmute: Silver',
   tier: 'prisma',
   tags: [],
-  description: 'Du erhältst sofort drei zufällige Silber-Augmente.',
+  description: 'Instantly gain three random Silver augments.',
   onCombatInit: (ctx) => {
     if (ctx.run.memory.tsilberDone) return;
     ctx.run.memory.tsilberDone = 1;
@@ -959,7 +959,7 @@ const transmutSilber: AugmentDef = {
       ctx.run.augments.push(rolled);
       for (const t of rolled.tags) ctx.run.tagCounts[t]++;
       if (rolled.ruleFlags) Object.assign(ctx.run.flags, rolled.ruleFlags);
-      ctx.combat.announce(`Silber: ${rolled.name}`, '#cccccc');
+      ctx.combat.announce(`Silver: ${rolled.name}`, '#cccccc');
     }
   },
 };
@@ -967,10 +967,10 @@ const transmutSilber: AugmentDef = {
 // Fernbomber (Konzept: Distanz-Treffer rufen ein Sperrfeuer)
 const fernbomber: AugmentDef = {
   id: 'fernbomber',
-  name: 'Fernbomber',
+  name: 'Long Bomber',
   tier: 'prisma',
   tags: ['Sturm', 'Arkan'],
-  description: 'Triffst du aus über 560 Entfernung: Sperrfeuer auf das Ziel (22–66 +70% AP magisch, 8s Sperrzeit).',
+  description: 'Hitting from over 560 range: a barrage on the target (22–66 +70% AP magic, 8s cooldown).',
   hooks: {
     damageDealt: ({ target, type }, ctx) => {
       if (procActive() || type === 'other' || !target.alive) return;
@@ -1004,10 +1004,10 @@ const fernbomber: AugmentDef = {
 // Zugabe (Konzept: die erste E jeder Runde ist gratis)
 const zugabe: AugmentDef = {
   id: 'zugabe',
-  name: 'Zugabe',
+  name: 'Encore',
   tier: 'prisma',
   tags: ['Arkan'],
-  description: 'Die erste E jeder Runde setzt sofort alle Abklingzeiten zurück.',
+  description: 'The first E each round instantly resets all cooldowns.',
   hooks: {
     roundStart: (_p, ctx) => {
       ctx.run.memory.zugabeReady = 1;
@@ -1016,7 +1016,7 @@ const zugabe: AugmentDef = {
       if (ability !== 'E' || !ctx.run.memory.zugabeReady) return;
       ctx.run.memory.zugabeReady = 0;
       ctx.combat.delay(50, () => ctx.player.resetCooldowns());
-      ctx.combat.announce('Zugabe!', '#ffe9a0');
+      ctx.combat.announce('Encore!', '#ffe9a0');
     },
   },
 };
@@ -1024,10 +1024,10 @@ const zugabe: AugmentDef = {
 // Lauffeuer (Konzept: springender Feuerball)
 const lauffeuer: AugmentDef = {
   id: 'lauffeuer',
-  name: 'Lauffeuer',
+  name: 'Wildfire',
   tier: 'prisma',
   tags: ['Bruch', 'Arkan'],
-  description: 'Alle 12s: Ein Feuerball springt zwischen bis zu 4 Gegnern (44 +30% AD +40% AP magisch je Sprung).',
+  description: 'Every 12s: a fireball bounces between up to 4 enemies (44 +30% AD +40% AP magic per bounce).',
   onUpdate: (_dt, ctx) => {
     if ((ctx.run.memory.lauffeuerNext ?? 0) > ctx.combat.now) return;
     const first = ctx.combat.nearestEnemy(ctx.player, 800);
