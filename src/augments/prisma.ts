@@ -37,7 +37,7 @@ const bodenstaendig: AugmentDef = {
   name: 'Grounded',
   tier: 'prisma',
   tags: ['Arkan'],
-  description: 'Your dash is disabled. In return: +25% ability damage and +45 ability haste.',
+  description: 'Your dash is disabled. In return: +25% ability amp and +45 ability haste.',
   ruleFlags: { dashCharges: 0 },
   statMods: [
     { stat: 'abilityDamage', pct: 0.25 },
@@ -194,7 +194,7 @@ const brachialmagie: AugmentDef = {
   name: 'Brute Magic',
   tier: 'prisma',
   tags: ['Arkan', 'Bruch'],
-  description: '+100% ability damage, but −50 ability haste. Casting: +40% move speed for 2s.',
+  description: '+100% ability amp, but −50 ability haste. Casting: +40% move speed for 2s.',
   statMods: [
     { stat: 'abilityDamage', pct: 1.0 },
     { stat: 'abilityHaste', flat: -50 },
@@ -639,16 +639,6 @@ const zauberfaust: AugmentDef = {
   },
 };
 
-// Matroschka (Konzept: mehrschichtiges Weiterleben)
-const matroschka: AugmentDef = {
-  id: 'matroschka',
-  name: 'Matryoshka',
-  tier: 'prisma',
-  tags: ['Ward'],
-  description: 'Twice per run: on death, you peel open anew and keep fighting.',
-  ruleFlags: { revives: 2 },
-};
-
 // Allkern (Konzept: zwei zufällige Elementarkerne pro Kampf)
 const ALLKERN_IDS = ['hextechkern', 'glutkern', 'bergkern', 'ozeankern'];
 const allkern: AugmentDef = {
@@ -794,7 +784,7 @@ const gerechterZorn: AugmentDef = {
   name: 'Righteous Wrath',
   tier: 'prisma',
   tags: ['Blut', 'Arkan'],
-  description: 'Each heal you receive (3s cooldown): +2% ability damage until end of round (stacks infinitely).',
+  description: 'Each heal you receive (3s cooldown): +2% ability amp until end of round (stacks infinitely).',
   onCombatInit: (ctx) => {
     ctx.run.memory.zornStacks = 0;
     ctx.run.memory.zornPrevHp = ctx.player.hp;
@@ -1091,7 +1081,6 @@ export const PRISMA: AugmentDef[] = [
   irrerAlchemist,
   dualist,
   zauberfaust,
-  matroschka,
   allkern,
   orbitalschlag,
   schicksalsschatulle,

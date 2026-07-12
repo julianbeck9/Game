@@ -27,7 +27,9 @@ export interface RuleFlags {
 export const DEFAULT_FLAGS: RuleFlags = {
   noAutoAttacks: false,
   dashIFrames: false,
-  prismaSlots: 1,
+  // How many prisma augments you may hold (and keep being offered). Higher so
+  // prismatics actually show up in the pool rather than vanishing after one.
+  prismaSlots: 4,
   burnForever: false,
   silverHalved: false,
   dashCharges: 1,

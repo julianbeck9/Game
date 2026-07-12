@@ -9,8 +9,9 @@ function allowedTiers(round: number): Tier[] {
   const shift = (t: Tier): Tier =>
     boost <= 0 ? t : t === 'silber' ? 'gold' : 'prisma';
   let tiers: Tier[];
-  if (round <= 4) tiers = ['silber'];
-  else if (round <= 13) tiers = ['silber', 'gold'];
+  if (round <= 3) tiers = ['silber'];
+  else if (round <= 7) tiers = ['silber', 'gold'];
+  else if (round <= 11) tiers = ['gold', 'prisma'];
   else tiers = ['gold', 'prisma'];
   return [...new Set(tiers.map(shift))];
 }
@@ -44,6 +45,13 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
   if (pool.length === 0) {
     pool = AUGMENTS.filter((a) => !owns(a.id) && !exclude.has(a.id) && (a.tier !== 'prisma' || prismaAllowed));
     if (pool.length === 0) return null;
+  }
+
+  // Prisma bias: when prisma is on the table, give it a real chance to show up
+  // (the gold pool is large, so uniform rolls under-represent prisma).
+  if (prismaAllowed && tiers.includes('prisma') && Math.random() < 0.4) {
+    const prismas = pool.filter((a) => a.tier === 'prisma');
+    if (prismas.length > 0) return prismas[Math.floor(Math.random() * prismas.length)];
   }
 
   const ownedTags = new Set(

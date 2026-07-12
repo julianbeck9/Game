@@ -13,6 +13,15 @@ export interface MapObstacle {
   r: number;
 }
 
+/** Impassable terrain: you can't walk over it (dashes cross it, shots fly over). */
+export interface TerrainZone {
+  kind: 'water' | 'lava';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export type ObstacleStyle = 'baum' | 'obelisk' | 'stachel' | 'saeule' | 'fels';
 export type AmbientKind = 'petals' | 'sand' | 'embers' | 'motes';
 
@@ -28,6 +37,8 @@ export interface MapDef {
   obstacleStyle: ObstacleStyle;
   obstacleColor: number;
   obstacles: MapObstacle[];
+  /** Impassable water/lava zones (empty for open maps). */
+  terrain: TerrainZone[];
   ambient: AmbientKind;
   ambientColor: number;
   /** Deterministic decor seed so a map always looks the same. */
@@ -43,7 +54,7 @@ const CY = GAME_H / 2;
 export const MAPS: MapDef[] = [
   {
     id: 'kirschgarten',
-    name: 'Kirschgarten',
+    name: 'Cherry Garden',
     region: 'Ionia',
     floor: [0x14201a, 0x1a2a20, 0x223528],
     line: 0x3a5a48,
@@ -51,10 +62,14 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'baum',
     obstacleColor: 0xe89ab8,
     obstacles: [
-      { x: CX - 520, y: CY - 200, r: 56 },
-      { x: CX + 520, y: CY + 200, r: 56 },
-      { x: CX - 380, y: CY + 300, r: 44 },
-      { x: CX + 380, y: CY - 300, r: 44 },
+      { x: CX - 560, y: CY - 220, r: 56 },
+      { x: CX + 560, y: CY + 220, r: 56 },
+      { x: CX - 300, y: CY + 320, r: 44 },
+      { x: CX + 300, y: CY - 320, r: 44 },
+    ],
+    terrain: [
+      { kind: 'water', x: CX - 430, y: CY - 30, w: 300, h: 200 },
+      { kind: 'water', x: CX + 440, y: CY + 60, w: 280, h: 190 },
     ],
     ambient: 'petals',
     ambientColor: 0xf0b8cc,
@@ -62,7 +77,7 @@ export const MAPS: MapDef[] = [
   },
   {
     id: 'windklippen',
-    name: 'Windklippen',
+    name: 'Wind Cliffs',
     region: 'Ionia',
     floor: [0x16222c, 0x1c2c38, 0x243846],
     line: 0x3a5a6a,
@@ -70,9 +85,13 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'fels',
     obstacleColor: 0x4a6a7a,
     obstacles: [
-      { x: CX, y: CY, r: 70 },
-      { x: CX - 620, y: CY + 60, r: 48 },
-      { x: CX + 620, y: CY - 60, r: 48 },
+      { x: CX, y: CY, r: 66 },
+      { x: CX - 640, y: CY + 60, r: 48 },
+      { x: CX + 640, y: CY - 60, r: 48 },
+    ],
+    terrain: [
+      { kind: 'water', x: CX - 320, y: CY - 200, w: 300, h: 160 },
+      { kind: 'water', x: CX + 330, y: CY + 190, w: 300, h: 160 },
     ],
     ambient: 'motes',
     ambientColor: 0xaee8f8,
@@ -80,7 +99,7 @@ export const MAPS: MapDef[] = [
   },
   {
     id: 'sonnengrab',
-    name: 'Sonnengrab',
+    name: 'Sun Grave',
     region: 'Shurima',
     floor: [0x2a2114, 0x35291a, 0x413320],
     line: 0x6a5a2a,
@@ -88,10 +107,14 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'obelisk',
     obstacleColor: 0xd8b060,
     obstacles: [
-      { x: CX - 460, y: CY - 240, r: 50 },
-      { x: CX + 460, y: CY - 240, r: 50 },
-      { x: CX - 460, y: CY + 240, r: 50 },
-      { x: CX + 460, y: CY + 240, r: 50 },
+      { x: CX - 500, y: CY - 240, r: 50 },
+      { x: CX + 500, y: CY - 240, r: 50 },
+      { x: CX - 500, y: CY + 240, r: 50 },
+      { x: CX + 500, y: CY + 240, r: 50 },
+    ],
+    terrain: [
+      { kind: 'lava', x: CX - 380, y: CY, w: 260, h: 210 },
+      { kind: 'lava', x: CX + 380, y: CY, w: 260, h: 210 },
     ],
     ambient: 'sand',
     ambientColor: 0xd8b878,
@@ -99,7 +122,7 @@ export const MAPS: MapDef[] = [
   },
   {
     id: 'gleisskanal',
-    name: 'Gleißkanal',
+    name: 'Gleaming Canal',
     region: 'Shurima',
     floor: [0x261e12, 0x322818, 0x3e321e],
     line: 0x7a6228,
@@ -107,10 +130,12 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'saeule',
     obstacleColor: 0xc8a850,
     obstacles: [
-      { x: CX - 240, y: CY, r: 52 },
-      { x: CX + 240, y: CY, r: 52 },
-      { x: CX, y: CY - 330, r: 44 },
-      { x: CX, y: CY + 330, r: 44 },
+      { x: CX - 300, y: CY, r: 50 },
+      { x: CX + 300, y: CY, r: 50 },
+    ],
+    terrain: [
+      { kind: 'water', x: CX - 470, y: CY, w: 240, h: 300 },
+      { kind: 'water', x: CX + 470, y: CY, w: 240, h: 300 },
     ],
     ambient: 'motes',
     ambientColor: 0x9fe8ff,
@@ -118,7 +143,7 @@ export const MAPS: MapDef[] = [
   },
   {
     id: 'schlachtgrube',
-    name: 'Schlachtgrube',
+    name: 'Battle Pit',
     region: 'Noxus',
     floor: [0x1e1414, 0x281a1a, 0x322020],
     line: 0x5a2a2a,
@@ -126,9 +151,13 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'stachel',
     obstacleColor: 0x663333,
     obstacles: [
-      { x: CX - 560, y: CY, r: 54 },
-      { x: CX + 560, y: CY, r: 54 },
-      { x: CX, y: CY - 60, r: 46 },
+      { x: CX - 600, y: CY, r: 54 },
+      { x: CX + 600, y: CY, r: 54 },
+    ],
+    terrain: [
+      { kind: 'lava', x: CX - 440, y: CY - 40, w: 280, h: 210 },
+      { kind: 'lava', x: CX + 440, y: CY + 40, w: 280, h: 210 },
+      { kind: 'lava', x: CX, y: CY, w: 220, h: 150 },
     ],
     ambient: 'embers',
     ambientColor: 0xff7722,
@@ -136,7 +165,7 @@ export const MAPS: MapDef[] = [
   },
   {
     id: 'marmorhof',
-    name: 'Marmorhof',
+    name: 'Marble Court',
     region: 'Demacia',
     floor: [0x1e2028, 0x282c38, 0x343948],
     line: 0x4a5570,
@@ -144,11 +173,14 @@ export const MAPS: MapDef[] = [
     obstacleStyle: 'saeule',
     obstacleColor: 0xb8c0d8,
     obstacles: [
-      { x: CX - 480, y: CY - 260, r: 46 },
-      { x: CX + 480, y: CY - 260, r: 46 },
-      { x: CX - 480, y: CY + 260, r: 46 },
-      { x: CX + 480, y: CY + 260, r: 46 },
-      { x: CX, y: CY, r: 40 },
+      { x: CX - 520, y: CY - 260, r: 46 },
+      { x: CX + 520, y: CY - 260, r: 46 },
+      { x: CX - 520, y: CY + 260, r: 46 },
+      { x: CX + 520, y: CY + 260, r: 46 },
+    ],
+    terrain: [
+      { kind: 'water', x: CX - 440, y: CY, w: 240, h: 230 },
+      { kind: 'water', x: CX + 440, y: CY, w: 240, h: 230 },
     ],
     ambient: 'motes',
     ambientColor: 0xf0e8c0,
@@ -173,6 +205,10 @@ export function setActiveMap(m: MapDef): void {
 
 export function activeObstacles(): MapObstacle[] {
   return active.obstacles;
+}
+
+export function activeTerrain(): TerrainZone[] {
+  return active.terrain;
 }
 
 /** Pick a random map, never the same twice in a row. */

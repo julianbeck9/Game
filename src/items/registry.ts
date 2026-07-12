@@ -1,5 +1,6 @@
 import { AugmentDef, AugmentCtx } from '../augments/types';
 import { procDamage, enemiesWithin, slowUnit, unitCounterAdd } from '../augments/helpers';
+import type { ItemIconKind } from './icons';
 // Laufzeit-sicher: core/run importiert von hier nur Typen (wird wegkompiliert)
 import { run } from '../core/run';
 
@@ -17,6 +18,10 @@ export interface ItemDef extends AugmentDef {
   cost: number;
   glyph: string;
   color: number;
+  /** 16-bit thematic icon; defaults per category if omitted. */
+  icon?: ItemIconKind;
+  /** Boots and other one-of-a-kind items: can only be owned once. */
+  unique?: boolean;
 }
 
 function item(def: Omit<ItemDef, 'tier' | 'tags'>): ItemDef {
@@ -30,6 +35,8 @@ function item(def: Omit<ItemDef, 'tier' | 'tags'>): ItemDef {
 const BUDGET: ItemDef[] = [
   item({
     id: 'it_windsohlen',
+    icon: 'boots',
+    unique: true,
     name: 'Wind Boots',
     cost: 280,
     glyph: 'W',
@@ -39,6 +46,7 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_waechterhorn',
+    icon: 'shield',
     name: "Guardian's Horn",
     cost: 300,
     glyph: 'H',
@@ -51,6 +59,7 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_waechterklinge',
+    icon: 'sword',
     name: "Guardian's Blade",
     cost: 330,
     glyph: 'K',
@@ -64,6 +73,7 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_waechterkugel',
+    icon: 'orb',
     name: "Guardian's Orb",
     cost: 320,
     glyph: 'O',
@@ -76,6 +86,7 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_waechterhammer',
+    icon: 'hammer',
     name: "Guardian's Hammer",
     cost: 320,
     glyph: 'M',
@@ -89,6 +100,8 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_sporensohlen',
+    icon: 'boots',
+    unique: true,
     name: 'Spur Boots',
     cost: 360,
     glyph: 'S',
@@ -102,6 +115,8 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_panzerstiefel',
+    icon: 'boots',
+    unique: true,
     name: 'Plated Boots',
     cost: 340,
     glyph: 'P',
@@ -114,6 +129,8 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_kettenschuhe',
+    icon: 'boots',
+    unique: true,
     name: 'Mercury Boots',
     cost: 330,
     glyph: 'C',
@@ -126,6 +143,7 @@ const BUDGET: ItemDef[] = [
   }),
   item({
     id: 'it_seelendieb',
+    icon: 'moon',
     name: 'Soulstealer',
     cost: 350,
     glyph: '✦',
@@ -158,6 +176,7 @@ function applySeelendieb(ctx: AugmentCtx): void {
 const KERN: ItemDef[] = [
   item({
     id: 'it_dornenwall',
+    icon: 'thorns',
     name: 'Thornwall',
     cost: 640,
     glyph: '♠',
@@ -177,6 +196,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_unendlichkeit',
+    icon: 'sword',
     name: 'Infinity Edge',
     cost: 780,
     glyph: '∞',
@@ -196,6 +216,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_blutduerster',
+    icon: 'sword',
     name: 'Bloodthirster',
     cost: 720,
     glyph: 'B',
@@ -214,6 +235,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_rabenhut',
+    icon: 'tome',
     name: 'Deathcap',
     cost: 780,
     glyph: '♜',
@@ -226,6 +248,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_leerenstab',
+    icon: 'staff',
     name: 'Void Staff',
     cost: 680,
     glyph: '∅',
@@ -240,6 +263,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_basiliskenzahn',
+    icon: 'fang',
     name: 'Basilisk Fang',
     cost: 700,
     glyph: 'Z',
@@ -258,6 +282,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_lichklinge',
+    icon: 'wand',
     name: 'Lich Blade',
     cost: 720,
     glyph: 'L',
@@ -282,6 +307,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_lavamantel',
+    icon: 'flame',
     name: 'Lava Cloak',
     cost: 660,
     glyph: 'F',
@@ -301,6 +327,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_geistermaske',
+    icon: 'cloak',
     name: 'Spirit Visage',
     cost: 640,
     glyph: 'G',
@@ -315,6 +342,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_warmherz',
+    icon: 'heart',
     name: 'Warmheart',
     cost: 700,
     glyph: '♥',
@@ -333,6 +361,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_schwarzbeil',
+    icon: 'axe',
     name: 'Black Cleaver',
     cost: 700,
     glyph: '⚒',
@@ -364,6 +393,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_koenigsklinge',
+    icon: 'sword',
     name: "Blade of the Fallen King",
     cost: 750,
     glyph: '†',
@@ -383,6 +413,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_phantomtaenzer',
+    icon: 'dagger',
     name: 'Phantom Dancer',
     cost: 700,
     glyph: '♪',
@@ -396,6 +427,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_sturmklinge',
+    icon: 'sword',
     name: 'Storm Blade',
     cost: 700,
     glyph: '⚡',
@@ -439,6 +471,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_runenbogen',
+    icon: 'bow',
     name: 'Rune Bow',
     cost: 720,
     glyph: '⇶',
@@ -479,6 +512,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_rasende',
+    icon: 'dagger',
     name: 'Rageblade',
     cost: 700,
     glyph: 'R',
@@ -506,6 +540,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_witzende',
+    icon: 'staff',
     name: "Wit's End",
     cost: 680,
     glyph: 'X',
@@ -523,6 +558,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_frostherz',
+    icon: 'frost',
     name: 'Frozen Heart',
     cost: 700,
     glyph: '❄',
@@ -545,6 +581,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_steinwall',
+    icon: 'plate',
     name: 'Stone Wall',
     cost: 690,
     glyph: '▣',
@@ -565,6 +602,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_frostzepter',
+    icon: 'wand',
     name: 'Frost Scepter',
     cost: 660,
     glyph: '¥',
@@ -582,6 +620,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_schattenflamme',
+    icon: 'flame',
     name: 'Shadowflame',
     cost: 700,
     glyph: '🔥',
@@ -597,6 +636,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_spaltklinge',
+    icon: 'staff',
     name: 'Riftmaker',
     cost: 720,
     glyph: '◊',
@@ -623,6 +663,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_todestanz',
+    icon: 'axe',
     name: "Death's Dance",
     cost: 760,
     glyph: '☠',
@@ -666,6 +707,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_riesenfaust',
+    icon: 'gauntlet',
     name: "Giant's Fist",
     cost: 720,
     glyph: '✊',
@@ -690,6 +732,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_kriegsspeer',
+    icon: 'spear',
     name: 'War Spear',
     cost: 680,
     glyph: '↟',
@@ -703,6 +746,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_sanduhr',
+    icon: 'hourglass',
     name: 'Golden Hourglass',
     cost: 780,
     glyph: '⌛',
@@ -728,6 +772,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_schutzengel',
+    icon: 'cross',
     name: 'Guardian Angel',
     cost: 850,
     glyph: '✝',
@@ -741,6 +786,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_kollektor',
+    icon: 'coin',
     name: 'The Collector',
     cost: 720,
     glyph: '$',
@@ -766,6 +812,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_nachtschneide',
+    icon: 'dagger',
     name: 'Nightblade',
     cost: 660,
     glyph: '☾',
@@ -791,6 +838,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_herzstahl',
+    icon: 'heart',
     name: 'Heartsteel',
     cost: 750,
     glyph: '♦',
@@ -821,6 +869,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_titanenaxt',
+    icon: 'axe',
     name: "Titan's Axe",
     cost: 720,
     glyph: 'T',
@@ -841,6 +890,7 @@ const KERN: ItemDef[] = [
   }),
   item({
     id: 'it_raubtierhydra',
+    icon: 'fang',
     name: 'Ravenous Hydra',
     cost: 750,
     glyph: '龍',
@@ -871,6 +921,7 @@ let itTanzTicking = false;
 const LUXUS: ItemDef[] = [
   item({
     id: 'it_goldspatel',
+    icon: 'star',
     name: 'Golden Spatula',
     cost: 1100,
     glyph: '★',
@@ -897,14 +948,15 @@ export function itemById(id: string): ItemDef | undefined {
   return ITEMS.find((i) => i.id === id);
 }
 
-/** Shop offer: 6 distinct random items (no duplicates of owned), cheap ones early. */
+/** Shop offer: 6 distinct random items. Owned items (and already-owned boots) never appear. */
 export function rollShop(round: number, count = 6): ItemDef[] {
   const owned = (id: string) => run.items.some((it) => it.id === id);
-  const pool = ITEMS.filter((i) => !owned(i.id) && (round <= 3 ? i.cost <= 400 : true));
+  // The pre-round-1 starter shop only stocks cheap gear (boots, basic pieces)
+  const pool = ITEMS.filter((i) => !owned(i.id) && (round <= 2 ? i.cost <= 400 : true));
   const offers: ItemDef[] = [];
   const bag = [...pool];
-  // Ab Runde 4: mindestens 2 Budget-Angebote, damit kleines Gold nie verfällt
-  if (round > 3) {
+  // From round 3 on: at least 2 budget offers so small gold is never wasted
+  if (round > 2) {
     const cheap = pool.filter((i) => i.cost <= 400);
     for (let i = 0; i < 2 && cheap.length > 0; i++) {
       const pick = cheap.splice(Math.floor(Math.random() * cheap.length), 1)[0];

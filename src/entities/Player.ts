@@ -81,7 +81,8 @@ export class Player extends Unit {
     if (!this.alive) return;
     if (this.dashing) {
       const speed = ABILITIES.Dash.dist / ABILITIES.Dash.duration;
-      this.moveBy(this.dashDir.x * speed * dt, this.dashDir.y * speed * dt);
+      // Dashes cross impassable terrain (water/lava)
+      this.moveBy(this.dashDir.x * speed * dt, this.dashDir.y * speed * dt, true);
       this.phaseSlash();
       this.isMoving = true;
       return;

@@ -1,5 +1,5 @@
 import { AugmentCtx, AugmentDef } from './types';
-import { run, levelMult } from '../core/run';
+import { run } from '../core/run';
 import type { Combat } from '../core/combat';
 import type { Player } from '../entities/Player';
 import type { EventMap } from '../core/events';
@@ -19,7 +19,7 @@ export class AugmentManager {
       player,
       run,
       power: (def: AugmentDef): number => {
-        let p = levelMult(def.id); // Aufwertungen: L2 ×1,6 · L3 ×2,2
+        let p = 1;
         if (def.tier === 'silber' && run.flags.silverHalved) p *= 0.5;
         return p;
       },

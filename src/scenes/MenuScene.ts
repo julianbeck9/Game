@@ -84,7 +84,8 @@ export class MenuScene extends Phaser.Scene {
       initAudio();
       newRun();
       run.champion = championId;
-      this.scene.start('arena');
+      // Open with a starter shop (buy boots / basic gear before round 1)
+      this.scene.start('shop');
     };
     this.startFn = start;
     this.input.keyboard?.once('keydown-ENTER', () => start('koenig'));

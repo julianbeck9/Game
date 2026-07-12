@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { StatBlock } from '../core/stats';
 import { COLORS } from '../config';
-import { clampToArena, resolvePillars } from '../core/geometry';
+import { clampToArena, resolvePillars, resolveTerrain } from '../core/geometry';
 
 export type Team = 'player' | 'enemy';
 
@@ -80,12 +80,17 @@ export abstract class Unit {
     this.healDisplayAcc += this.hp - before;
   }
 
-  /** Displaced movement (dashes, knockbacks) with pillar/arena resolution. */
-  moveBy(dx: number, dy: number): void {
+  /**
+   * Displaced movement with pillar/arena resolution. By default it also blocks
+   * impassable terrain (water/lava); pass overTerrain=true for dashes, which
+   * are allowed to cross it.
+   */
+  moveBy(dx: number, dy: number, overTerrain = false): void {
     const p1 = resolvePillars(this.x + dx, this.y + dy, this.radius);
     const p2 = clampToArena(p1.x, p1.y, this.radius);
-    this.x = p2.x;
-    this.y = p2.y;
+    const p3 = overTerrain ? p2 : resolveTerrain(p2.x, p2.y, this.radius);
+    this.x = p3.x;
+    this.y = p3.y;
   }
 
   abstract update(time: number, dt: number): void;

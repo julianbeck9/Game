@@ -17,6 +17,7 @@ import { run, earnGold } from '../core/run';
 import { dist, pointInPillar, Vec } from '../core/geometry';
 import { ARENA_X, ARENA_Y, COLORS, GAME_W, GAME_H } from '../config';
 import { MapDef, FIELD, setActiveMap } from '../core/maps';
+import { drawItemIcon } from '../items/icons';
 import { STR } from '../core/strings';
 import { initAudio, sfx } from '../core/sfx';
 import { crown, shade } from '../core/draw';
@@ -48,6 +49,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private ambientGfx!: Phaser.GameObjects.Graphics;
   private motes: { x: number; y: number; vx: number; vy: number; size: number; phase: number }[] = [];
   private map!: MapDef;
+  private terrainZones: MapDef['terrain'] = [];
   private slowmoUntil = 0;
   private dashTrail: { x: number; y: number; until: number }[] = [];
   private rings: { x: number; y: number; start: number; color: number; maxR: number }[] = [];
@@ -350,30 +352,23 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       .setDepth(101);
     const openBuild = () => {
       if (this.scene.isPaused('arena')) return;
-      this.scene.launch('build');
+      this.scene.launch('build', { from: 'arena' });
       this.scene.pause('arena');
     };
     buildZone.on('pointerdown', openBuild);
     buildTxt.setInteractive({ useHandCursor: true }).on('pointerdown', openBuild);
     this.input.keyboard?.addKey('TAB').on('down', openBuild);
 
-    // Item icons under the panel
+    // Item icons under the panel (16-bit thematic tiles)
+    const itemG = this.add.graphics().setDepth(100);
     run.items.forEach((it, i) => {
       const ix = 38 + i * 44;
       const iy = 30 + leftH + 16;
-      hud.fillStyle(it.color, 0.2);
-      hud.fillRoundedRect(ix - 17, iy - 17, 34, 34, 8);
-      hud.lineStyle(2, it.color, 0.9);
-      hud.strokeRoundedRect(ix - 17, iy - 17, 34, 34, 8);
-      this.add
-        .text(ix, iy, it.glyph, {
-          fontFamily: 'Georgia, serif',
-          fontSize: '20px',
-          fontStyle: 'bold',
-          color: '#' + it.color.toString(16).padStart(6, '0'),
-        })
-        .setOrigin(0.5)
-        .setDepth(100);
+      itemG.fillStyle(it.color, 0.2);
+      itemG.fillRoundedRect(ix - 18, iy - 18, 36, 36, 8);
+      itemG.lineStyle(2, it.color, 0.9);
+      itemG.strokeRoundedRect(ix - 18, iy - 18, 36, 36, 8);
+      drawItemIcon(itemG, it.icon ?? 'orb', ix, iy, 28, it.color);
     });
 
     // One life — no heart HUD needed; just the fullscreen button
@@ -1070,6 +1065,50 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     g.lineStyle(4, m.rim, 0.5);
     g.strokeRect(FIELD.x1 - 8, FIELD.y1 - 8, FIELD.x2 - FIELD.x1 + 16, FIELD.y2 - FIELD.y1 + 16);
 
+    // Impassable terrain (static base; a shimmer animates in the ambient layer)
+    const tg = this.add.graphics().setDepth(1);
+    for (const t of m.terrain) {
+      const x = t.x - t.w / 2;
+      const y = t.y - t.h / 2;
+      if (t.kind === 'water') {
+        tg.fillStyle(0x1a3a6a, 1);
+        tg.fillRoundedRect(x, y, t.w, t.h, 26);
+        tg.fillStyle(0x2a5a9a, 0.9);
+        tg.fillRoundedRect(x + 10, y + 10, t.w - 20, t.h - 20, 22);
+        tg.fillStyle(0x4a8aca, 0.5);
+        tg.fillRoundedRect(x + 22, y + 22, t.w - 44, t.h - 44, 18);
+        tg.lineStyle(3, 0x9fd8ff, 0.5);
+        for (let i = 1; i <= 3; i++) {
+          const wy = y + (t.h * i) / 4;
+          tg.beginPath();
+          tg.moveTo(x + 24, wy);
+          tg.lineTo(x + t.w - 24, wy);
+          tg.strokePath();
+        }
+        tg.lineStyle(3, 0x7fb8e8, 0.8);
+        tg.strokeRoundedRect(x, y, t.w, t.h, 26);
+      } else {
+        // lava
+        tg.fillStyle(0x2a0e08, 1);
+        tg.fillRoundedRect(x, y, t.w, t.h, 22);
+        tg.fillStyle(0x7a1e0a, 1);
+        tg.fillRoundedRect(x + 8, y + 8, t.w - 16, t.h - 16, 18);
+        tg.fillStyle(0xd8480e, 0.9);
+        let seed = m.seed + t.x;
+        const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+        for (let i = 0; i < 6; i++) {
+          tg.fillCircle(x + 24 + rnd() * (t.w - 48), y + 24 + rnd() * (t.h - 48), 14 + rnd() * 18);
+        }
+        tg.fillStyle(0xff9a3a, 0.8);
+        for (let i = 0; i < 5; i++) {
+          tg.fillCircle(x + 30 + rnd() * (t.w - 60), y + 30 + rnd() * (t.h - 60), 6 + rnd() * 8);
+        }
+        tg.lineStyle(3, 0xffb35a, 0.7);
+        tg.strokeRoundedRect(x, y, t.w, t.h, 22);
+      }
+    }
+    this.terrainZones = m.terrain;
+
     // Obstacles in the map's style
     const og = this.add.graphics().setDepth(4);
     for (const o of m.obstacles) {
@@ -1180,6 +1219,23 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private drawAmbient(dt: number): void {
     const g = this.ambientGfx;
     g.clear();
+
+    // Terrain shimmer: lava glow pulse, water surface sparkle
+    for (const t of this.terrainZones) {
+      if (t.kind === 'lava') {
+        const pulse = 0.12 + 0.08 * Math.sin(this.now / 400 + t.x);
+        g.fillStyle(0xff6a1a, pulse);
+        g.fillRoundedRect(t.x - t.w / 2, t.y - t.h / 2, t.w, t.h, 22);
+      } else {
+        g.fillStyle(0xcfeaff, 0.5);
+        for (let i = 0; i < 5; i++) {
+          const sx = t.x - t.w / 2 + 30 + ((i * 97 + this.now / 12) % (t.w - 60));
+          const sy = t.y - t.h / 2 + 30 + ((i * 53) % (t.h - 60));
+          g.fillRect(sx, sy, 3, 3);
+        }
+      }
+    }
+
     const k = this.map.ambient;
     for (let i = 0; i < this.motes.length; i++) {
       const p = this.motes[i];

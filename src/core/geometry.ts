@@ -1,4 +1,4 @@
-import { FIELD, activeObstacles } from './maps';
+import { FIELD, activeObstacles, activeTerrain } from './maps';
 
 export interface Vec {
   x: number;
@@ -48,6 +48,38 @@ export function resolvePillars(x: number, y: number, r: number): Vec {
 export function pointInPillar(x: number, y: number, r = 0): boolean {
   for (const p of activeObstacles()) {
     if (dist(x, y, p.x, p.y) < p.r + r) return true;
+  }
+  return false;
+}
+
+/**
+ * Push a circle of radius r out of any impassable terrain zone (water/lava).
+ * Terrain blocks WALKING only — dashes pass over it, so this is applied by
+ * moveBy when overTerrain is false.
+ */
+export function resolveTerrain(x: number, y: number, r: number): Vec {
+  let px = x;
+  let py = y;
+  for (const t of activeTerrain()) {
+    const hw = t.w / 2 + r;
+    const hh = t.h / 2 + r;
+    const dx = px - t.x;
+    const dy = py - t.y;
+    if (Math.abs(dx) < hw && Math.abs(dy) < hh) {
+      // Overlapping: shove out along the shallower axis
+      const ox = hw - Math.abs(dx);
+      const oy = hh - Math.abs(dy);
+      if (ox < oy) px = t.x + (dx < 0 ? -hw : hw);
+      else py = t.y + (dy < 0 ? -hh : hh);
+    }
+  }
+  return { x: px, y: py };
+}
+
+/** Is the point inside any terrain zone (for lava damage checks, spawn avoidance)? */
+export function pointInTerrain(x: number, y: number, r = 0): boolean {
+  for (const t of activeTerrain()) {
+    if (Math.abs(x - t.x) < t.w / 2 + r && Math.abs(y - t.y) < t.h / 2 + r) return true;
   }
   return false;
 }
