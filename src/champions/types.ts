@@ -12,6 +12,8 @@ export interface ChampionDef {
   id: string;
   name: string;
   tagline: string;
+  /** Home region, shown on the select screen. */
+  region: string;
   /** One-line kit summary for the select screen. */
   kitLine: string;
   base: Partial<Record<StatName, number>>;
@@ -20,12 +22,17 @@ export interface ChampionDef {
   /** Aim-preview length and smart-cast acquisition range for Q. */
   qRange: number;
   cds: { Q: number; E: number; Dash: number };
+  /** Yasuo: Q cooldown scales with attack speed instead of ability haste. */
+  qCdFromAS?: boolean;
+  /** Yasuo: crit chance counts double on auto-attacks. */
+  critMult?: number;
   /** Q implementation; also used by the Echo augment for re-casts. */
   fireQ(p: Player, dir: Vec, scale: number): void;
-  castE(p: Player): void;
+  /** dir: aim direction (mouse on desktop, facing/joystick on touch). */
+  castE(p: Player, dir?: Vec): void;
   /** Optional on-hit rider for auto-attacks (Ashe frost). */
   onAutoHit?(p: Player, target: Unit): void;
-  /** 8-bit sprite: rows of palette characters ('.' = transparent). */
+  /** 16-bit sprite: rows of palette characters ('.' = transparent). */
   sprite: string[];
   palette: Record<string, number>;
 }

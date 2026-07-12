@@ -1,14 +1,17 @@
 import { EnemyConfig } from '../entities/Enemy';
 import {
   DifficultyScale,
+  makeBerserker,
   makeHaescher,
   makeHexer,
   makeSchuetze,
+  makeSpeermaid,
   makeUsurpator,
   makeWaechter,
 } from '../entities/enemies';
+import { MapDef, rollMap } from './maps';
 
-export const MAX_ROUND = 12;
+export const MAX_ROUND = 20;
 
 export type ModifierId = 'feuerring' | 'heilblumen' | 'bruchzone' | 'blitzsturm';
 
@@ -19,22 +22,37 @@ export const MODIFIER_NAMES: Record<ModifierId, string> = {
   blitzsturm: 'Blitzsturm',
 };
 
-/** Per-round difficulty: stats up, reaction time down, dodges up — steeper now that losses advance too. */
+/**
+ * Per-round difficulty. Linear ramp through the 20-round gauntlet; past
+ * round 20 (Endlosmodus) enemies scale EXPONENTIALLY — the run always
+ * ends eventually, the question is how deep you get.
+ */
 export function roundScale(round: number): DifficultyScale {
-  return {
-    hp: 1 + 0.17 * (round - 1),
-    dmg: 1 + 0.12 * (round - 1),
-    reactionMs: Math.max(120, 400 - 25 * (round - 1)),
-    dodgeChance: Math.min(0.9, 0.4 + 0.045 * round),
-    armor: 4 + 2.2 * (round - 1),
-    mr: 4 + 2.2 * (round - 1),
+  const capped = Math.min(round, MAX_ROUND);
+  const base: DifficultyScale = {
+    hp: 1 + 0.15 * (capped - 1),
+    dmg: 1 + 0.1 * (capped - 1),
+    reactionMs: Math.max(110, 400 - 16 * (capped - 1)),
+    dodgeChance: Math.min(0.9, 0.4 + 0.028 * capped),
+    armor: 4 + 1.8 * (capped - 1),
+    mr: 4 + 1.8 * (capped - 1),
   };
+  if (round > MAX_ROUND) {
+    const over = round - MAX_ROUND;
+    base.hp *= Math.pow(1.16, over);
+    base.dmg *= Math.pow(1.1, over);
+    base.armor += 3 * over;
+    base.mr += 3 * over;
+    base.reactionMs = Math.max(90, base.reactionMs - 2 * over);
+  }
+  return base;
 }
 
 export interface RoundSpec {
   enemies: EnemyConfig[];
   boss: boolean;
   title: string;
+  map: MapDef;
   /** Usurpator's visible augments, shown at round start. */
   bossAugments?: string[];
   /** Arena modifier, one per round from R5 on. */
@@ -45,83 +63,72 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+const BUILDERS = [makeHaescher, makeSchuetze, makeHexer, makeWaechter, makeBerserker, makeSpeermaid];
+
+/** Random squad of n distinct-ish archetypes. */
+function squad(n: number, s: DifficultyScale): EnemyConfig[] {
+  const out: EnemyConfig[] = [];
+  const bag = [...BUILDERS];
+  for (let i = 0; i < n; i++) {
+    if (bag.length === 0) bag.push(...BUILDERS);
+    const b = bag.splice(Math.floor(Math.random() * bag.length), 1)[0];
+    out.push(b(s));
+  }
+  return out;
+}
+
 /**
- * 12-round gauntlet. Losses cost a heart but the run advances — only the
- * final throne room (R12) must actually be won.
- *
- * R1–4 solo archetypes · R5 first duo · R6 Usurpator (mini) · R7–9 duos ·
- * R10–11 trios · R12 Usurpator (final). Duos/trios + Diener summons keep
- * the on-kill augment economy fueled.
+ * 20-round gauntlet with one life. Bosses at 7 / 14 / 20; squads grow from
+ * solos to trios. Past 20 the Endlosmodus rolls ever-larger squads against
+ * exponentially scaling stats, with a boss every 5th round.
  */
 export function roundSpec(round: number): RoundSpec {
   const s = roundScale(round);
+  const map = rollMap();
   const modifier =
     round >= 5
       ? pick<ModifierId>(['feuerring', 'heilblumen', 'bruchzone', 'blitzsturm'])
       : undefined;
 
-  if (round === 6 || round === MAX_ROUND) {
+  // Endlosmodus: exponential squads, boss every 5th round
+  if (round > MAX_ROUND) {
+    if (round % 5 === 0) {
+      const boss = makeUsurpator(s, true);
+      return {
+        enemies: [boss, ...squad(1 + Math.floor((round - MAX_ROUND) / 10), s)],
+        boss: true,
+        title: `Endlos ${round} — Der Usurpator`,
+        map,
+        bossAugments: boss.visibleAugments,
+        modifier,
+      };
+    }
+    const n = Math.min(5, 2 + Math.floor((round - MAX_ROUND - 1) / 6));
+    return { enemies: squad(n, s), boss: false, title: `Endlos ${round}`, map, modifier };
+  }
+
+  if (round === 7 || round === 14 || round === MAX_ROUND) {
     const final = round === MAX_ROUND;
     const boss = makeUsurpator(s, final);
     return {
-      enemies: [boss],
+      enemies: round === 14 ? [boss, ...squad(1, s)] : [boss],
       boss: true,
       title: `Runde ${round} — Der Usurpator`,
+      map,
       bossAugments: boss.visibleAugments,
       modifier,
     };
   }
 
   let enemies: EnemyConfig[];
-  switch (round) {
-    case 1:
-      enemies = [makeHaescher(s)];
-      break;
-    case 2:
-      enemies = [makeSchuetze(s)];
-      break;
-    case 3:
-      enemies = [makeHexer(s)];
-      break;
-    case 4:
-      enemies = [makeWaechter(s)];
-      break;
-    case 5:
-      enemies = pick([
-        [makeHaescher(s), makeSchuetze(s)],
-        [makeHaescher(s), makeHexer(s)],
-      ]);
-      break;
-    case 7:
-      enemies = pick([
-        [makeHaescher(s), makeSchuetze(s)],
-        [makeHexer(s), makeSchuetze(s)],
-        [makeHexer(s), makeHaescher(s)],
-      ]);
-      break;
-    case 8:
-      enemies = pick([
-        [makeSchuetze(s), makeWaechter(s)],
-        [makeHaescher(s), makeWaechter(s)],
-        [makeHexer(s), makeWaechter(s)],
-      ]);
-      break;
-    case 9:
-      enemies = pick([
-        [makeWaechter(s), makeHexer(s)],
-        [makeSchuetze(s), makeSchuetze(s)],
-        [makeWaechter(s), makeHaescher(s)],
-      ]);
-      break;
-    case 10:
-      enemies = [makeHaescher(s), makeSchuetze(s), makeHexer(s)];
-      break;
-    default: // 11
-      enemies = pick([
-        [makeWaechter(s), makeHaescher(s), makeSchuetze(s)],
-        [makeWaechter(s), makeHexer(s), makeSchuetze(s)],
-      ]);
-      break;
-  }
-  return { enemies, boss: false, title: `Runde ${round}`, modifier };
+  if (round <= 2) enemies = [pick([makeHaescher, makeSchuetze, makeHexer])(s)]; // sanfter Einstieg
+  else if (round === 3) enemies = [makeBerserker(s)];
+  else if (round === 4) enemies = [makeSpeermaid(s)];
+  else if (round <= 6) enemies = squad(round === 5 ? 1 : 2, s);
+  else if (round <= 10) enemies = squad(2, s);
+  else if (round <= 13) enemies = pick([squad(2, s), squad(3, s)]);
+  else if (round <= 17) enemies = squad(3, s);
+  else enemies = pick([squad(3, s), squad(4, s)]);
+
+  return { enemies, boss: false, title: `Runde ${round}`, map, modifier };
 }

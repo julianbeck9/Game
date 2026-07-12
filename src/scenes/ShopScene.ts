@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config';
-import { run, addItem } from '../core/run';
+import { run, addItem, sellItem, removeItem, levelOf, levelUp } from '../core/run';
 import { ItemDef, rollShop, MAX_ITEMS } from '../items/registry';
 import { sfx } from '../core/sfx';
 import { STR } from '../core/strings';
@@ -9,6 +9,11 @@ import { STR } from '../core/strings';
 export class ShopScene extends Phaser.Scene {
   private goldText!: Phaser.GameObjects.Text;
   private slotText!: Phaser.GameObjects.Text;
+  private hintText!: Phaser.GameObjects.Text;
+  private ownedRow!: Phaser.GameObjects.Container;
+  /** Verkaufs-/Aufwertungszustand: erster Tipp wählt, zweiter bestätigt. */
+  private armedSell: string | null = null;
+  private upgradeTarget: string | null = null;
 
   constructor() {
     super('shop');
@@ -41,6 +46,17 @@ export class ShopScene extends Phaser.Scene {
         color: '#7a86a5',
       })
       .setOrigin(0.5);
+    this.hintText = this.add
+      .text(GAME_W / 2, GAME_H - 148, '', {
+        fontFamily: 'sans-serif',
+        fontSize: '24px',
+        color: '#a8d8ff',
+      })
+      .setOrigin(0.5);
+    this.armedSell = null;
+    this.upgradeTarget = null;
+    this.ownedRow = this.add.container(0, 0);
+    this.rebuildOwnedRow();
     this.refreshLabels();
 
     const offers = rollShop(run.round);
@@ -74,6 +90,110 @@ export class ShopScene extends Phaser.Scene {
   private refreshLabels(): void {
     this.goldText.setText(`⬤ ${run.gold} Gold`);
     this.slotText.setText(`Items: ${run.items.length} / ${MAX_ITEMS}`);
+  }
+
+  /**
+   * Owned-item row above the continue button: tap once to arm, tap again to
+   * SELL (70% back). With full slots, "Aufwerten" mode: pick the item to
+   * upgrade, then pay by giving another item away.
+   */
+  private rebuildOwnedRow(): void {
+    this.ownedRow.removeAll(true);
+    if (run.items.length === 0) {
+      this.hintText.setText('');
+      return;
+    }
+    const full = run.items.length >= MAX_ITEMS;
+    const size = 88;
+    const gap = 16;
+    const total = run.items.length * size + (run.items.length - 1) * gap;
+    const x0 = (GAME_W - total) / 2 + size / 2;
+    const y = GAME_H - 220;
+    this.hintText.setText(
+      this.upgradeTarget
+        ? 'Wähle das Item, das du dafür WEGGIBST'
+        : full
+          ? 'Eigene Items: 1× tippen = Verkauf vormerken · 2× = verkaufen (70%) · lange Karte unten: Aufwerten'
+          : 'Eigene Items: 1× tippen = Verkauf vormerken · 2× tippen = verkaufen (70%)',
+    );
+
+    run.items.forEach((it, i) => {
+      const x = x0 + i * (size + gap);
+      const armed = this.armedSell === it.id;
+      const g = this.add.graphics();
+      g.fillStyle(armed ? 0x552222 : 0x14141f, 1);
+      g.fillRoundedRect(x - size / 2, y - size / 2, size, size, 12);
+      g.lineStyle(3, armed ? 0xff6a5e : it.color, 1);
+      g.strokeRoundedRect(x - size / 2, y - size / 2, size, size, 12);
+      this.ownedRow.add(g);
+      const glyph = this.add
+        .text(x, y - 8, it.glyph, {
+          fontFamily: 'Georgia, serif',
+          fontSize: '34px',
+          fontStyle: 'bold',
+          color: '#' + it.color.toString(16).padStart(6, '0'),
+        })
+        .setOrigin(0.5);
+      this.ownedRow.add(glyph);
+      const sub = this.add
+        .text(x, y + 26, armed ? 'Verkaufen?' : `★${levelOf(it.id)}`, {
+          fontFamily: 'sans-serif',
+          fontSize: '17px',
+          color: armed ? '#ff9a8a' : '#8a94b0',
+        })
+        .setOrigin(0.5);
+      this.ownedRow.add(sub);
+
+      const zone = this.add
+        .zone(x, y, size, size)
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+      this.ownedRow.add(zone);
+      zone.on('pointerdown', () => {
+        if (this.upgradeTarget) {
+          // Aufwertung bezahlen: dieses Item geht, das Ziel steigt eine Stufe
+          if (it.id === this.upgradeTarget) return;
+          const target = run.items.find((o) => o.id === this.upgradeTarget);
+          removeItem(it.id);
+          if (target) levelUp(target.id);
+          this.upgradeTarget = null;
+          sfx.pick();
+          this.refreshLabels();
+          this.rebuildOwnedRow();
+          return;
+        }
+        if (this.armedSell === it.id) {
+          const refund = sellItem(it.id);
+          this.armedSell = null;
+          sfx.pick();
+          this.refreshLabels();
+          this.rebuildOwnedRow();
+          this.hintText.setText(`${it.name} verkauft: +${refund} Gold`);
+          return;
+        }
+        this.armedSell = it.id;
+        this.rebuildOwnedRow();
+      });
+
+      // Voll (6/6): Aufwerten-Knopf unter jedem Item mit Stufe < 3
+      if (full && !this.upgradeTarget && levelOf(it.id) < 3) {
+        const up = this.add
+          .text(x, y + 62, '⬆ Aufwerten', {
+            fontFamily: 'sans-serif',
+            fontSize: '18px',
+            fontStyle: 'bold',
+            color: '#7ee08a',
+          })
+          .setOrigin(0.5)
+          .setInteractive({ useHandCursor: true });
+        up.on('pointerdown', () => {
+          this.armedSell = null;
+          this.upgradeTarget = it.id;
+          this.rebuildOwnedRow();
+        });
+        this.ownedRow.add(up);
+      }
+    });
   }
 
   private makeItemCard(it: ItemDef, x: number, y: number, w: number, h: number): void {
@@ -143,6 +263,7 @@ export class ShopScene extends Phaser.Scene {
       addItem(it);
       sfx.pick();
       this.refreshLabels();
+      this.rebuildOwnedRow();
       bg.setFillStyle(0x0d1a10);
       bg.setStrokeStyle(3, 0x44dd66, 1);
       costText.setText(STR.shopBought).setColor('#7ee08a');

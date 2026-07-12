@@ -63,15 +63,19 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(10);
 
-    // Champion select cards (compact row)
-    const cardW = 348;
-    const cardH = 500;
-    const gap = 22;
-    const total = CHAMPIONS.length * cardW + (CHAMPIONS.length - 1) * gap;
+    // Champion select cards: two rows of four
+    const cardW = 430;
+    const cardH = 330;
+    const gapX = 26;
+    const gapY = 24;
+    const perRow = 4;
+    const total = perRow * cardW + (perRow - 1) * gapX;
     const x0 = (GAME_W - total) / 2 + cardW / 2;
-    const y = GAME_H / 2 + 170;
+    const y0 = 520;
     CHAMPIONS.forEach((c, i) => {
-      this.makeChampCard(c.id, x0 + i * (cardW + gap), y, cardW, cardH, i);
+      const row = Math.floor(i / perRow);
+      const col = i % perRow;
+      this.makeChampCard(c.id, x0 + col * (cardW + gapX), y0 + row * (cardH + gapY), cardW, cardH, i);
     });
 
     addFullscreenButton(this, GAME_W - 56, 56);
@@ -95,11 +99,12 @@ export class MenuScene extends Phaser.Scene {
     const bg = this.add.rectangle(0, 0, w, h, 0x14141f, 1).setStrokeStyle(4, COLORS.player, 0.75);
     zone.add(bg);
 
-    const sprite = this.add.image(0, -h / 2 + 130, `champ:${id}`).setScale(2.9);
+    // Sprite links, Texte rechts — kompakter für zwei Reihen
+    const sprite = this.add.image(-w / 2 + 78, -h / 2 + 92, `champ:${id}`).setScale(1.9);
     zone.add(sprite);
     this.tweens.add({
       targets: sprite,
-      y: sprite.y - 8,
+      y: sprite.y - 6,
       duration: 900 + index * 120,
       yoyo: true,
       repeat: -1,
@@ -108,43 +113,43 @@ export class MenuScene extends Phaser.Scene {
 
     zone.add(
       this.add
-        .text(0, -h / 2 + 232, champ.name, {
+        .text(-w / 2 + 150, -h / 2 + 52, champ.name, {
           fontFamily: 'Georgia, serif',
-          fontSize: '38px',
+          fontSize: '34px',
           fontStyle: 'bold',
           color: '#ffffff',
         })
-        .setOrigin(0.5),
+        .setOrigin(0, 0.5),
     );
     zone.add(
       this.add
-        .text(0, -h / 2 + 276, champ.tagline, {
+        .text(-w / 2 + 150, -h / 2 + 92, champ.tagline, {
           fontFamily: 'sans-serif',
-          fontSize: '21px',
+          fontSize: '19px',
           fontStyle: 'italic',
           color: '#9aa3bb',
         })
-        .setOrigin(0.5),
+        .setOrigin(0, 0.5),
     );
     zone.add(
       this.add
-        .text(0, -h / 2 + 356, champ.kitLine, {
+        .text(0, 30, champ.kitLine, {
           fontFamily: 'sans-serif',
-          fontSize: '22px',
+          fontSize: '20px',
           color: '#d8dce8',
-          wordWrap: { width: w - 44 },
+          wordWrap: { width: w - 40 },
           align: 'center',
-          lineSpacing: 7,
+          lineSpacing: 5,
         })
         .setOrigin(0.5),
     );
 
-    const statLine = `LP ${champ.base.maxHP} · AD ${champ.base.damage} · ${champ.ranged ? 'Fernkampf' : 'Nahkampf'}`;
+    const statLine = `${champ.region} · LP ${champ.base.maxHP} · AD ${champ.base.damage} · ${champ.ranged ? 'Fernkampf' : 'Nahkampf'}`;
     zone.add(
       this.add
-        .text(0, h / 2 - 38, statLine, {
+        .text(0, h / 2 - 30, statLine, {
           fontFamily: 'sans-serif',
-          fontSize: '20px',
+          fontSize: '18px',
           color: '#7a86a5',
         })
         .setOrigin(0.5),
@@ -154,7 +159,8 @@ export class MenuScene extends Phaser.Scene {
     bg.on('pointerover', () => bg.setFillStyle(0x1f1f30));
     bg.on('pointerout', () => bg.setFillStyle(0x14141f));
     bg.on('pointerdown', () => this.startFn(id));
-    this.input.keyboard?.addKey(['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'][index]).on('down', () => this.startFn(id));
+    const key = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT'][index];
+    if (key) this.input.keyboard?.addKey(key).on('down', () => this.startFn(id));
   }
 
   update(time: number, deltaMs: number): void {

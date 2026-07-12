@@ -1,4 +1,4 @@
-import { ARENA_X, ARENA_Y, ARENA_R, PILLARS } from '../config';
+import { FIELD, activeObstacles } from './maps';
 
 export interface Vec {
   x: number;
@@ -19,22 +19,19 @@ export function dist(ax: number, ay: number, bx: number, by: number): number {
   return len(bx - ax, by - ay);
 }
 
-/** Clamp a circle of radius r to stay inside the arena. Returns corrected position. */
+/** Clamp a circle of radius r to stay inside the fullscreen field. */
 export function clampToArena(x: number, y: number, r: number): Vec {
-  const dx = x - ARENA_X;
-  const dy = y - ARENA_Y;
-  const d = len(dx, dy);
-  const max = ARENA_R - r;
-  if (d <= max) return { x, y };
-  const n = norm(dx, dy);
-  return { x: ARENA_X + n.x * max, y: ARENA_Y + n.y * max };
+  return {
+    x: Math.min(FIELD.x2 - r, Math.max(FIELD.x1 + r, x)),
+    y: Math.min(FIELD.y2 - r, Math.max(FIELD.y1 + r, y)),
+  };
 }
 
-/** Push a circle of radius r out of any pillar it overlaps. */
+/** Push a circle of radius r out of any map obstacle it overlaps. */
 export function resolvePillars(x: number, y: number, r: number): Vec {
   let px = x;
   let py = y;
-  for (const p of PILLARS) {
+  for (const p of activeObstacles()) {
     const dx = px - p.x;
     const dy = py - p.y;
     const d = len(dx, dy);
@@ -49,7 +46,7 @@ export function resolvePillars(x: number, y: number, r: number): Vec {
 }
 
 export function pointInPillar(x: number, y: number, r = 0): boolean {
-  for (const p of PILLARS) {
+  for (const p of activeObstacles()) {
     if (dist(x, y, p.x, p.y) < p.r + r) return true;
   }
   return false;

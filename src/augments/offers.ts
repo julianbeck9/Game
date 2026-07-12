@@ -9,8 +9,8 @@ function allowedTiers(round: number): Tier[] {
   const shift = (t: Tier): Tier =>
     boost <= 0 ? t : t === 'silber' ? 'gold' : 'prisma';
   let tiers: Tier[];
-  if (round <= 3) tiers = ['silber'];
-  else if (round <= 8) tiers = ['silber', 'gold'];
+  if (round <= 4) tiers = ['silber'];
+  else if (round <= 13) tiers = ['silber', 'gold'];
   else tiers = ['gold', 'prisma'];
   return [...new Set(tiers.map(shift))];
 }

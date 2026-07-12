@@ -1,6 +1,6 @@
 import { Unit } from './Unit';
 import { norm, len, pointInPillar } from '../core/geometry';
-import { ARENA_X, ARENA_Y, ARENA_R } from '../config';
+import { FIELD } from '../core/maps';
 
 export interface ProjectileOpts {
   x: number;
@@ -103,11 +103,14 @@ export class Projectile {
         return;
       }
     } else {
-      // Range end, arena edge, or a pillar: boomerangs turn around, bolts die
-      const maxDist = o.maxDist ?? 2000;
+      // Range end, field edge, or an obstacle: boomerangs turn around, bolts die
+      const maxDist = o.maxDist ?? 2400;
       const atLimit =
         this.traveled >= maxDist ||
-        len(this.x - ARENA_X, this.y - ARENA_Y) > ARENA_R + 40 ||
+        this.x < FIELD.x1 - 40 ||
+        this.x > FIELD.x2 + 40 ||
+        this.y < FIELD.y1 - 40 ||
+        this.y > FIELD.y2 + 40 ||
         ((o.blockedByPillars ?? true) && pointInPillar(this.x, this.y, this.radius));
       if (atLimit) {
         if (o.boomerangTo) {

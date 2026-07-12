@@ -9,11 +9,15 @@ export interface RunState {
   round: number;
   /** Selected playable champion id. */
   champion: string;
-  /** Lives (hearts): a lost round costs one, but the run marches on. 0 = over. */
+  /** One life: lose a round, lose the run. */
   lives: number;
+  /** Past round 20 the gauntlet becomes the Endlosmodus. */
+  endless: boolean;
   augments: AugmentDef[];
   /** Purchased items (activated each combat like augments; no tag counts). */
   items: ItemDef[];
+  /** Upgrade levels for augments AND items, keyed by def id (absent = 1, max 3). */
+  levels: Record<string, number>;
   gold: number;
   goldEarned: number;
   tagCounts: Record<Tag, number>;
@@ -26,6 +30,8 @@ export interface RunState {
   maxHit: number;
 }
 
+export const MAX_AUGMENTS = 6;
+
 export let run: RunState = newRunState();
 
 export function newRun(): RunState {
@@ -37,9 +43,11 @@ function newRunState(): RunState {
   return {
     round: 1,
     champion: 'koenig',
-    lives: 3,
+    lives: 1,
+    endless: false,
     augments: [],
     items: [],
+    levels: {},
     gold: 0,
     goldEarned: 0,
     tagCounts: { Blut: 0, Sturm: 0, Arkan: 0, Ward: 0, Bruch: 0 },
@@ -56,6 +64,63 @@ export function addAugment(def: AugmentDef): void {
   run.augments.push(def);
   for (const t of def.tags) run.tagCounts[t]++;
   if (def.ruleFlags) Object.assign(run.flags, def.ruleFlags);
+}
+
+/** Upgrade level of an augment or item (1–3). */
+export function levelOf(id: string): number {
+  return run.levels[id] ?? 1;
+}
+
+export function levelUp(id: string): void {
+  run.levels[id] = Math.min(3, levelOf(id) + 1);
+}
+
+/** Effect multiplier per level: L1 ×1 · L2 ×1,6 · L3 ×2,2. */
+export function levelMult(id: string): number {
+  return 1 + 0.6 * (levelOf(id) - 1);
+}
+
+/** Drop an owned augment and rebuild tag counts + rule flags from what's left. */
+export function removeAugment(id: string): void {
+  const i = run.augments.findIndex((a) => a.id === id);
+  if (i < 0) return;
+  run.augments.splice(i, 1);
+  delete run.levels[id];
+  recomputeDerived();
+}
+
+/** Sell an item: refund 70% and rebuild flags. */
+export function sellItem(id: string): number {
+  const i = run.items.findIndex((it) => it.id === id);
+  if (i < 0) return 0;
+  const refund = Math.round(run.items[i].cost * 0.7);
+  run.items.splice(i, 1);
+  delete run.levels[id];
+  run.gold += refund;
+  recomputeDerived();
+  return refund;
+}
+
+/** Drop an item without refund (upgrade cost). */
+export function removeItem(id: string): void {
+  const i = run.items.findIndex((it) => it.id === id);
+  if (i < 0) return;
+  run.items.splice(i, 1);
+  delete run.levels[id];
+  recomputeDerived();
+}
+
+/** Tag counts and rule flags are pure functions of what you own — rebuild. */
+function recomputeDerived(): void {
+  run.tagCounts = { Blut: 0, Sturm: 0, Arkan: 0, Ward: 0, Bruch: 0 };
+  run.flags = { ...DEFAULT_FLAGS };
+  for (const a of run.augments) {
+    for (const t of a.tags) run.tagCounts[t]++;
+    if (a.ruleFlags) Object.assign(run.flags, a.ruleFlags);
+  }
+  for (const it of run.items) {
+    if (it.ruleFlags) Object.assign(run.flags, it.ruleFlags);
+  }
 }
 
 export function hasAugment(id: string): boolean {

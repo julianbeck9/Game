@@ -1,5 +1,7 @@
 import { AugmentDef, AugmentCtx } from '../augments/types';
 import { procDamage, enemiesWithin, slowUnit, unitCounterAdd } from '../augments/helpers';
+// Laufzeit-sicher: core/run importiert von hier nur Typen (wird wegkompiliert)
+import { run } from '../core/run';
 
 /**
  * Items: purchasable stat packages with optional passives. Technically they
@@ -895,14 +897,15 @@ export function itemById(id: string): ItemDef | undefined {
   return ITEMS.find((i) => i.id === id);
 }
 
-/** Shop offer: 6 distinct random items, cheap ones early, big ones later. */
+/** Shop offer: 6 distinct random items (no duplicates of owned), cheap ones early. */
 export function rollShop(round: number, count = 6): ItemDef[] {
-  const pool = ITEMS.filter((i) => (round <= 3 ? i.cost <= 400 : true));
+  const owned = (id: string) => run.items.some((it) => it.id === id);
+  const pool = ITEMS.filter((i) => !owned(i.id) && (round <= 3 ? i.cost <= 400 : true));
   const offers: ItemDef[] = [];
   const bag = [...pool];
   // Ab Runde 4: mindestens 2 Budget-Angebote, damit kleines Gold nie verfällt
   if (round > 3) {
-    const cheap = ITEMS.filter((i) => i.cost <= 400);
+    const cheap = pool.filter((i) => i.cost <= 400);
     for (let i = 0; i < 2 && cheap.length > 0; i++) {
       const pick = cheap.splice(Math.floor(Math.random() * cheap.length), 1)[0];
       offers.push(pick);
@@ -914,5 +917,6 @@ export function rollShop(round: number, count = 6): ItemDef[] {
   }
   return offers;
 }
+
 
 export const MAX_ITEMS = 6;

@@ -105,10 +105,15 @@ export class Player extends Unit {
   // ---- Cooldowns (LoL-like: base × cooldown-mult × 100/(100+haste)) ----
 
   cooldownDuration(ability: AbilityId): number {
-    const haste = this.stats.get('abilityHaste');
     const base = ability === 'Dash' ? ABILITIES.Dash.cd : this.champ.cds[ability];
     const flagMult =
       ability === 'Q' ? run.flags.qCdMult : ability === 'E' ? run.flags.eCdMult : run.flags.dashCdMult;
+    // Yasuo-style Q: cooldown shrinks with attack speed, ignores haste
+    if (ability === 'Q' && this.champ.qCdFromAS) {
+      const ratio = this.stats.getBase('attackSpeed') / Math.max(0.1, this.stats.get('attackSpeed'));
+      return base * flagMult * Math.max(0.05, this.stats.get('cooldown')) * Math.max(0.3, Math.min(1, ratio));
+    }
+    const haste = this.stats.get('abilityHaste');
     return base * flagMult * Math.max(0.05, this.stats.get('cooldown')) * (100 / (100 + haste));
   }
 
@@ -176,11 +181,12 @@ export class Player extends Unit {
     this.champ.fireQ(this, d, dmgScale);
   }
 
-  castE(): boolean {
+  /** dir: optional aim (mouse on desktop); champions fall back to facing. */
+  castE(dir?: Vec): boolean {
     if (!this.isReady('E')) return false;
     this.startCooldown('E');
     this.combat.bus.emit('abilityCast', { ability: 'E' });
-    this.champ.castE(this);
+    this.champ.castE(this, dir && len(dir.x, dir.y) > 0.01 ? norm(dir.x, dir.y) : undefined);
     return true;
   }
 
@@ -232,7 +238,8 @@ export class Player extends Unit {
     this.facing = norm(target.x - this.x, target.y - this.y);
 
     let dmg = this.stats.get('damage');
-    const crit = Math.random() < this.stats.get('critChance');
+    // Yasuo: crit chance counts double
+    const crit = Math.random() < this.stats.get('critChance') * (this.champ.critMult ?? 1);
     if (crit) dmg *= 1.75;
     const empowered = this.empoweredAutos > 0;
     if (empowered) {

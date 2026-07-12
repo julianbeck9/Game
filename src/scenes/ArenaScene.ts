@@ -15,11 +15,15 @@ import { AugmentManager } from '../augments/AugmentManager';
 import { rollOffers } from '../augments/offers';
 import { run, earnGold } from '../core/run';
 import { dist, pointInPillar, Vec } from '../core/geometry';
-import { ARENA_X, ARENA_Y, ARENA_R, PILLARS, COLORS, GAME_W, GAME_H } from '../config';
+import { ARENA_X, ARENA_Y, COLORS, GAME_W, GAME_H } from '../config';
+import { MapDef, FIELD, setActiveMap } from '../core/maps';
 import { STR } from '../core/strings';
 import { initAudio, sfx } from '../core/sfx';
-import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/draw';
+import { crown, shade } from '../core/draw';
 import { addFullscreenButton } from '../core/fullscreen';
+
+/** Feuerring geometry: the safe circle starts covering the whole screen. */
+const FIRE_MAX_R = Math.hypot(GAME_W / 2, GAME_H / 2) + 40;
 
 export class ArenaScene extends Phaser.Scene implements Combat {
   readonly bus = new EventBus();
@@ -42,7 +46,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
   // Juice
   private ambientGfx!: Phaser.GameObjects.Graphics;
-  private embers: Ember[] = [];
+  private motes: { x: number; y: number; vx: number; vy: number; size: number; phase: number }[] = [];
+  private map!: MapDef;
   private slowmoUntil = 0;
   private dashTrail: { x: number; y: number; until: number }[] = [];
   private rings: { x: number; y: number; start: number; color: number; maxR: number }[] = [];
@@ -51,7 +56,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   // Arena modifier state (R5+)
   private modifier: ModifierId | null = null;
   private roundStartedAt = 0;
-  private fireSafeR = ARENA_R;
+  private fireSafeR = FIRE_MAX_R;
   private flowers: { x: number; y: number }[] = [];
   private nextFlowerAt = 0;
   private bruchzone: { x: number; y: number; r: number } | null = null;
@@ -91,36 +96,26 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.aimPreview = null;
     this.bus.clear();
 
-    this.drawArenaFloor();
+    const spec = roundSpec(run.round);
+    this.map = spec.map;
+    setActiveMap(spec.map);
+    this.drawMap(spec.map);
     ensureChampionTextures(this);
 
-    this.player = new Player(this, this, ARENA_X, ARENA_Y + 360);
+    this.player = new Player(this, this, ARENA_X, GAME_H - 220);
     this.units.push(this.player);
 
-    const spec = roundSpec(run.round);
-    const spots: [number, number][] =
-      spec.enemies.length === 1
-        ? [[ARENA_X, ARENA_Y - 360]]
-        : spec.enemies.length === 2
-          ? [
-              [ARENA_X - 240, ARENA_Y - 320],
-              [ARENA_X + 240, ARENA_Y - 320],
-            ]
-          : [
-              [ARENA_X - 300, ARENA_Y - 270],
-              [ARENA_X, ARENA_Y - 380],
-              [ARENA_X + 300, ARENA_Y - 270],
-            ];
+    // Enemies spread along the top of the field
+    const n = spec.enemies.length;
     spec.enemies.forEach((cfg, i) => {
-      const [x, y] = spots[i % spots.length];
-      this.units.push(spawnEnemy(this, this, x, y, cfg));
+      const x = ARENA_X + (i - (n - 1) / 2) * Math.min(340, (GAME_W - 400) / Math.max(1, n - 1) || 0);
+      this.units.push(spawnEnemy(this, this, x, 210, cfg));
     });
 
     this.projGfx = this.add.graphics().setDepth(9);
     this.aimGfx = this.add.graphics().setDepth(8);
     this.hazardGfx = this.add.graphics().setDepth(3);
     this.ambientGfx = this.add.graphics().setDepth(2);
-    this.embers = [];
     this.input.addPointer(3);
     this.joystick = new Joystick(this);
     this.createButtons();
@@ -150,7 +145,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private initModifier(mod: ModifierId | null): void {
     this.modifier = mod;
     this.roundStartedAt = this.now;
-    this.fireSafeR = ARENA_R;
+    this.fireSafeR = FIRE_MAX_R;
     this.flowers = [];
     this.nextFlowerAt = this.now + 6000;
     this.bruchzone = null;
@@ -169,9 +164,9 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private updateModifier(dt: number): void {
     switch (this.modifier) {
       case 'feuerring': {
-        // Fire creeps in from the edge over ~40s, forcing engagement
-        const t = Math.min(1, (this.now - this.roundStartedAt) / 40000);
-        this.fireSafeR = ARENA_R - (ARENA_R - 270) * t;
+        // Fire creeps in from the screen edges over ~45s, forcing engagement
+        const t = Math.min(1, (this.now - this.roundStartedAt) / 45000);
+        this.fireSafeR = FIRE_MAX_R - (FIRE_MAX_R - 300) * t;
         for (const u of this.units) {
           if (!u.alive) continue;
           if (dist(u.x, u.y, ARENA_X, ARENA_Y) + u.radius * 0.5 > this.fireSafeR) {
@@ -190,10 +185,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         if (this.now >= this.nextFlowerAt && this.flowers.length < 2) {
           this.nextFlowerAt = this.now + 12000;
           for (let tries = 0; tries < 20; tries++) {
-            const ang = Math.random() * Math.PI * 2;
-            const r = 120 + Math.random() * (ARENA_R - 220);
-            const x = ARENA_X + Math.cos(ang) * r;
-            const y = ARENA_Y + Math.sin(ang) * r;
+            const x = FIELD.x1 + 120 + Math.random() * (FIELD.x2 - FIELD.x1 - 240);
+            const y = FIELD.y1 + 140 + Math.random() * (FIELD.y2 - FIELD.y1 - 280);
             if (!pointInPillar(x, y, 30)) {
               this.flowers.push({ x, y });
               break;
@@ -265,8 +258,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private drawModifier(g: Phaser.GameObjects.Graphics): void {
     switch (this.modifier) {
       case 'feuerring': {
-        if (this.fireSafeR >= ARENA_R - 2) break;
-        const w = ARENA_R - this.fireSafeR;
+        if (this.fireSafeR >= FIRE_MAX_R - 2) break;
+        const w = Math.min(700, FIRE_MAX_R - this.fireSafeR);
         g.lineStyle(w, COLORS.burn, 0.3);
         g.strokeCircle(ARENA_X, ARENA_Y, this.fireSafeR + w / 2);
         g.lineStyle(3, COLORS.burn, 0.8);
@@ -310,14 +303,16 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     const style = { fontFamily: 'sans-serif', fontSize: '32px', color: '#e8ecf8' };
     const hud = this.add.graphics().setDepth(99);
 
-    // Left panel: round + gold (+ modifier)
-    const leftW = this.modifier ? 320 : 250;
-    const leftH = this.modifier ? 134 : 100;
+    // Left panel: round + gold + map (+ modifier)
+    const leftW = 340;
+    const leftH = this.modifier ? 168 : 134;
     hud.fillStyle(0x0a0a14, 0.72);
     hud.fillRoundedRect(18, 16, leftW, leftH, 14);
     hud.lineStyle(2, 0x3a3a55, 0.8);
     hud.strokeRoundedRect(18, 16, leftW, leftH, 14);
-    this.add.text(38, 27, `${STR.round} ${run.round} / ${MAX_ROUND}`, style).setDepth(100);
+    const roundLabel =
+      run.round > MAX_ROUND ? `Endlos · Runde ${run.round}` : `${STR.round} ${run.round} / ${MAX_ROUND}`;
+    this.add.text(38, 27, roundLabel, style).setDepth(100);
     hud.fillStyle(0xffd24a, 1);
     hud.fillCircle(50, 84, 11);
     hud.fillStyle(0xb8912a, 1);
@@ -325,11 +320,42 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.goldHudText = this.add
       .text(70, 70, `${run.gold}`, { ...style, fontSize: '28px', color: '#ffd24a' })
       .setDepth(100);
+    this.add
+      .text(38, 104, `${this.map.name} · ${this.map.region}`, {
+        ...style,
+        fontSize: '23px',
+        color: '#8a94b0',
+      })
+      .setDepth(100);
     if (this.modifier) {
       this.add
-        .text(38, 106, `✦ ${MODIFIER_NAMES[this.modifier]}`, { ...style, fontSize: '26px', color: '#cba6ff' })
+        .text(38, 136, `✦ ${MODIFIER_NAMES[this.modifier]}`, { ...style, fontSize: '26px', color: '#cba6ff' })
         .setDepth(100);
     }
+
+    // Build button: opens the stats/augments/items overlay (also TAB)
+    const buildY = 30 + leftH + 86;
+    hud.fillStyle(0x0a0a14, 0.72);
+    hud.fillRoundedRect(18, buildY - 26, 200, 52, 12);
+    hud.lineStyle(2, 0x3a3a55, 0.9);
+    hud.strokeRoundedRect(18, buildY - 26, 200, 52, 12);
+    const buildTxt = this.add
+      .text(118, buildY, '☰ Build & Werte', { ...style, fontSize: '25px', color: '#a8d8ff' })
+      .setOrigin(0.5)
+      .setDepth(100);
+    const buildZone = this.add
+      .zone(118, buildY, 200, 52)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(101);
+    const openBuild = () => {
+      if (this.scene.isPaused('arena')) return;
+      this.scene.launch('build');
+      this.scene.pause('arena');
+    };
+    buildZone.on('pointerdown', openBuild);
+    buildTxt.setInteractive({ useHandCursor: true }).on('pointerdown', openBuild);
+    this.input.keyboard?.addKey('TAB').on('down', openBuild);
 
     // Item icons under the panel
     run.items.forEach((it, i) => {
@@ -350,16 +376,14 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         .setDepth(100);
     });
 
-    // Right panel: three hearts — lost ones stay as dark husks
-    const rw = 250;
+    // Right panel: one life — the heart is all you get
+    const rw = 110;
     const rx = GAME_W - rw - 18;
     hud.fillStyle(0x0a0a14, 0.72);
     hud.fillRoundedRect(rx, 16, rw, 64, 14);
     hud.lineStyle(2, 0x3a3a55, 0.8);
     hud.strokeRoundedRect(rx, 16, rw, 64, 14);
-    for (let i = 0; i < 3; i++) {
-      this.drawHeart(hud, rx + 52 + i * 74, 48, 20, i < run.lives);
-    }
+    this.drawHeart(hud, rx + rw / 2, 48, 22, run.lives > 0);
     addFullscreenButton(this, GAME_W - 56, 128);
 
     // "Know your enemy": the Usurpator's augments stay visible all round
@@ -477,12 +501,15 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       S: kb.addKey('S'),
       D: kb.addKey('D'),
     };
-    // Desktop: Q aims toward the mouse cursor, E self-cast, Space dash
+    // Desktop: Q and E aim toward the mouse cursor, Space dash
     kb.addKey('Q').on('down', () => {
       const p = this.input.activePointer;
       this.player.castQ({ x: p.worldX - this.player.x, y: p.worldY - this.player.y });
     });
-    kb.addKey('E').on('down', () => this.player.castE());
+    kb.addKey('E').on('down', () => {
+      const p = this.input.activePointer;
+      this.player.castE({ x: p.worldX - this.player.x, y: p.worldY - this.player.y });
+    });
     kb.addKey('SPACE').on('down', () => this.player.dash());
   }
 
@@ -871,47 +898,22 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       .setDepth(200);
 
     if (!win) {
-      run.lives--;
-      if (run.lives <= 0) {
-        this.time.delayedCall(1400, () => this.scene.start('end', { victory: false }));
-        return;
-      }
-      if (run.round >= MAX_ROUND) {
-        // The throne room is the one fight that must be WON — retry it
-        this.add
-          .text(ARENA_X, ARENA_Y + 50, STR.finalMustFall, {
-            fontFamily: 'sans-serif',
-            fontSize: '36px',
-            color: '#ff9a8a',
-          })
-          .setOrigin(0.5)
-          .setDepth(200);
-        this.time.delayedCall(600, () => {
-          this.input.once('pointerdown', () => this.scene.restart());
-          this.input.keyboard?.once('keydown', () => this.scene.restart());
-        });
-        return;
-      }
-      this.add
-        .text(ARENA_X, ARENA_Y + 50, STR.lifeLost, {
-          fontFamily: 'sans-serif',
-          fontSize: '36px',
-          color: '#ff9a8a',
-        })
-        .setOrigin(0.5)
-        .setDepth(200);
+      // One life: any loss ends the run
+      run.lives = 0;
+      this.time.delayedCall(1400, () => this.scene.start('end', { victory: false }));
+      return;
     }
 
-    if (win && run.round >= MAX_ROUND) {
+    if (run.round === MAX_ROUND && !run.endless) {
+      // Crown claimed — the EndScene offers the Endlosmodus from here
       this.time.delayedCall(1400, () => this.scene.start('end', { victory: true }));
       return;
     }
 
-    // Win or lose, the gauntlet marches on: augment pick, then the next round.
-    // Offers gate on the round just played.
+    // Onward: augment pick, then the next round. Offers gate on the round just played.
     const offers = rollOffers(run.round);
     run.round++;
-    this.time.delayedCall(win ? 1300 : 1700, () => this.scene.start('pick', { offers }));
+    this.time.delayedCall(1300, () => this.scene.start('pick', { offers }));
   }
 
   private render(): void {
@@ -1029,82 +1031,155 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     for (const b of this.buttons) b.draw();
   }
 
-  private drawArenaFloor(): void {
+  /** Fullscreen 16-bit map: seeded tile floor, region decals, themed obstacles. */
+  private drawMap(m: MapDef): void {
     const g = this.add.graphics().setDepth(0);
-
-    // Outer glow under the arena so it sits in the void, not on it
-    g.fillStyle(0x151522, 0.7);
-    g.fillCircle(ARENA_X, ARENA_Y, ARENA_R + 26);
-
-    // Sand floor in three tonal steps
-    g.fillStyle(COLORS.arenaFloor, 1);
-    g.fillCircle(ARENA_X, ARENA_Y, ARENA_R);
-    g.fillStyle(0x1e1e30, 1);
-    g.fillCircle(ARENA_X, ARENA_Y, ARENA_R * 0.78);
-    g.fillStyle(0x222236, 1);
-    g.fillCircle(ARENA_X, ARENA_Y, ARENA_R * 0.5);
-
-    // Deterministic gravel speckles (cheap LCG so every run looks identical)
-    let seed = 7;
+    let seed = m.seed;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 260; i++) {
-      const a = rnd() * Math.PI * 2;
-      const r = Math.sqrt(rnd()) * (ARENA_R - 18);
-      g.fillStyle(rnd() < 0.5 ? 0x2c2c44 : 0x14141f, 0.5 + rnd() * 0.4);
-      g.fillCircle(ARENA_X + Math.cos(a) * r, ARENA_Y + Math.sin(a) * r, 1.5 + rnd() * 3.5);
+
+    // Tile floor: 32px grid with tonal variation — reads as chunky 16-bit
+    const T = 32;
+    g.fillStyle(m.floor[0], 1);
+    g.fillRect(0, 0, GAME_W, GAME_H);
+    for (let ty = 0; ty < GAME_H / T; ty++) {
+      for (let tx = 0; tx < GAME_W / T; tx++) {
+        const r = rnd();
+        if (r < 0.42) continue; // base tone stays
+        g.fillStyle(r < 0.8 ? m.floor[1] : m.floor[2], 1);
+        g.fillRect(tx * T, ty * T, T - 1, T - 1);
+      }
+    }
+    // Sparse pixel clutter: pebbles / grass / cracks in the line color
+    for (let i = 0; i < 220; i++) {
+      const x = rnd() * GAME_W;
+      const y = rnd() * GAME_H;
+      g.fillStyle(rnd() < 0.6 ? m.line : m.floor[2], 0.5 + rnd() * 0.4);
+      g.fillRect(x, y, 3 + rnd() * 5, 3 + rnd() * 5);
     }
 
-    // Faint combat rings + cross ticks, like painted arena markings
-    g.lineStyle(2, COLORS.arenaLine, 0.5);
-    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R * 0.65);
-    g.lineStyle(1, COLORS.arenaLine, 0.3);
-    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R * 0.32);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      const r1 = ARENA_R * 0.65 - 12;
-      const r2 = ARENA_R * 0.65 + 12;
-      g.lineStyle(2, COLORS.arenaLine, 0.35);
-      g.beginPath();
-      g.moveTo(ARENA_X + Math.cos(a) * r1, ARENA_Y + Math.sin(a) * r1);
-      g.lineTo(ARENA_X + Math.cos(a) * r2, ARENA_Y + Math.sin(a) * r2);
-      g.strokePath();
+    // Painted center emblem + midline, like a fighting court
+    g.lineStyle(3, m.line, 0.55);
+    g.strokeCircle(ARENA_X, ARENA_Y, 180);
+    g.lineStyle(2, m.line, 0.3);
+    g.strokeCircle(ARENA_X, ARENA_Y, 90);
+    g.beginPath();
+    g.moveTo(FIELD.x1 + 60, ARENA_Y);
+    g.lineTo(ARENA_X - 190, ARENA_Y);
+    g.moveTo(ARENA_X + 190, ARENA_Y);
+    g.lineTo(FIELD.x2 - 60, ARENA_Y);
+    g.strokePath();
+    crown(g, ARENA_X, ARENA_Y + 20, 100, m.rim, 0.08);
+
+    // Screen-edge frame in the region accent
+    g.lineStyle(10, 0x0a0a10, 1);
+    g.strokeRect(5, 5, GAME_W - 10, GAME_H - 10);
+    g.lineStyle(4, m.rim, 0.5);
+    g.strokeRect(FIELD.x1 - 8, FIELD.y1 - 8, FIELD.x2 - FIELD.x1 + 16, FIELD.y2 - FIELD.y1 + 16);
+
+    // Obstacles in the map's style
+    const og = this.add.graphics().setDepth(4);
+    for (const o of m.obstacles) {
+      og.fillStyle(0x000000, 0.35);
+      og.fillEllipse(o.x, o.y + o.r * 0.55, o.r * 2.3, o.r * 0.9);
+      switch (m.obstacleStyle) {
+        case 'baum': {
+          // Blossom tree: dark trunk + petal canopy of chunky circles
+          og.fillStyle(0x4a3428, 1);
+          og.fillRect(o.x - 8, o.y - 6, 16, o.r * 0.9);
+          og.fillStyle(shade(m.obstacleColor, -0.3), 1);
+          og.fillCircle(o.x - o.r * 0.4, o.y - o.r * 0.3, o.r * 0.62);
+          og.fillCircle(o.x + o.r * 0.45, o.y - o.r * 0.2, o.r * 0.55);
+          og.fillStyle(m.obstacleColor, 1);
+          og.fillCircle(o.x, o.y - o.r * 0.5, o.r * 0.72);
+          og.fillStyle(shade(m.obstacleColor, 0.3), 0.9);
+          og.fillCircle(o.x - o.r * 0.2, o.y - o.r * 0.65, o.r * 0.4);
+          break;
+        }
+        case 'obelisk': {
+          // Sunstone obelisk: tapered slab with a glowing seam
+          og.fillStyle(shade(m.obstacleColor, -0.45), 1);
+          og.fillTriangle(o.x - o.r * 0.72, o.y + o.r * 0.7, o.x + o.r * 0.72, o.y + o.r * 0.7, o.x, o.y - o.r * 1.35);
+          og.fillStyle(m.obstacleColor, 1);
+          og.fillTriangle(o.x - o.r * 0.55, o.y + o.r * 0.6, o.x + o.r * 0.55, o.y + o.r * 0.6, o.x, o.y - o.r * 1.2);
+          og.lineStyle(3, 0xfff0b0, 0.8);
+          og.beginPath();
+          og.moveTo(o.x, o.y + o.r * 0.4);
+          og.lineTo(o.x, o.y - o.r * 0.9);
+          og.strokePath();
+          break;
+        }
+        case 'stachel': {
+          // War-pit spikes: a cluster of iron thorns
+          for (const [ox, oy, s] of [
+            [-0.4, 0.2, 0.7],
+            [0.4, 0.25, 0.6],
+            [0, -0.1, 1],
+          ] as const) {
+            const bx = o.x + ox * o.r;
+            const by = o.y + oy * o.r;
+            og.fillStyle(shade(m.obstacleColor, -0.35), 1);
+            og.fillTriangle(bx - o.r * 0.4 * s, by + o.r * 0.5 * s, bx + o.r * 0.4 * s, by + o.r * 0.5 * s, bx, by - o.r * 1.05 * s);
+            og.fillStyle(m.obstacleColor, 1);
+            og.fillTriangle(bx - o.r * 0.28 * s, by + o.r * 0.45 * s, bx + o.r * 0.28 * s, by + o.r * 0.45 * s, bx, by - o.r * 0.9 * s);
+          }
+          og.lineStyle(2, 0xcc3344, 0.5);
+          og.strokeCircle(o.x, o.y, o.r * 0.9);
+          break;
+        }
+        case 'saeule': {
+          // Marble/sandstone column: round cap over a fluted shaft
+          og.fillStyle(shade(m.obstacleColor, -0.4), 1);
+          og.fillCircle(o.x, o.y, o.r + 4);
+          og.fillStyle(m.obstacleColor, 1);
+          og.fillCircle(o.x, o.y, o.r);
+          og.fillStyle(shade(m.obstacleColor, 0.25), 0.6);
+          og.fillCircle(o.x - o.r * 0.3, o.y - o.r * 0.3, o.r * 0.5);
+          og.lineStyle(2, shade(m.obstacleColor, -0.5), 0.7);
+          og.strokeCircle(o.x, o.y, o.r * 0.6);
+          og.strokeCircle(o.x, o.y, o.r * 0.28);
+          break;
+        }
+        case 'fels': {
+          // Wind-worn rock: chunky boulder with highlights
+          og.fillStyle(shade(m.obstacleColor, -0.4), 1);
+          og.fillCircle(o.x, o.y, o.r + 3);
+          og.fillStyle(m.obstacleColor, 1);
+          og.fillCircle(o.x - o.r * 0.15, o.y - o.r * 0.1, o.r * 0.9);
+          og.fillStyle(shade(m.obstacleColor, 0.3), 0.7);
+          og.fillCircle(o.x - o.r * 0.35, o.y - o.r * 0.35, o.r * 0.4);
+          og.fillStyle(shade(m.obstacleColor, -0.25), 0.8);
+          og.fillCircle(o.x + o.r * 0.3, o.y + o.r * 0.25, o.r * 0.35);
+          break;
+        }
+      }
     }
 
-    // Faded crown inlay at the center — the prize everyone is fighting over
-    crown(g, ARENA_X, ARENA_Y + 26, 120, 0x8a6a2a, 0.09);
-
-    // Gilded rim: dark band + gold edge
-    g.lineStyle(14, 0x111119, 1);
-    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R + 7);
-    g.lineStyle(4, COLORS.arenaRim, 0.9);
-    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R + 1);
-    g.lineStyle(2, shade(COLORS.arenaRim, 0.35), 0.5);
-    g.strokeCircle(ARENA_X, ARENA_Y, ARENA_R + 13);
-
-    // Pillars with shading + brick courses
-    for (const p of PILLARS) {
-      g.fillStyle(0x000000, 0.35);
-      g.fillEllipse(p.x, p.y + p.r * 0.55, p.r * 2.3, p.r * 0.9);
-      g.fillStyle(shade(COLORS.pillar, -0.4), 1);
-      g.fillCircle(p.x, p.y, p.r + 4);
-      g.fillStyle(COLORS.pillar, 1);
-      g.fillCircle(p.x, p.y, p.r);
-      g.fillStyle(shade(COLORS.pillar, 0.25), 0.5);
-      g.fillCircle(p.x - p.r * 0.3, p.y - p.r * 0.32, p.r * 0.5);
-      g.lineStyle(2, COLORS.pillarLine, 0.8);
-      g.strokeCircle(p.x, p.y, p.r);
-      g.lineStyle(1, COLORS.pillarLine, 0.4);
-      g.strokeCircle(p.x, p.y, p.r * 0.62);
-      g.strokeCircle(p.x, p.y, p.r * 0.3);
+    // Seed the ambient particle field
+    this.motes = [];
+    for (let i = 0; i < 26; i++) {
+      this.motes.push(this.spawnMote(true));
     }
+  }
 
-    // Torch poles (static part; flames animate in the ambient layer)
-    for (const t of this.torchSpots()) {
-      g.fillStyle(0x2a2a3a, 1);
-      g.fillRect(t.x - 4, t.y, 8, 26);
-      g.fillStyle(0x3a3a4e, 1);
-      g.fillCircle(t.x, t.y + 2, 7);
-    }
+  /** One ambient particle, styled per map (petals fall, sand drifts, embers rise). */
+  private spawnMote(anywhere = false): { x: number; y: number; vx: number; vy: number; size: number; phase: number } {
+    const k = this.map.ambient;
+    const x = anywhere ? Math.random() * GAME_W : k === 'sand' ? -10 : Math.random() * GAME_W;
+    const y = anywhere
+      ? Math.random() * GAME_H
+      : k === 'petals'
+        ? -10
+        : k === 'embers'
+          ? GAME_H + 10
+          : Math.random() * GAME_H;
+    return {
+      x,
+      y,
+      vx: k === 'sand' ? 60 + Math.random() * 60 : k === 'petals' ? -14 - Math.random() * 18 : (Math.random() - 0.5) * 8,
+      vy: k === 'petals' ? 26 + Math.random() * 22 : k === 'embers' ? -30 - Math.random() * 30 : (Math.random() - 0.5) * 8,
+      size: 2.5 + Math.random() * 3.5,
+      phase: Math.random() * Math.PI * 2,
+    };
   }
 
   /** Two circles + a triangle = a heart. Filled red or a dark husk. */
@@ -1124,35 +1199,23 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     }
   }
 
-  /** Torch positions around the rim (upper half — thumbs own the lower corners). */
-  private torchSpots(): { x: number; y: number }[] {
-    const spots: { x: number; y: number }[] = [];
-    for (const deg of [200, 250, 290, 340]) {
-      const a = (deg * Math.PI) / 180;
-      spots.push({
-        x: ARENA_X + Math.cos(a) * (ARENA_R + 46),
-        y: ARENA_Y + Math.sin(a) * (ARENA_R + 46),
-      });
-    }
-    return spots;
-  }
-
-  /** Animated ambience: torch flames + drifting embers, redrawn each frame. */
+  /** Animated ambience: the map's particle weather (petals / sand / embers / motes). */
   private drawAmbient(dt: number): void {
     const g = this.ambientGfx;
     g.clear();
-    for (const t of this.torchSpots()) {
-      const flick = Math.sin(this.now / 90 + t.x) * 2 + Math.sin(this.now / 41 + t.y) * 1.5;
-      g.fillStyle(COLORS.torch, 0.14);
-      g.fillCircle(t.x, t.y - 10, 26 + flick * 2);
-      g.fillStyle(COLORS.torch, 0.85);
-      g.fillEllipse(t.x, t.y - 10 - flick / 2, 12, 18 + flick);
-      g.fillStyle(0xffe08a, 0.9);
-      g.fillEllipse(t.x, t.y - 8, 6, 9 + flick / 2);
-      if (Math.random() < dt * 2.2) {
-        this.embers.push(spawnEmber(this.now, t.x + (Math.random() - 0.5) * 10, t.y - 16, COLORS.torch));
+    const k = this.map.ambient;
+    for (let i = 0; i < this.motes.length; i++) {
+      const p = this.motes[i];
+      p.x += (p.vx + Math.sin(this.now / 900 + p.phase) * 14) * dt;
+      p.y += p.vy * dt;
+      if (p.x < -20 || p.x > GAME_W + 20 || p.y < -20 || p.y > GAME_H + 20) {
+        this.motes[i] = this.spawnMote();
+        continue;
       }
+      const alpha =
+        k === 'motes' ? 0.25 + 0.2 * Math.sin(this.now / 600 + p.phase) : k === 'embers' ? 0.7 : 0.55;
+      g.fillStyle(this.map.ambientColor, Math.max(0.1, alpha));
+      g.fillRect(p.x, p.y, p.size, p.size);
     }
-    this.embers = updateAndDrawEmbers(g, this.embers, this.now, dt);
   }
 }

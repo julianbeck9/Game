@@ -2,18 +2,9 @@
 export const GAME_W = 1920;
 export const GAME_H = 1080;
 
-// Arena
+// Field center (maps are fullscreen; obstacles live in core/maps.ts)
 export const ARENA_X = GAME_W / 2;
 export const ARENA_Y = GAME_H / 2;
-export const ARENA_R = 500;
-
-// Pillars: static circular obstacles that block projectiles.
-// Placed at 120° spokes so neither spawn lane (top/bottom center) is blocked.
-export const PILLARS: { x: number; y: number; r: number }[] = [
-  { x: ARENA_X + 280, y: ARENA_Y, r: 52 },
-  { x: ARENA_X - 140, y: ARENA_Y + 242, r: 52 },
-  { x: ARENA_X - 140, y: ARENA_Y - 242, r: 52 },
-];
 
 // Color language: player gold, enemies red family, high-contrast projectiles.
 export const COLORS = {

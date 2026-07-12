@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { AugmentDef, Tier } from '../augments/types';
-import { addAugment, run } from '../core/run';
+import { addAugment, run, MAX_AUGMENTS, levelOf, levelUp, removeAugment } from '../core/run';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { STR } from '../core/strings';
 import { sfx } from '../core/sfx';
@@ -28,9 +28,53 @@ export class PickScene extends Phaser.Scene {
 
   create(data: PickSceneData): void {
     this.picked = false;
+    this.phase = 'pick';
     const { offers } = data;
 
     this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.94);
+
+    // 6/6 Augmente: statt neuer Angebote wird aufgewertet (Kosten: eins weggeben)
+    if (run.augments.length >= MAX_AUGMENTS) {
+      const upgradable = run.augments.filter((a) => levelOf(a.id) < 3);
+      if (upgradable.length === 0) {
+        // Alles auf Maximalstufe: direkt weiter
+        this.time.delayedCall(50, () => this.routeOn());
+        return;
+      }
+      this.add
+        .text(GAME_W / 2, 96, 'Werte ein Augment auf', {
+          fontFamily: 'Georgia, serif',
+          fontSize: '64px',
+          fontStyle: 'bold',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5)
+        .setShadow(0, 5, '#000000', 12, false, true);
+      this.add
+        .text(GAME_W / 2, 168, 'Slots voll (6/6) — Aufwertung kostet ein anderes Augment', {
+          fontFamily: 'sans-serif',
+          fontSize: '28px',
+          fontStyle: 'italic',
+          color: '#a8b0c8',
+        })
+        .setOrigin(0.5);
+
+      const picks: AugmentDef[] = [];
+      const bag = [...upgradable];
+      while (picks.length < 3 && bag.length > 0) {
+        picks.push(bag.splice(Math.floor(Math.random() * bag.length), 1)[0]);
+      }
+      const cardW = 460;
+      const cardH = 560;
+      const gap = 60;
+      const total = picks.length * cardW + (picks.length - 1) * gap;
+      const x0 = (GAME_W - total) / 2 + cardW / 2;
+      picks.forEach((def, i) =>
+        this.makeCard(def, x0 + i * (cardW + gap), GAME_H / 2 + 60, cardW, cardH, i, true),
+      );
+      return;
+    }
+
     this.add
       .text(GAME_W / 2, 96, STR.pickAugment, {
         fontFamily: 'Georgia, serif',
@@ -53,7 +97,7 @@ export class PickScene extends Phaser.Scene {
     // Current build, so the choice can be made in context
     if (run.augments.length > 0) {
       this.add
-        .text(GAME_W / 2, GAME_H - 44, `Deine Augmente: ${run.augments.map((a) => a.name).join(' · ')}`, {
+        .text(GAME_W / 2, GAME_H - 44, `Deine Augmente: ${run.augments.map((a) => `${a.name} ${'★'.repeat(levelOf(a.id))}`).join(' · ')}`, {
           fontFamily: 'sans-serif',
           fontSize: '25px',
           color: '#7a86a5',
@@ -64,7 +108,89 @@ export class PickScene extends Phaser.Scene {
     }
   }
 
-  private makeCard(def: AugmentDef, x: number, y: number, w: number, h: number, index: number): void {
+  /** Phase 2 des Aufwertens: eines der übrigen Augmente muss gehen. */
+  private showDiscard(upgraded: AugmentDef): void {
+    this.phase = 'discard';
+    this.children.removeAll(true);
+    this.picked = false;
+    this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.94);
+    this.add
+      .text(GAME_W / 2, 96, 'Gib ein Augment weg', {
+        fontFamily: 'Georgia, serif',
+        fontSize: '64px',
+        fontStyle: 'bold',
+        color: '#ff9a8a',
+      })
+      .setOrigin(0.5)
+      .setShadow(0, 5, '#000000', 12, false, true);
+    this.add
+      .text(GAME_W / 2, 168, `${upgraded.name} wurde auf Stufe ${levelOf(upgraded.id)} aufgewertet`, {
+        fontFamily: 'sans-serif',
+        fontSize: '28px',
+        color: '#7ee08a',
+      })
+      .setOrigin(0.5);
+
+    const others = run.augments.filter((a) => a.id !== upgraded.id);
+    const cardW = 280;
+    const cardH = 340;
+    const gap = 26;
+    const total = others.length * cardW + (others.length - 1) * gap;
+    const x0 = (GAME_W - total) / 2 + cardW / 2;
+    others.forEach((def, i) => {
+      const x = x0 + i * (cardW + gap);
+      const y = GAME_H / 2 + 60;
+      const tierColor = TIER_COLOR[def.tier];
+      const bg = this.add
+        .rectangle(x, y, cardW, cardH, 0x14141f, 1)
+        .setStrokeStyle(3, tierColor, 1)
+        .setInteractive({ useHandCursor: true });
+      this.add
+        .text(x, y - cardH / 2 + 44, `${def.name} ${'★'.repeat(levelOf(def.id))}`, {
+          fontFamily: 'Georgia, serif',
+          fontSize: '27px',
+          fontStyle: 'bold',
+          color: '#ffffff',
+          wordWrap: { width: cardW - 30 },
+          align: 'center',
+        })
+        .setOrigin(0.5);
+      this.add
+        .text(x, y + 20, def.description, {
+          fontFamily: 'sans-serif',
+          fontSize: '20px',
+          color: '#b8c0d4',
+          wordWrap: { width: cardW - 34 },
+          align: 'center',
+        })
+        .setOrigin(0.5);
+      this.add
+        .text(x, y + cardH / 2 - 32, 'Weggeben', {
+          fontFamily: 'sans-serif',
+          fontSize: '23px',
+          fontStyle: 'bold',
+          color: '#ff9a8a',
+        })
+        .setOrigin(0.5);
+      bg.on('pointerover', () => bg.setFillStyle(0x2a1a1a));
+      bg.on('pointerout', () => bg.setFillStyle(0x14141f));
+      bg.on('pointerdown', () => {
+        if (this.picked) return;
+        this.picked = true;
+        sfx.pick();
+        removeAugment(def.id);
+        this.time.delayedCall(180, () => this.routeOn());
+      });
+    });
+  }
+
+  /** Weiter im Rundenzyklus: Händler nur nach dem Zahltag (jede 2. Runde). */
+  private routeOn(): void {
+    const shopDay = (run.round - 1) % 2 === 0;
+    this.scene.start(shopDay ? 'shop' : 'arena');
+  }
+
+  private makeCard(def: AugmentDef, x: number, y: number, w: number, h: number, index: number, upgrade = false): void {
     const tierColor = TIER_COLOR[def.tier];
     const zone = this.add.container(x, y + 60).setAlpha(0);
 
@@ -177,14 +303,42 @@ export class PickScene extends Phaser.Scene {
       ease: 'Cubic.easeOut',
     });
 
+    // Aufwertungs-Karten zeigen Stufe und den kommenden Sprung
+    if (upgrade) {
+      zone.add(
+        this.add
+          .text(0, h / 2 - 70, `Stufe ${levelOf(def.id)} → ${levelOf(def.id) + 1}  (Wirkung ×${(1 + 0.6 * levelOf(def.id)).toFixed(1)})`, {
+            fontFamily: 'sans-serif',
+            fontSize: '25px',
+            fontStyle: 'bold',
+            color: '#7ee08a',
+          })
+          .setOrigin(0.5),
+      );
+    }
+
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => bg.setFillStyle(0x1f1f30));
     bg.on('pointerout', () => bg.setFillStyle(0x14141f));
     bg.on('pointerdown', () => {
       this.tweens.add({ targets: zone, scaleX: 0.96, scaleY: 0.96, duration: 70, yoyo: true });
-      this.pick(def);
+      if (upgrade) this.pickUpgrade(def);
+      else this.pick(def);
     });
-    this.input.keyboard?.addKey(['ONE', 'TWO', 'THREE'][index]).on('down', () => this.pick(def));
+    this.input.keyboard?.addKey(['ONE', 'TWO', 'THREE'][index]).on('down', () => {
+      if (upgrade) this.pickUpgrade(def);
+      else this.pick(def);
+    });
+  }
+
+  private phase: 'pick' | 'discard' = 'pick';
+
+  private pickUpgrade(def: AugmentDef): void {
+    if (this.picked || this.phase !== 'pick') return;
+    this.picked = true;
+    sfx.pick();
+    levelUp(def.id);
+    this.time.delayedCall(180, () => this.showDiscard(def));
   }
 
   private picked = false;
@@ -194,9 +348,6 @@ export class PickScene extends Phaser.Scene {
     this.picked = true;
     sfx.pick();
     addAugment(def);
-    // Der Händler öffnet nur nach dem Zahltag (jede 2. Runde); run.round wurde
-    // in endFight bereits erhöht, die gespielte Runde ist also run.round - 1.
-    const shopDay = (run.round - 1) % 2 === 0;
-    this.time.delayedCall(180, () => this.scene.start(shopDay ? 'shop' : 'arena'));
+    this.time.delayedCall(180, () => this.routeOn());
   }
 }

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { STR } from '../core/strings';
 import { run } from '../core/run';
+import { rollOffers } from '../augments/offers';
 import { sfx } from '../core/sfx';
 import { crown, spawnEmber, updateAndDrawEmbers, Ember } from '../core/draw';
 
@@ -70,7 +71,7 @@ export class EndScene extends Phaser.Scene {
     panel.strokeRoundedRect(cx - pw / 2, py - ph / 2, pw, ph, 18);
 
     const rows: [string, string][] = [
-      ['Runde erreicht', `${run.round} / 12`],
+      ['Runde erreicht', run.round > 20 ? `${run.round} (Endlos)` : `${run.round} / 20`],
       ['Gesamtschaden', `${Math.round(run.totalDamageDealt)}`],
       ['Größter Treffer', `${Math.round(run.maxHit)}`],
       ['Tötungen', `${run.kills}`],
@@ -106,13 +107,16 @@ export class EndScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(10);
 
+    // Victory: the crown is claimed — but the Endlosmodus beckons
+    const offerEndless = v && !run.endless;
+    const bx = offerEndless ? cx - 260 : cx;
     const btn = this.add
-      .rectangle(cx, GAME_H - 92, 460, 100, 0x2a2a40, 1)
+      .rectangle(bx, GAME_H - 92, 460, 100, 0x2a2a40, 1)
       .setStrokeStyle(4, v ? COLORS.player : COLORS.enemy, 1)
       .setInteractive({ useHandCursor: true })
       .setDepth(10);
     this.add
-      .text(cx, GAME_H - 92, STR.retry, {
+      .text(bx, GAME_H - 92, STR.retry, {
         fontFamily: 'sans-serif',
         fontSize: '38px',
         fontStyle: 'bold',
@@ -123,7 +127,31 @@ export class EndScene extends Phaser.Scene {
 
     const again = () => this.scene.start('menu');
     btn.on('pointerdown', again);
-    this.time.delayedCall(800, () => this.input.keyboard?.once('keydown', again));
+
+    if (offerEndless) {
+      const ebtn = this.add
+        .rectangle(cx + 260, GAME_H - 92, 460, 100, 0x1a2a40, 1)
+        .setStrokeStyle(4, COLORS.prisma, 1)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(10);
+      this.add
+        .text(cx + 260, GAME_H - 92, '∞ Endlosmodus', {
+          fontFamily: 'sans-serif',
+          fontSize: '38px',
+          fontStyle: 'bold',
+          color: '#5ff0e0',
+        })
+        .setOrigin(0.5)
+        .setDepth(11);
+      ebtn.on('pointerdown', () => {
+        run.endless = true;
+        const offers = rollOffers(run.round);
+        run.round++;
+        this.scene.start('pick', { offers });
+      });
+    } else {
+      this.time.delayedCall(800, () => this.input.keyboard?.once('keydown', again));
+    }
   }
 
   update(time: number, deltaMs: number): void {

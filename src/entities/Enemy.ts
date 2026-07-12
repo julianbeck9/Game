@@ -18,7 +18,7 @@ export interface EnemyAbilitySpec {
 
 export interface EnemyConfig {
   name: string;
-  kind: 'haescher' | 'schuetze' | 'waechter' | 'usurpator' | 'diener' | 'hexer';
+  kind: 'haescher' | 'schuetze' | 'waechter' | 'usurpator' | 'diener' | 'hexer' | 'berserker' | 'speermaid';
   radius: number;
   color: number;
   darkColor: number;
