@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { StatBlock } from '../core/stats';
 import { COLORS } from '../config';
-import { clampToArena, resolvePillars, resolveTerrain } from '../core/geometry';
+import { clampToArena, resolvePillars, resolveTerrain, resolveWalls } from '../core/geometry';
 
 export type Team = 'player' | 'enemy';
 
@@ -86,11 +86,23 @@ export abstract class Unit {
    * are allowed to cross it.
    */
   moveBy(dx: number, dy: number, overTerrain = false): void {
-    const p1 = resolvePillars(this.x + dx, this.y + dy, this.radius);
-    const p2 = clampToArena(p1.x, p1.y, this.radius);
-    const p3 = overTerrain ? p2 : resolveTerrain(p2.x, p2.y, this.radius);
-    this.x = p3.x;
-    this.y = p3.y;
+    // Substep so a fast move (dash) can't tunnel through a thin wall in one hop:
+    // each collision check advances at most ~8px.
+    const dlen = Math.sqrt(dx * dx + dy * dy);
+    const steps = dlen > 8 ? Math.ceil(dlen / 8) : 1;
+    const sx = dx / steps;
+    const sy = dy / steps;
+    const r = this.radius;
+    for (let i = 0; i < steps; i++) {
+      const p1 = resolvePillars(this.x + sx, this.y + sy, r);
+      const p2 = overTerrain ? p1 : resolveTerrain(p1.x, p1.y, r);
+      // Solid walls resolve LAST so they always win — hard cover blocks
+      // walking and dashing alike and can't be overridden by terrain pushout.
+      const pw = resolveWalls(p2.x, p2.y, r);
+      const p3 = clampToArena(pw.x, pw.y, r);
+      this.x = p3.x;
+      this.y = p3.y;
+    }
   }
 
   abstract update(time: number, dt: number): void;

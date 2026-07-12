@@ -1,4 +1,4 @@
-import { FIELD, activeObstacles, activeTerrain } from './maps';
+import { FIELD, activeObstacles, activeTerrain, activeWalls } from './maps';
 
 export interface Vec {
   x: number;
@@ -80,6 +80,37 @@ export function resolveTerrain(x: number, y: number, r: number): Vec {
 export function pointInTerrain(x: number, y: number, r = 0): boolean {
   for (const t of activeTerrain()) {
     if (Math.abs(x - t.x) < t.w / 2 + r && Math.abs(y - t.y) < t.h / 2 + r) return true;
+  }
+  return false;
+}
+
+/**
+ * Push a circle of radius r out of any solid wall it overlaps. Unlike terrain,
+ * walls are hard: they block WALKING and DASHING alike, so moveBy always
+ * applies this (even when overTerrain is true).
+ */
+export function resolveWalls(x: number, y: number, r: number): Vec {
+  let px = x;
+  let py = y;
+  for (const w of activeWalls()) {
+    const hw = w.w / 2 + r;
+    const hh = w.h / 2 + r;
+    const dx = px - w.x;
+    const dy = py - w.y;
+    if (Math.abs(dx) < hw && Math.abs(dy) < hh) {
+      const ox = hw - Math.abs(dx);
+      const oy = hh - Math.abs(dy);
+      if (ox < oy) px = w.x + (dx < 0 ? -hw : hw);
+      else py = w.y + (dy < 0 ? -hh : hh);
+    }
+  }
+  return { x: px, y: py };
+}
+
+/** Is the point inside a solid wall (projectiles are eaten by walls)? */
+export function pointInWall(x: number, y: number, r = 0): boolean {
+  for (const w of activeWalls()) {
+    if (Math.abs(x - w.x) < w.w / 2 + r && Math.abs(y - w.y) < w.h / 2 + r) return true;
   }
   return false;
 }

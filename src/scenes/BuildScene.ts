@@ -6,6 +6,7 @@ import type { Tier } from '../augments/types';
 import { drawStatIcon, IconKey } from '../core/icons';
 import { drawItemIcon } from '../items/icons';
 import { previewStats } from '../core/preview';
+import { championById } from '../champions/registry';
 
 const TIER_COLOR: Record<Tier, number> = {
   silber: COLORS.silver,
@@ -50,10 +51,10 @@ export class BuildScene extends Phaser.Scene {
 
     // ---- Left: live stats with icons ----
     const sx = 116;
-    let sy = 150;
-    this.panel(40, 120, 480, 850);
+    let sy = 138;
+    this.panel(40, 108, 480, 640);
     this.add.text(76, sy, 'Stats', this.h2()).setOrigin(0, 0.5);
-    sy += 56;
+    sy += 48;
     {
       const amp = Math.round(s.get('abilityDamage') * 100);
       const rows: ([IconKey, string, string] | null)[] = [
@@ -83,19 +84,19 @@ export class BuildScene extends Phaser.Scene {
         this.add
           .text(492, sy, value, {
             fontFamily: 'sans-serif',
-            fontSize: '27px',
+            fontSize: '26px',
             fontStyle: 'bold',
             color: '#e8ecf8',
           })
           .setOrigin(1, 0.5);
-        sy += 52;
+        sy += 42;
       }
     }
 
     // ---- Middle: augments ----
-    this.panel(560, 120, 660, 850);
-    this.add.text(600, 150, `Augments (${run.augments.length} / 6)`, this.h2()).setOrigin(0, 0.5);
-    let ay = 208;
+    this.panel(560, 108, 660, 640);
+    this.add.text(600, 138, `Augments (${run.augments.length} / 6)`, this.h2()).setOrigin(0, 0.5);
+    let ay = 190;
     for (const a of run.augments) {
       const color = TIER_COLOR[a.tier];
       this.add
@@ -114,16 +115,16 @@ export class BuildScene extends Phaser.Scene {
         lineSpacing: 4,
       });
       ay += 44 + desc.height + 14;
-      if (ay > 920) break;
+      if (ay > 720) break;
     }
     if (run.augments.length === 0) {
       this.add.text(600, 210, '— none yet —', { fontFamily: 'sans-serif', fontSize: '24px', color: '#5a6480' });
     }
 
     // ---- Right: items ----
-    this.panel(1260, 120, 620, 850);
-    this.add.text(1300, 150, `Items (${run.items.length} / 6)`, this.h2()).setOrigin(0, 0.5);
-    let iy = 214;
+    this.panel(1260, 108, 620, 640);
+    this.add.text(1300, 138, `Items (${run.items.length} / 6)`, this.h2()).setOrigin(0, 0.5);
+    let iy = 190;
     const iconG = this.add.graphics();
     for (const it of run.items) {
       drawItemIcon(iconG, it.icon ?? 'orb', 1316, iy + 12, 40, it.color);
@@ -143,19 +144,42 @@ export class BuildScene extends Phaser.Scene {
         lineSpacing: 4,
       });
       iy += 50 + desc.height + 14;
-      if (iy > 920) break;
+      if (iy > 720) break;
     }
     if (run.items.length === 0) {
       this.add.text(1300, 210, '— none yet —', { fontFamily: 'sans-serif', fontSize: '24px', color: '#5a6480' });
     }
 
+    // ---- Bottom: champion kit (view your abilities during the round) ----
+    const champ = championById(run.champion);
+    this.panel(40, 764, GAME_W - 80, 232);
+    this.add.text(76, 792, `${champ.name} — Abilities`, this.h2()).setOrigin(0, 0.5);
+    const slots: [string, { name: string; desc: string }, number][] = [
+      ['Passive', champ.info.passive, 0xcc9bff],
+      ['Q', champ.info.q, 0xffc36a],
+      ['E', champ.info.e, 0xffe680],
+      ['Space', champ.info.dash, 0x6ab8ff],
+    ];
+    const colW = (GAME_W - 120) / 4;
+    slots.forEach(([key, info, col], i) => {
+      const cx = 76 + i * colW;
+      this.add.text(cx, 832, `${key} · ${info.name}`, {
+        fontFamily: 'sans-serif', fontSize: '23px', fontStyle: 'bold',
+        color: '#' + col.toString(16).padStart(6, '0'), wordWrap: { width: colW - 24 },
+      });
+      this.add.text(cx, 872, info.desc, {
+        fontFamily: 'sans-serif', fontSize: '19px', color: '#c8d0e0',
+        wordWrap: { width: colW - 24 }, lineSpacing: 3,
+      });
+    });
+
     // ---- Close ----
     const btn = this.add
-      .rectangle(GAME_W / 2, GAME_H - 52, 360, 76, 0x2a2a40, 1)
+      .rectangle(GAME_W / 2, GAME_H - 40, 360, 62, 0x2a2a40, 1)
       .setStrokeStyle(3, 0xa8d8ff, 1)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(GAME_W / 2, GAME_H - 52, this.from === 'shop' ? 'Back to Shop' : 'Back to Battle', {
+      .text(GAME_W / 2, GAME_H - 40, this.from === 'shop' ? 'Back to Shop' : 'Back to Battle', {
         fontFamily: 'sans-serif',
         fontSize: '30px',
         fontStyle: 'bold',

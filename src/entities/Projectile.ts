@@ -1,5 +1,5 @@
 import { Unit } from './Unit';
-import { norm, len, pointInPillar } from '../core/geometry';
+import { norm, len, pointInPillar, pointInWall } from '../core/geometry';
 import { FIELD } from '../core/maps';
 
 export interface ProjectileOpts {
@@ -111,7 +111,8 @@ export class Projectile {
         this.x > FIELD.x2 + 40 ||
         this.y < FIELD.y1 - 40 ||
         this.y > FIELD.y2 + 40 ||
-        ((o.blockedByPillars ?? true) && pointInPillar(this.x, this.y, this.radius));
+        ((o.blockedByPillars ?? true) && pointInPillar(this.x, this.y, this.radius)) ||
+        pointInWall(this.x, this.y, this.radius);
       if (atLimit) {
         if (o.boomerangTo) {
           this.returning = true;

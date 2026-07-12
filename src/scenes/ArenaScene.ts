@@ -53,6 +53,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private slowmoUntil = 0;
   private dashTrail: { x: number; y: number; until: number }[] = [];
   private rings: { x: number; y: number; start: number; color: number; maxR: number }[] = [];
+  private sparks: { x: number; y: number; start: number; color: number; a: number }[] = [];
   private burnNumAcc = new Map<Unit, { sum: number; showAt: number }>();
 
   // Arena modifier state (R5+)
@@ -91,6 +92,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.flashes = [];
     this.dashTrail = [];
     this.rings = [];
+    this.sparks = [];
     this.burnNumAcc = new Map();
     this.slowmoUntil = 0;
     this.taunt = null;
@@ -138,6 +140,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.bus.on('dashStart', () => sfx.dash());
     this.bus.on('damageTaken', () => sfx.hurt());
     this.bus.on('enemyDeath', () => sfx.kill());
+    // Ability hits throw a bright spark burst so spells read clearly
+    this.bus.on('abilityHit', ({ target, ability }) => {
+      const col = ability === 'E' ? 0xffe680 : ability === 'Q' ? 0xffd24a : 0xa8d8ff;
+      this.sparks.push({ x: target.x, y: target.y, start: this.now, color: col, a: Math.random() * Math.PI });
+    });
 
     this.bus.emit('roundStart', undefined);
   }
@@ -917,13 +924,38 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     }
 
     // Expanding rings (kill bursts, E nova, lightning impacts)
-    this.rings = this.rings.filter((b) => this.now - b.start < 340);
+    // Expanding shockwave rings — bold and readable: filled core flash + a
+    // thick colored ring + a bright white leading edge.
+    this.rings = this.rings.filter((b) => this.now - b.start < 420);
     for (const b of this.rings) {
-      const p = (this.now - b.start) / 340;
-      this.aimGfx.lineStyle(7 * (1 - p) + 1, b.color, 1 - p);
-      this.aimGfx.strokeCircle(b.x, b.y, 18 + p * (b.maxR - 18));
-      this.aimGfx.lineStyle(2, 0xffffff, (1 - p) * 0.5);
-      this.aimGfx.strokeCircle(b.x, b.y, (18 + p * (b.maxR - 18)) * 0.85);
+      const p = (this.now - b.start) / 420;
+      const r = 18 + p * (b.maxR - 18);
+      // soft filled flash that fades fast
+      this.aimGfx.fillStyle(b.color, (1 - p) * 0.22);
+      this.aimGfx.fillCircle(b.x, b.y, r);
+      // main colored ring, thick early
+      this.aimGfx.lineStyle(12 * (1 - p) + 2, b.color, (1 - p) * 0.95);
+      this.aimGfx.strokeCircle(b.x, b.y, r);
+      // bright white leading edge
+      this.aimGfx.lineStyle(4 * (1 - p) + 1, 0xffffff, (1 - p) * 0.8);
+      this.aimGfx.strokeCircle(b.x, b.y, r * 0.94);
+    }
+
+    // Ability-hit sparks: a quick radiating star burst at the impact point
+    this.sparks = this.sparks.filter((s) => this.now - s.start < 240);
+    for (const s of this.sparks) {
+      const p = (this.now - s.start) / 240;
+      const len = 10 + p * 26;
+      this.aimGfx.fillStyle(s.color, (1 - p) * 0.5);
+      this.aimGfx.fillCircle(s.x, s.y, (1 - p) * 14);
+      this.aimGfx.lineStyle(3 * (1 - p) + 1, s.color, 1 - p);
+      for (let i = 0; i < 6; i++) {
+        const ang = s.a + (Math.PI * 2 * i) / 6;
+        this.aimGfx.beginPath();
+        this.aimGfx.moveTo(s.x + Math.cos(ang) * (len * 0.4), s.y + Math.sin(ang) * (len * 0.4));
+        this.aimGfx.lineTo(s.x + Math.cos(ang) * len, s.y + Math.sin(ang) * len);
+        this.aimGfx.strokePath();
+      }
     }
 
     this.hazardGfx.clear();
@@ -1108,6 +1140,42 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       }
     }
     this.terrainZones = m.terrain;
+
+    // Solid stone walls (hard cover): chunky blocks with a lit top face + seams
+    const wg = this.add.graphics().setDepth(4);
+    for (const w of m.walls) {
+      const x = w.x - w.w / 2;
+      const y = w.y - w.h / 2;
+      const lip = 10; // pseudo-3D raised top
+      // Cast shadow on the floor
+      wg.fillStyle(0x000000, 0.3);
+      wg.fillRect(x + 6, y + 8, w.w, w.h);
+      // Dark body
+      wg.fillStyle(shade(m.wallColor, -0.5), 1);
+      wg.fillRect(x, y - lip, w.w, w.h + lip);
+      // Lit top face
+      wg.fillStyle(m.wallColor, 1);
+      wg.fillRect(x, y - lip, w.w, w.h - lip);
+      // Highlight ridge along the top
+      wg.fillStyle(shade(m.wallColor, 0.28), 0.9);
+      wg.fillRect(x, y - lip, w.w, 6);
+      // Block seams (mortar lines)
+      wg.lineStyle(2, shade(m.wallColor, -0.55), 0.8);
+      const horiz = w.w >= w.h;
+      if (horiz) {
+        for (let sx = x + 34; sx < x + w.w - 8; sx += 34) {
+          wg.lineBetween(sx, y - lip, sx, y + w.h - lip);
+        }
+        wg.lineBetween(x, y + (w.h - lip) / 2, x + w.w, y + (w.h - lip) / 2);
+      } else {
+        for (let sy = y + 34 - lip; sy < y + w.h - 8; sy += 34) {
+          wg.lineBetween(x, sy, x + w.w, sy);
+        }
+        wg.lineBetween(x + w.w / 2, y - lip, x + w.w / 2, y + w.h - lip);
+      }
+      wg.lineStyle(3, shade(m.wallColor, -0.65), 1);
+      wg.strokeRect(x, y - lip, w.w, w.h);
+    }
 
     // Obstacles in the map's style
     const og = this.add.graphics().setDepth(4);

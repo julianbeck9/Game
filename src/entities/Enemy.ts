@@ -40,6 +40,8 @@ export interface EnemyConfig {
   regenPctPerSec?: number;
   /** Shown to the player at round start (Usurpator's visible augments). */
   visibleAugments?: string[];
+  /** Rival champions render a baked champion sprite instead of a plain disc. */
+  championSprite?: string;
 }
 
 interface Lunge {
@@ -61,6 +63,7 @@ export class Enemy extends Unit {
 
   facing: Vec = { x: 0, y: 1 };
   private telegraphGfx: Phaser.GameObjects.Graphics;
+  private sprite?: Phaser.GameObjects.Image;
   private telegraphing: EnemyAbilitySpec | null = null;
   private telegraphStart = 0;
   private telegraphUntil = 0;
@@ -90,6 +93,9 @@ export class Enemy extends Unit {
     this.cfg = cfg;
     this.radius = cfg.radius;
     this.telegraphGfx = scene.add.graphics().setDepth(5);
+    if (cfg.championSprite && scene.textures.exists(`champ:${cfg.championSprite}`)) {
+      this.sprite = scene.add.image(x, y, `champ:${cfg.championSprite}`).setDepth(11);
+    }
     for (const a of cfg.abilities) {
       // Stagger initial ability use a little so fights don't open with a windup
       this.abilityReadyAt.set(a.id, combat.now + 600 + Math.random() * 800);
@@ -337,6 +343,21 @@ export class Enemy extends Unit {
     }
 
     const swinging = this.memory.swingAt && this.combat.now - this.memory.swingAt < 120;
+
+    // Rival champions render their baked sprite inside an enemy-red ring
+    if (this.sprite) {
+      const pulse = Math.sin(this.combat.now / 260) * 2;
+      g.lineStyle(3, 0xff5a4a, 0.7);
+      g.strokeCircle(this.x, this.y, this.radius + 6 + pulse);
+      g.fillStyle(0xff3a2a, 0.1);
+      g.fillCircle(this.x, this.y, this.radius + 6 + pulse);
+      this.sprite.setPosition(this.x, this.y);
+      this.sprite.setFlipX(this.facing.x < 0);
+      this.sprite.setTint(swinging ? 0xffffff : 0xffb0a4);
+      this.drawInsignia(g);
+      return;
+    }
+
     shadedDisc(g, this.x, this.y, this.radius, swinging ? 0xffffff : this.cfg.color);
 
     // Facing wedge
@@ -397,6 +418,7 @@ export class Enemy extends Unit {
 
   destroy(): void {
     this.telegraphGfx.destroy();
+    this.sprite?.destroy();
     super.destroy();
   }
 }
