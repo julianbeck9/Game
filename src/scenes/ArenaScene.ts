@@ -521,17 +521,6 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     // Phasensprung rule flag: invulnerable while dashing
     if (target === this.player && this.player.dashing && run.flags.dashIFrames) return 0;
 
-    // Universal ability-power scaling: every champion's abilities gain +1% damage
-    // per point of BONUS ability power (AP above the champion's base). This keeps
-    // each champion's base balance untouched (0 bonus AP → no change) while making
-    // the "+AP" augment family matter on AD champions too, not just Lux.
-    if (source === this.player && type === 'ability') {
-      const ap = this.player.stats.get('abilityPower');
-      const baseAp = this.player.stats.getBase('abilityPower');
-      const bonusAp = ap - baseAp;
-      if (bonusAp > 0) amount *= 1 + bonusAp * 0.01;
-    }
-
     // LoL-like mitigation: Rüstung vs physisch, MR vs magisch, wahr ignores both
     const sch: School =
       school ?? (type === 'burn' ? 'magisch' : type === 'other' ? 'wahr' : 'physisch');

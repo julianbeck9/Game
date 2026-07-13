@@ -14,6 +14,7 @@ import { applyBalance } from './core/balance';
 applyBalance();
 import { run, addAugment } from './core/run';
 import { augmentById, AUGMENTS } from './augments/registry';
+import { championUsesAP } from './champions/registry';
 import { itemById } from './items/registry';
 
 const game = new Phaser.Game({
@@ -67,7 +68,9 @@ declare global {
         onCombatInit: boolean;
         statMods: boolean;
         ruleFlags: boolean;
+        needs: string[];
       }[];
+      champUsesAP: (id: string) => boolean;
     };
   }
 }
@@ -94,7 +97,10 @@ window.__CC = {
       onCombatInit: !!a.onCombatInit,
       statMods: !!a.statMods,
       ruleFlags: !!a.ruleFlags,
+      needs: a.needs ?? [],
     })),
+  // Test helper: does this champion's kit use AP? (augment gating input)
+  champUsesAP: (id: string) => championUsesAP(id),
   // Test helper: grant an augment by id (takes effect on next goto/round)
   grant: (id: string) => {
     const def = augmentById(id);

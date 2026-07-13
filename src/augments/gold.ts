@@ -1,6 +1,7 @@
 import { AugmentDef, AugmentCtx } from './types';
 import type { Unit } from '../entities/Unit';
 import { pp, ppDmg, msPct, procDamage, procActive, slowUnit, unitLockReady, statRolls, grantRandomAugment, poolRef } from './helpers';
+import { augmentFitsChampion } from './eligibility';
 
 /**
  * GOLD — spürbare Machtsprünge. Gleiche Herkunft wie Silber: bekannte
@@ -63,6 +64,7 @@ const grosshirn: AugmentDef = {
   name: 'Big Brain',
   tier: 'gold',
   tags: ['Ward', 'Arkan'],
+  needs: ['ap'],
   description: 'Start each fight with a shield equal to 300% of your ability power.',
   hooks: {
     roundStart: (_p, ctx) =>
@@ -400,6 +402,7 @@ const zauberschuetze: AugmentDef = {
   name: 'Spellslinger',
   tier: 'gold',
   tags: ['Arkan', 'Sturm'],
+  needs: ['ap'],
   description: 'Attacks deal an extra 75% of your ability power as physical damage.',
   hooks: {
     autoHit: ({ target }, ctx) => {
@@ -481,6 +484,7 @@ const boeserFunke: AugmentDef = {
   name: 'Evil Spark',
   tier: 'gold',
   tags: ['Arkan'],
+  needs: ['ap'],
   description: 'Ability damage permanently grants +0.5 AP (1s cooldown). As your 2nd augment: start with 13 AP.',
   onCombatInit: (ctx) => {
     if (ctx.run.memory.funkeInit === undefined) {
@@ -812,7 +816,10 @@ const wechselbalg: AugmentDef = {
   description: 'At each round start this slot turns into a random other augment (for that round only).',
   onCombatInit: (ctx) => {
     const pool = poolRef.all.filter(
-      (a) => a.id !== 'wechselbalg' && !ctx.run.augments.some((o) => o.id === a.id),
+      (a) =>
+        a.id !== 'wechselbalg' &&
+        !ctx.run.augments.some((o) => o.id === a.id) &&
+        augmentFitsChampion(a, ctx.run.champion),
     );
     if (pool.length === 0) return;
     const rolled = pool[Math.floor(Math.random() * pool.length)];

@@ -63,12 +63,21 @@ export interface AugmentStatMod {
   pct?: number;
 }
 
+/** A champion capability an augment requires to be worth offering. */
+export type AugmentNeed = 'ap';
+
 export interface AugmentDef {
   id: string;
   name: string;
   tier: Tier;
   tags: Tag[];
   description: string;
+  /**
+   * Stat capabilities this augment needs to do anything. An AP-only augment
+   * lists 'ap' so it's never offered to a champion that doesn't scale with AP.
+   * Omit for stat-agnostic augments (utility, on-hit, tank, AD).
+   */
+  needs?: AugmentNeed[];
   hooks?: AugmentHooks;
   /** Permanent stat mods, re-applied at each combat init through the pipeline. */
   statMods?: AugmentStatMod[];

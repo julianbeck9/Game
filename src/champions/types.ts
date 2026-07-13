@@ -30,6 +30,13 @@ export interface ChampionDef {
     dash: AbilityInfo;
   };
   base: Partial<Record<StatName, number>>;
+  /**
+   * Champion damage identity (LoL-like): which stats this champion's kit
+   * actually scales with. Used to gate augment offers — an AP-only augment is
+   * never offered to a champion that doesn't use AP. Defaults to attack-damage
+   * (ad) when omitted; add 'ap' for mages like Lux.
+   */
+  scales?: ('ad' | 'ap')[];
   /** Ranged autos fire projectiles; melee autos are instant swings. */
   ranged: boolean;
   /** Aim-preview length and smart-cast acquisition range for Q. */

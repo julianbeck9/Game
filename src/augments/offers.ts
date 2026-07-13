@@ -2,6 +2,7 @@ import { AugmentDef, Tier } from './types';
 import { AUGMENTS } from './registry';
 import { isDeleted } from '../core/balance';
 import { run } from '../core/run';
+import { augmentFitsChampion } from './eligibility';
 
 /** Tier gating per pick (after round N): early Silber · midgame Silber/Gold · lategame Gold/Prisma. */
 function allowedTiers(round: number): Tier[] {
@@ -35,17 +36,19 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
   const prismaAllowed = (opts.allowPrisma ?? true) && ownedPrisma < run.flags.prismaSlots;
 
   const owns = (id: string) => run.augments.some((o) => o.id === id);
+  const fits = (a: AugmentDef) => augmentFitsChampion(a, run.champion);
   let pool = AUGMENTS.filter(
     (a) =>
       !owns(a.id) &&
       !exclude.has(a.id) &&
       !isDeleted(a.id) &&
+      fits(a) &&
       tiers.includes(a.tier) &&
       (a.tier !== 'prisma' || prismaAllowed),
   );
   // Fallback: if the gated pool is empty, open up to anything not owned/excluded
   if (pool.length === 0) {
-    pool = AUGMENTS.filter((a) => !owns(a.id) && !exclude.has(a.id) && !isDeleted(a.id) && (a.tier !== 'prisma' || prismaAllowed));
+    pool = AUGMENTS.filter((a) => !owns(a.id) && !exclude.has(a.id) && !isDeleted(a.id) && fits(a) && (a.tier !== 'prisma' || prismaAllowed));
     if (pool.length === 0) return null;
   }
 

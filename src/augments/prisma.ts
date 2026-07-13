@@ -2,6 +2,7 @@ import { AugmentDef } from './types';
 import type { Unit } from '../entities/Unit';
 import { COLORS } from '../config';
 import { pp, ppDmg, msPct, procDamage, procActive, slowUnit, enemiesWithin, unitLockReady, statRolls, grantRandomAugment } from './helpers';
+import { augmentFitsChampion } from './eligibility';
 import { SILBER } from './silber';
 
 /**
@@ -372,6 +373,7 @@ const heureka: AugmentDef = {
   name: 'Eureka',
   tier: 'prisma',
   tags: ['Arkan'],
+  needs: ['ap'],
   description: '20% of your ability power also counts as ability haste.',
   onUpdate: (_dt, ctx) => {
     ctx.player.stats.set({
@@ -943,7 +945,9 @@ const transmutSilber: AugmentDef = {
   onCombatInit: (ctx) => {
     if (ctx.run.memory.tsilberDone) return;
     ctx.run.memory.tsilberDone = 1;
-    const pool = SILBER.filter((a) => !ctx.run.augments.some((o) => o.id === a.id));
+    const pool = SILBER.filter(
+      (a) => !ctx.run.augments.some((o) => o.id === a.id) && augmentFitsChampion(a, ctx.run.champion),
+    );
     for (let i = 0; i < 3 && pool.length > 0; i++) {
       const rolled = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
       ctx.run.augments.push(rolled);

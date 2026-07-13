@@ -416,6 +416,7 @@ const lux: ChampionDef = {
   id: 'lux',
   name: 'Lux',
   tagline: 'The Lady of Luminosity',
+  scales: ['ap'],
   region: 'Demacia',
   kitLine: 'Q piercing beam roots · E delayed light bloom · Passive: spells mark, autos detonate for magic damage',
   info: {
@@ -642,6 +643,11 @@ export const CHAMPIONS: ChampionDef[] = [koenig, yasuo, ashe, garen, jinx, lux, 
 
 export function championById(id: string): ChampionDef {
   return CHAMPIONS.find((c) => c.id === id) ?? koenig;
+}
+
+/** LoL-like identity check used to gate stat-specific augment offers. */
+export function championUsesAP(id: string): boolean {
+  return (championById(id).scales ?? ['ad']).includes('ap');
 }
 
 /**

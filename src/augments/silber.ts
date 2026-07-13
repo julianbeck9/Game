@@ -15,6 +15,7 @@ const umpolung: AugmentDef = {
   name: 'Reversal',
   tier: 'silber',
   tags: ['Arkan'],
+  needs: ['ap'],
   description: 'Your bonus attack damage becomes ability power (×1.67). +10% ability power.',
   onUpdate: (_dt, ctx) => {
     const s = ctx.player.stats;
@@ -1071,6 +1072,7 @@ const hexensinn: AugmentDef = {
   name: 'Witchcraft',
   tier: 'silber',
   tags: ['Arkan'],
+  needs: ['ap'],
   description: '+20 ability power.',
   statMods: [{ stat: 'abilityPower', flat: 20 }],
 };

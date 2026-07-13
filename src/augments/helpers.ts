@@ -1,6 +1,7 @@
 import type { Unit } from '../entities/Unit';
 import type { AugmentCtx, AugmentDef, Tier } from './types';
 import type { StatName } from '../core/stats';
+import { augmentFitsChampion } from './eligibility';
 
 /**
  * Runtime reference to the full augment pool, filled in by registry.ts after
@@ -16,7 +17,10 @@ export const poolRef: { all: AugmentDef[] } = { all: [] };
  */
 export function grantRandomAugment(ctx: AugmentCtx, tier: Tier | null, announce = true): AugmentDef | null {
   const pool = poolRef.all.filter(
-    (a) => (tier === null || a.tier === tier) && !ctx.run.augments.some((o) => o.id === a.id),
+    (a) =>
+      (tier === null || a.tier === tier) &&
+      !ctx.run.augments.some((o) => o.id === a.id) &&
+      augmentFitsChampion(a, ctx.run.champion),
   );
   if (pool.length === 0) return null;
   const rolled = pool[Math.floor(Math.random() * pool.length)];
