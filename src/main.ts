@@ -13,7 +13,7 @@ import { applyBalance } from './core/balance';
 // Fold any admin balance overrides into the registries before the game starts.
 applyBalance();
 import { run, addAugment } from './core/run';
-import { augmentById } from './augments/registry';
+import { augmentById, AUGMENTS } from './augments/registry';
 import { itemById } from './items/registry';
 
 const game = new Phaser.Game({
@@ -58,6 +58,16 @@ declare global {
       grant: (id: string) => boolean;
       grantItem: (id: string) => boolean;
       arena: () => unknown;
+      augIds: () => {
+        id: string;
+        tier: string;
+        name: string;
+        hooks: string[];
+        onUpdate: boolean;
+        onCombatInit: boolean;
+        statMods: boolean;
+        ruleFlags: boolean;
+      }[];
     };
   }
 }
@@ -73,6 +83,18 @@ window.__CC = {
     game.scene.start('arena');
   },
   arena: () => game.scene.getScene('arena'),
+  // Test helper: enumerate the full augment pool with capability metadata
+  augIds: () =>
+    AUGMENTS.map((a) => ({
+      id: a.id,
+      tier: a.tier,
+      name: a.name,
+      hooks: a.hooks ? Object.keys(a.hooks) : [],
+      onUpdate: !!a.onUpdate,
+      onCombatInit: !!a.onCombatInit,
+      statMods: !!a.statMods,
+      ruleFlags: !!a.ruleFlags,
+    })),
   // Test helper: grant an augment by id (takes effect on next goto/round)
   grant: (id: string) => {
     const def = augmentById(id);
