@@ -38,11 +38,14 @@
     <div id="game"></div>
     <script type="module" src="/src/main.ts"></script>
     <script>
-      // Register the service worker so the game installs as a PWA / runs offline.
+      // No PWA caching while we iterate (it caused stale black screens). If an
+      // old caching service worker is still installed, unregister it and drop
+      // all caches so the app always loads fresh from the network.
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js').catch(() => {});
+        navigator.serviceWorker.getRegistrations?.().then((rs) => {
+          for (const r of rs) r.unregister();
         });
+        if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k)));
       }
     </script>
   </body>
