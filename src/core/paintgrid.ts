@@ -9,10 +9,15 @@ export const CELL = 48;
 export const COLS = Math.ceil(GAME_W / CELL);
 export const ROWS = Math.ceil(GAME_H / CELL);
 
-export type PaintKind = 'wall' | 'water' | 'lava';
+// wall  = blocks walk + dash + projectiles (solid stone)
+// air   = blocks walk + dash, projectiles fly through (a chasm/void edge)
+// water = blocks walk only (dash + shots cross)
+// lava  = blocks walk only (dash + shots cross)
+export type PaintKind = 'wall' | 'air' | 'water' | 'lava';
 
 export interface PaintLayers {
   wall: number[];
+  air: number[];
   water: number[];
   lava: number[];
 }

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { StatBlock } from '../core/stats';
 import { COLORS } from '../config';
-import { clampToArena, resolvePillars, resolveTerrain, resolveWalls } from '../core/geometry';
+import { clampToArena, resolvePillars, resolveTerrain, resolveWalls, resolvePaintMove } from '../core/geometry';
 
 export type Team = 'player' | 'enemy';
 
@@ -99,7 +99,9 @@ export abstract class Unit {
       // Solid walls resolve LAST so they always win — hard cover blocks
       // walking and dashing alike and can't be overridden by terrain pushout.
       const pw = resolveWalls(p2.x, p2.y, r);
-      const p3 = clampToArena(pw.x, pw.y, r);
+      // Painted collision (walls + air block dash; water/lava block only walk)
+      const pp = resolvePaintMove(pw.x, pw.y, r, overTerrain);
+      const p3 = clampToArena(pp.x, pp.y, r);
       this.x = p3.x;
       this.y = p3.y;
     }

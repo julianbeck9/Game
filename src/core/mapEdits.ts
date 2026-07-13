@@ -64,8 +64,9 @@ export function exportEdits(): string {
       const terrain = e.terrain
         .map((t) => `{ kind: '${t.kind}', x: ${Math.round(t.x)}, y: ${Math.round(t.y)}, w: ${Math.round(t.w)}, h: ${Math.round(t.h)} }`)
         .join(', ');
-      const paint = e.paint && (e.paint.wall.length || e.paint.water.length || e.paint.lava.length)
-        ? `\npaint: { wall: [${e.paint.wall.join(',')}], water: [${e.paint.water.join(',')}], lava: [${e.paint.lava.join(',')}] },`
+      const pt = e.paint;
+      const paint = pt && (pt.wall.length || pt.air?.length || pt.water.length || pt.lava.length)
+        ? `\npaint: { wall: [${pt.wall.join(',')}], air: [${(pt.air ?? []).join(',')}], water: [${pt.water.join(',')}], lava: [${pt.lava.join(',')}] },`
         : '';
       return `// ${id}\nwalls: [${walls}],\nterrain: [${terrain}],${paint}`;
     })

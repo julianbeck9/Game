@@ -16,8 +16,7 @@ import { rollOffers } from '../augments/offers';
 import { run, earnGold } from '../core/run';
 import { dist, pointInPillar, Vec } from '../core/geometry';
 import { ARENA_X, ARENA_Y, COLORS, GAME_W, GAME_H } from '../config';
-import { MapDef, FIELD, setActiveMap, activeWalls, activeTerrain, activePaint } from '../core/maps';
-import { CELL, COLS } from '../core/paintgrid';
+import { MapDef, FIELD, setActiveMap, activeWalls, activeTerrain } from '../core/maps';
 import { drawItemIcon } from '../items/icons';
 import { STR } from '../core/strings';
 import { initAudio, sfx } from '../core/sfx';
@@ -1098,23 +1097,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       g.lineStyle(3, shade(m.wallColor, -0.6), 0.9);
       g.strokePoints(pts, true, true);
     }
-    // Freehand painted cells
-    const paint = activePaint();
-    const cell = (i: number, fill: number, a: number) => {
-      const x = (i % COLS) * CELL;
-      const y = Math.floor(i / COLS) * CELL;
-      g.fillStyle(fill, a);
-      g.fillRect(x, y, CELL, CELL);
-    };
-    paint.water.forEach((i) => cell(i, 0x2a6ad0, 0.26));
-    paint.lava.forEach((i) => cell(i, 0xd8480e, 0.3));
-    paint.wall.forEach((i) => {
-      cell(i, shade(m.wallColor, -0.15), 1);
-      const x = (i % COLS) * CELL;
-      const y = Math.floor(i / COLS) * CELL;
-      g.fillStyle(shade(m.wallColor, 0.28), 1);
-      g.fillRect(x, y, CELL, 5);
-    });
+    // Painted collision is invisible during play (the art shows it); it's only
+    // coloured in the editor. Air (chasm/void edges) is never tinted.
   }
 
   private lerp(a: { x: number; y: number }, b: { x: number; y: number }, t: number): { x: number; y: number } {

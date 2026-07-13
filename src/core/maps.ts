@@ -291,7 +291,27 @@ export const MAPS: MapDef[] = [
 
 let active: MapDef = MAPS[0];
 let lastId = '';
-let activePaintSets = { wall: new Set<number>(), water: new Set<number>(), lava: new Set<number>() };
+export interface PaintSets {
+  wall: Set<number>;
+  air: Set<number>;
+  water: Set<number>;
+  lava: Set<number>;
+  /** Blocks walking (everything). */
+  walkSolid: Set<number>;
+  /** Blocks dashing (wall + air only; you dash over water/lava). */
+  dashSolid: Set<number>;
+}
+
+const emptyPaint = (): PaintSets => ({
+  wall: new Set(),
+  air: new Set(),
+  water: new Set(),
+  lava: new Set(),
+  walkSolid: new Set(),
+  dashSolid: new Set(),
+});
+
+let activePaintSets: PaintSets = emptyPaint();
 
 export function activeMap(): MapDef {
   return active;
@@ -300,15 +320,17 @@ export function activeMap(): MapDef {
 export function setActiveMap(m: MapDef): void {
   active = m;
   const p = getEdit(m.id)?.paint;
-  activePaintSets = {
-    wall: new Set(p?.wall ?? []),
-    water: new Set(p?.water ?? []),
-    lava: new Set(p?.lava ?? []),
-  };
+  const wall = new Set(p?.wall ?? []);
+  const air = new Set(p?.air ?? []);
+  const water = new Set(p?.water ?? []);
+  const lava = new Set(p?.lava ?? []);
+  const walkSolid = new Set<number>([...wall, ...air, ...water, ...lava]);
+  const dashSolid = new Set<number>([...wall, ...air]);
+  activePaintSets = { wall, air, water, lava, walkSolid, dashSolid };
 }
 
 /** Painted collision cells for the active map (built by setActiveMap). */
-export function activePaint(): { wall: Set<number>; water: Set<number>; lava: Set<number> } {
+export function activePaint(): PaintSets {
   return activePaintSets;
 }
 

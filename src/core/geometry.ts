@@ -119,53 +119,69 @@ function inCells(x: number, y: number, r: number, set: Set<number>): boolean {
   return false;
 }
 
-/** Push a circle out of painted cells (edge-based, so it slides along contours). */
-function resolveCells(x: number, y: number, r: number, set: Set<number>): Vec {
-  if (set.size === 0) return { x, y };
+/**
+ * Push a circle out of painted cells, resolving only against faces exposed to
+ * empty space. Internal seams between adjacent painted cells are ignored, so a
+ * unit slides smoothly along the outer contour instead of snagging on the grid.
+ * (Circle treated as an AABB of half-width r — smoother than per-corner pushes.)
+ */
+function resolveCells(x: number, y: number, r: number, solid: Set<number>): Vec {
+  if (solid.size === 0) return { x, y };
   let px = x;
   let py = y;
-  for (let iter = 0; iter < 4; iter++) {
-    let moved = false;
+  for (let iter = 0; iter < 6; iter++) {
+    let bestPen = Infinity;
+    let bestAxis = 0; // 1 = x, 2 = y
+    let bestVal = 0;
     const c0 = Math.floor((px - r) / CELL);
     const c1 = Math.floor((px + r) / CELL);
     const r0 = Math.floor((py - r) / CELL);
     const r1 = Math.floor((py + r) / CELL);
-    for (let rr = r0; rr <= r1 && !moved; rr++) {
+    for (let rr = r0; rr <= r1; rr++) {
       for (let cc = c0; cc <= c1; cc++) {
         if (cc < 0 || cc >= COLS || rr < 0 || rr >= ROWS) continue;
-        if (!set.has(rr * COLS + cc)) continue;
+        if (!solid.has(rr * COLS + cc)) continue;
         const cx = cc * CELL;
         const cy = rr * CELL;
         const ex = cx + CELL;
         const ey = cy + CELL;
-        const nx = Math.max(cx, Math.min(px, ex));
-        const ny = Math.max(cy, Math.min(py, ey));
-        const dx = px - nx;
-        const dy = py - ny;
-        const d2 = dx * dx + dy * dy;
-        if (d2 > 1e-6 && d2 < r * r) {
-          const d = Math.sqrt(d2);
-          const push = r - d;
-          px += (dx / d) * push;
-          py += (dy / d) * push;
-          moved = true;
-          break;
+        if (px + r <= cx || px - r >= ex || py + r <= cy || py - r >= ey) continue; // no overlap
+        const solidAt = (dc: number, dr: number): boolean => {
+          const nc = cc + dc;
+          const nr = rr + dr;
+          if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) return true; // off-grid = solid (no push outward)
+          return solid.has(nr * COLS + nc);
+        };
+        // Candidate push-outs, only through faces exposed to empty space
+        if (!solidAt(-1, 0)) {
+          const pen = px + r - cx;
+          if (pen > 0 && pen < bestPen) { bestPen = pen; bestAxis = 1; bestVal = cx - r; }
         }
-        if (d2 <= 1e-6) {
-          // centre inside the cell: eject to the nearest edge
-          const m = Math.min(px - cx, ex - px, py - cy, ey - py);
-          if (m === px - cx) px = cx - r;
-          else if (m === ex - px) px = ex + r;
-          else if (m === py - cy) py = cy - r;
-          else py = ey + r;
-          moved = true;
-          break;
+        if (!solidAt(1, 0)) {
+          const pen = ex - (px - r);
+          if (pen > 0 && pen < bestPen) { bestPen = pen; bestAxis = 1; bestVal = ex + r; }
+        }
+        if (!solidAt(0, -1)) {
+          const pen = py + r - cy;
+          if (pen > 0 && pen < bestPen) { bestPen = pen; bestAxis = 2; bestVal = cy - r; }
+        }
+        if (!solidAt(0, 1)) {
+          const pen = ey - (py - r);
+          if (pen > 0 && pen < bestPen) { bestPen = pen; bestAxis = 2; bestVal = ey + r; }
         }
       }
     }
-    if (!moved) break;
+    if (bestAxis === 0) break;
+    if (bestAxis === 1) px = bestVal;
+    else py = bestVal;
   }
   return { x: px, y: py };
+}
+
+/** Painted-collision push-out for movement: dash blocks wall+air; walk blocks all. */
+export function resolvePaintMove(x: number, y: number, r: number, overTerrain: boolean): Vec {
+  const p = activePaint();
+  return resolveCells(x, y, r, overTerrain ? p.dashSolid : p.walkSolid);
 }
 
 /**
@@ -176,9 +192,6 @@ function resolveCells(x: number, y: number, r: number, set: Set<number>): Vec {
 export function resolveTerrain(x: number, y: number, r: number): Vec {
   let p = { x, y };
   for (const t of activeTerrain()) p = rectResolve(p.x, p.y, r, t);
-  const paint = activePaint();
-  p = resolveCells(p.x, p.y, r, paint.water);
-  p = resolveCells(p.x, p.y, r, paint.lava);
   return p;
 }
 
@@ -197,7 +210,6 @@ export function pointInTerrain(x: number, y: number, r = 0): boolean {
 export function resolveWalls(x: number, y: number, r: number): Vec {
   let p = { x, y };
   for (const w of activeWalls()) p = rectResolve(p.x, p.y, r, w);
-  p = resolveCells(p.x, p.y, r, activePaint().wall);
   return p;
 }
 
