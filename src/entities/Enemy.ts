@@ -95,6 +95,7 @@ export class Enemy extends Unit {
     this.telegraphGfx = scene.add.graphics().setDepth(5);
     if (cfg.championSprite && scene.textures.exists(`champ:${cfg.championSprite}`)) {
       this.sprite = scene.add.image(x, y, `champ:${cfg.championSprite}`).setDepth(11);
+      if (this.sprite.height > 0) this.sprite.setScale((this.radius * 3.1) / this.sprite.height);
     }
     for (const a of cfg.abilities) {
       // Stagger initial ability use a little so fights don't open with a windup

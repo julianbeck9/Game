@@ -61,4 +61,6 @@ export interface ChampionDef {
   /** 16-bit sprite: rows of palette characters ('.' = transparent). */
   sprite: string[];
   palette: Record<string, number>;
+  /** If true, render a loaded PNG (public/champs/<id>.png) instead of the pixel sprite. */
+  image?: boolean;
 }

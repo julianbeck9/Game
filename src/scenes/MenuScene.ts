@@ -4,7 +4,7 @@ import { STR } from '../core/strings';
 import { newRun, run } from '../core/run';
 import { initAudio } from '../core/sfx';
 import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/draw';
-import { CHAMPIONS, ensureChampionTextures } from '../champions/registry';
+import { CHAMPIONS, CHAMP_IMAGE_KEYS, ensureChampionTextures } from '../champions/registry';
 import { addFullscreenButton } from '../core/fullscreen';
 import { MAP_IMAGE_KEYS } from '../core/maps';
 import { isAdmin } from '../core/admin';
@@ -21,6 +21,10 @@ export class MenuScene extends Phaser.Scene {
     // Region background art — loaded once up front so the arena has it ready.
     for (const key of MAP_IMAGE_KEYS) {
       this.load.image(`map:${key}`, `maps/${key}.png`);
+    }
+    // Champion sprites (PNG) — loaded under the same key the renderer expects.
+    for (const id of CHAMP_IMAGE_KEYS) {
+      this.load.image(`champ:${id}`, `champs/${id}.png`);
     }
   }
 
@@ -72,19 +76,22 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(10);
 
-    // Champion select cards: two rows of four
-    const cardW = 430;
-    const cardH = 330;
-    const gapX = 26;
-    const gapY = 24;
-    const perRow = 4;
-    const total = perRow * cardW + (perRow - 1) * gapX;
-    const x0 = (GAME_W - total) / 2 + cardW / 2;
-    const y0 = 520;
+    // Champion select: a compact portrait grid (roster is large now).
+    const perRow = 9;
+    const tileW = 190;
+    const tileH = 168;
+    const gapX = 12;
+    const gapY = 12;
+    const total = perRow * tileW + (perRow - 1) * gapX;
+    const x0 = (GAME_W - total) / 2 + tileW / 2;
+    const y0 = 400 + tileH / 2;
     CHAMPIONS.forEach((c, i) => {
-      const row = Math.floor(i / perRow);
       const col = i % perRow;
-      this.makeChampCard(c.id, x0 + col * (cardW + gapX), y0 + row * (cardH + gapY), cardW, cardH, i);
+      const row = Math.floor(i / perRow);
+      // centre the shorter last row
+      const inRow = Math.min(perRow, CHAMPIONS.length - row * perRow);
+      const rowOff = ((perRow - inRow) * (tileW + gapX)) / 2;
+      this.makeChampTile(i, x0 + col * (tileW + gapX) + rowOff, y0 + row * (tileH + gapY), tileW, tileH);
     });
 
     addFullscreenButton(this, GAME_W - 56, 56);
@@ -117,7 +124,7 @@ export class MenuScene extends Phaser.Scene {
       this.scene.start('shop');
     };
     this.startFn = start;
-    this.input.keyboard?.once('keydown-ENTER', () => start('koenig'));
+    this.input.keyboard?.once('keydown-ENTER', () => start(CHAMPIONS[0].id));
   }
 
   /** Detail overlay: full kit (passive + Q/E/Dash) with a Play button. */
@@ -136,7 +143,8 @@ export class MenuScene extends Phaser.Scene {
     g.strokeRoundedRect(panelX, 120, panelW, 840, 20);
     layer.add(g);
 
-    const sprite = this.add.image(panelX + 130, 250, `champ:${c.id}`).setScale(3.4);
+    const sprite = this.add.image(panelX + 130, 250, `champ:${c.id}`);
+    sprite.setScale(sprite.height > 0 ? Math.min(4, 190 / sprite.height) : 3.4);
     layer.add(sprite);
     layer.add(
       this.add
@@ -192,84 +200,36 @@ export class MenuScene extends Phaser.Scene {
 
   private startFn!: (id: string) => void;
 
-  private makeChampCard(id: string, x: number, y: number, w: number, h: number, index: number): void {
+  private makeChampTile(index: number, x: number, y: number, w: number, h: number): void {
     const champ = CHAMPIONS[index];
     const zone = this.add.container(x, y).setDepth(10);
+    const roleColor = (champ.scales ?? ['ad']).includes('ap') ? 0xb07aff : COLORS.player;
 
-    const bg = this.add.rectangle(0, 0, w, h, 0x14141f, 1).setStrokeStyle(4, COLORS.player, 0.75);
+    const bg = this.add.rectangle(0, 0, w, h, 0x14141f, 1).setStrokeStyle(3, roleColor, 0.7);
     zone.add(bg);
 
-    // Sprite links, Texte rechts — kompakter für zwei Reihen
-    const sprite = this.add.image(-w / 2 + 78, -h / 2 + 92, `champ:${id}`).setScale(1.9);
+    const sprite = this.add.image(0, -14, `champ:${champ.id}`);
+    if (sprite.height > 0) sprite.setScale(Math.min(2.4, 104 / sprite.height));
     zone.add(sprite);
-    this.tweens.add({
-      targets: sprite,
-      y: sprite.y - 6,
-      duration: 900 + index * 120,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    this.tweens.add({ targets: sprite, y: sprite.y - 5, duration: 900 + index * 60, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     zone.add(
       this.add
-        .text(-w / 2 + 150, -h / 2 + 52, champ.name, {
-          fontFamily: 'Georgia, serif',
-          fontSize: '34px',
-          fontStyle: 'bold',
-          color: '#ffffff',
-        })
-        .setOrigin(0, 0.5),
-    );
-    zone.add(
-      this.add
-        .text(-w / 2 + 150, -h / 2 + 92, champ.tagline, {
-          fontFamily: 'sans-serif',
-          fontSize: '19px',
-          fontStyle: 'italic',
-          color: '#9aa3bb',
-        })
-        .setOrigin(0, 0.5),
-    );
-    zone.add(
-      this.add
-        .text(0, 30, champ.kitLine, {
-          fontFamily: 'sans-serif',
-          fontSize: '20px',
-          color: '#d8dce8',
-          wordWrap: { width: w - 40 },
-          align: 'center',
-          lineSpacing: 5,
-        })
-        .setOrigin(0.5),
-    );
-
-    const statLine = `${champ.region} · HP ${champ.base.maxHP} · AD ${champ.base.damage} · ${champ.ranged ? 'Ranged' : 'Melee'}`;
-    zone.add(
-      this.add
-        .text(0, h / 2 - 52, statLine, {
-          fontFamily: 'sans-serif',
-          fontSize: '18px',
-          color: '#7a86a5',
-        })
+        .text(0, h / 2 - 34, champ.name, { fontFamily: 'Georgia, serif', fontSize: '25px', fontStyle: 'bold', color: '#ffffff' })
         .setOrigin(0.5),
     );
     zone.add(
       this.add
-        .text(0, h / 2 - 26, 'Tap to view abilities', {
-          fontFamily: 'sans-serif',
-          fontSize: '17px',
-          color: '#6a9ad0',
+        .text(0, h / 2 - 12, `${champ.ranged ? 'Ranged' : 'Melee'}${(champ.scales ?? []).includes('ap') ? ' · AP' : ''}`, {
+          fontFamily: 'sans-serif', fontSize: '15px', color: '#8a93ab',
         })
         .setOrigin(0.5),
     );
 
     bg.setInteractive({ useHandCursor: true });
-    bg.on('pointerover', () => bg.setFillStyle(0x1f1f30));
+    bg.on('pointerover', () => bg.setFillStyle(0x22223a));
     bg.on('pointerout', () => bg.setFillStyle(0x14141f));
     bg.on('pointerdown', () => this.showDetail(index));
-    const key = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT'][index];
-    if (key) this.input.keyboard?.addKey(key).on('down', () => this.showDetail(index));
   }
 
   update(time: number, deltaMs: number): void {

@@ -56,6 +56,8 @@ export class Player extends Unit {
     super(scene, x, y, 'player', new StatBlock({ ...CHAMP_DEFAULTS, ...champ.base }));
     this.champ = champ;
     this.sprite = scene.add.image(x, y, `champ:${champ.id}`).setDepth(11);
+    // PNG champion art varies in crop size — normalise to a consistent height.
+    if (champ.image && this.sprite.height > 0) this.sprite.setScale((this.radius * 3.1) / this.sprite.height);
     // Passive setup (reset per combat — Player is recreated each round)
     this.champ.onCombatInit?.(this);
   }

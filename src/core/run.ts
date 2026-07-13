@@ -40,7 +40,7 @@ export function newRun(): RunState {
 function newRunState(): RunState {
   return {
     round: 1,
-    champion: 'koenig',
+    champion: 'sivir',
     lives: 1,
     endless: false,
     augments: [],
