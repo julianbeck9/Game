@@ -1,7 +1,6 @@
 import { GAME_W, GAME_H } from '../config';
 import { getEdit } from './mapEdits';
 import { BAKED_PAINT } from './bakedPaint';
-import { expandLegacyLayers } from './paintgrid';
 
 /**
  * Fullscreen battle maps. Each map is a themed rectangle: the whole screen
@@ -321,10 +320,9 @@ export function activeMap(): MapDef {
 
 export function setActiveMap(m: MapDef): void {
   active = m;
-  // Local edit wins (already on the current grid); otherwise fall back to the
-  // permanently-baked paint, expanded from the legacy grid it was authored on.
-  const baked = BAKED_PAINT[m.id];
-  const p = getEdit(m.id)?.paint ?? (baked ? expandLegacyLayers(baked) : undefined);
+  // Local edit wins; otherwise fall back to the permanently-baked paint.
+  // Both are already on the current 24px grid — no expansion needed.
+  const p = getEdit(m.id)?.paint ?? BAKED_PAINT[m.id];
   const wall = new Set(p?.wall ?? []);
   const air = new Set(p?.air ?? []);
   const water = new Set(p?.water ?? []);
