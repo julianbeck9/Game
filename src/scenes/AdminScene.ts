@@ -4,7 +4,8 @@ import { CHAMPIONS } from '../champions/registry';
 import { AUGMENTS } from '../augments/registry';
 import { ITEMS } from '../items/registry';
 import type { StatName } from '../core/stats';
-import { setChampBase, setItemCost, setStatMod, toggleDeleted, isDeleted, exportBalance } from '../core/balance';
+import { setChampBase, setItemCost, setStatMod, toggleDeleted, isDeleted } from '../core/balance';
+import { exportAll } from '../core/exportAll';
 import { setAdmin } from '../core/admin';
 
 type Tab = 'champ' | 'item' | 'augment';
@@ -175,13 +176,13 @@ export class AdminScene extends Phaser.Scene {
   }
 
   private async doExport(): Promise<void> {
-    const text = exportBalance();
+    const text = exportAll();
     try {
       await navigator.clipboard.writeText(text);
-      this.flash('Balance changes copied to clipboard ✔ (paste to Claude)');
+      this.flash('Copied ALL changes (maps + balance) ✔ paste to Claude');
     } catch {
       // eslint-disable-next-line no-console
-      console.log('=== BALANCE EXPORT ===\n' + text);
+      console.log(text);
       this.flash('Clipboard blocked — dumped to console');
     }
   }

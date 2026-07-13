@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H } from '../config';
 import { MAPS, MAP_IMAGE_KEYS, MapWall, TerrainZone } from '../core/maps';
-import { getEdit, setEdit, clearEdit, exportEdits } from '../core/mapEdits';
+import { getEdit, setEdit, clearEdit } from '../core/mapEdits';
+import { exportAll } from '../core/exportAll';
 
-type Tool = 'wall' | 'water' | 'lava' | 'erase';
+type Tool = 'wall' | 'water' | 'lava' | 'erase' | 'select';
 
-const TOOL_COLOR: Record<Exclude<Tool, 'erase'>, number> = {
+const TOOL_COLOR: Record<'wall' | 'water' | 'lava', number> = {
   wall: 0xcfcfd8,
   water: 0x2a8ad0,
   lava: 0xe0561a,
@@ -30,9 +31,34 @@ export class EditorScene extends Phaser.Scene {
   private drawing = false;
   private sx = 0;
   private sy = 0;
+  /** Currently selected zone (for rotate). */
+  private sel: { kind: 'wall' | 'terrain'; idx: number } | null = null;
 
   constructor() {
     super('editor');
+  }
+
+  private corners(z: { x: number; y: number; w: number; h: number; rot?: number }): { x: number; y: number }[] {
+    const a = ((z.rot ?? 0) * Math.PI) / 180;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    const hw = z.w / 2;
+    const hh = z.h / 2;
+    return [
+      [-hw, -hh],
+      [hw, -hh],
+      [hw, hh],
+      [-hw, hh],
+    ].map(([lx, ly]) => ({ x: z.x + lx * c - ly * s, y: z.y + lx * s + ly * c }));
+  }
+
+  private contains(px: number, py: number, z: { x: number; y: number; w: number; h: number; rot?: number }): boolean {
+    const a = -((z.rot ?? 0) * Math.PI) / 180;
+    const dx = px - z.x;
+    const dy = py - z.y;
+    const lx = dx * Math.cos(a) - dy * Math.sin(a);
+    const ly = dx * Math.sin(a) + dy * Math.cos(a);
+    return Math.abs(lx) <= z.w / 2 && Math.abs(ly) <= z.h / 2;
   }
 
   preload(): void {
@@ -69,6 +95,7 @@ export class EditorScene extends Phaser.Scene {
     // Deep-copy so editing doesn't mutate the saved/default arrays
     this.walls = (saved?.walls ?? m.walls).map((w) => ({ ...w }));
     this.terrain = (saved?.terrain ?? m.terrain).map((t) => ({ ...t }));
+    this.sel = null;
     this.redraw();
     this.updateStatus();
   }
@@ -90,9 +117,41 @@ export class EditorScene extends Phaser.Scene {
       this.eraseAt(p.worldX, p.worldY);
       return;
     }
+    if (this.tool === 'select') {
+      this.selectAt(p.worldX, p.worldY);
+      return;
+    }
     this.drawing = true;
     this.sx = p.worldX;
     this.sy = p.worldY;
+  }
+
+  private selectAt(x: number, y: number): void {
+    for (let i = this.terrain.length - 1; i >= 0; i--) {
+      if (this.contains(x, y, this.terrain[i])) {
+        this.sel = { kind: 'terrain', idx: i };
+        this.redraw();
+        return;
+      }
+    }
+    for (let i = this.walls.length - 1; i >= 0; i--) {
+      if (this.contains(x, y, this.walls[i])) {
+        this.sel = { kind: 'wall', idx: i };
+        this.redraw();
+        return;
+      }
+    }
+    this.sel = null;
+    this.redraw();
+  }
+
+  private rotateSel(delta: number): void {
+    if (!this.sel) return;
+    const z = this.sel.kind === 'wall' ? this.walls[this.sel.idx] : this.terrain[this.sel.idx];
+    if (!z) return;
+    z.rot = Math.round((((z.rot ?? 0) + delta) % 360) * 10) / 10;
+    this.save();
+    this.redraw();
   }
 
   private onMove(p: Phaser.Input.Pointer): void {
@@ -100,7 +159,7 @@ export class EditorScene extends Phaser.Scene {
     this.redraw();
     // preview rectangle
     const g = this.zoneGfx;
-    const c = TOOL_COLOR[this.tool as Exclude<Tool, 'erase'>];
+    const c = TOOL_COLOR[this.tool as 'wall' | 'water' | 'lava'];
     const x = Math.min(this.sx, p.worldX);
     const y = Math.min(this.sy, p.worldY);
     const w = Math.abs(p.worldX - this.sx);
@@ -122,28 +181,32 @@ export class EditorScene extends Phaser.Scene {
       this.redraw();
       return; // ignore stray taps
     }
-    const zone = { x: Math.round(x + w / 2), y: Math.round(y + h / 2), w: Math.round(w), h: Math.round(h) };
-    if (this.tool === 'wall') this.walls.push(zone);
-    else this.terrain.push({ kind: this.tool as 'water' | 'lava', ...zone });
+    const zone = { x: Math.round(x + w / 2), y: Math.round(y + h / 2), w: Math.round(w), h: Math.round(h), rot: 0 };
+    if (this.tool === 'wall') {
+      this.walls.push(zone);
+      this.sel = { kind: 'wall', idx: this.walls.length - 1 };
+    } else {
+      this.terrain.push({ kind: this.tool as 'water' | 'lava', ...zone });
+      this.sel = { kind: 'terrain', idx: this.terrain.length - 1 };
+    }
     this.save();
     this.redraw();
   }
 
   private eraseAt(x: number, y: number): void {
-    const hit = (z: { x: number; y: number; w: number; h: number }) =>
-      Math.abs(x - z.x) <= z.w / 2 && Math.abs(y - z.y) <= z.h / 2;
-    // topmost (last drawn) first
     for (let i = this.terrain.length - 1; i >= 0; i--) {
-      if (hit(this.terrain[i])) {
+      if (this.contains(x, y, this.terrain[i])) {
         this.terrain.splice(i, 1);
+        this.sel = null;
         this.save();
         this.redraw();
         return;
       }
     }
     for (let i = this.walls.length - 1; i >= 0; i--) {
-      if (hit(this.walls[i])) {
+      if (this.contains(x, y, this.walls[i])) {
         this.walls.splice(i, 1);
+        this.sel = null;
         this.save();
         this.redraw();
         return;
@@ -156,17 +219,21 @@ export class EditorScene extends Phaser.Scene {
   private redraw(): void {
     const g = this.zoneGfx;
     g.clear();
-    const drawRect = (z: { x: number; y: number; w: number; h: number }, color: number, tag: string) => {
-      const x = z.x - z.w / 2;
-      const y = z.y - z.h / 2;
+    const drawZone = (z: { x: number; y: number; w: number; h: number; rot?: number }, color: number, selected: boolean) => {
+      const pts = this.corners(z);
       g.fillStyle(color, 0.32);
-      g.fillRect(x, y, z.w, z.h);
-      g.lineStyle(3, color, 0.95);
-      g.strokeRect(x, y, z.w, z.h);
-      void tag;
+      g.fillPoints(pts, true);
+      g.lineStyle(selected ? 5 : 3, selected ? 0xffffff : color, selected ? 1 : 0.95);
+      g.strokePoints(pts, true, true);
+      if (selected) {
+        // little handle marking the "top" edge so rotation is readable
+        const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+        g.fillStyle(0xffff00, 1);
+        g.fillCircle(mid.x, mid.y, 8);
+      }
     };
-    for (const t of this.terrain) drawRect(t, TOOL_COLOR[t.kind], t.kind);
-    for (const w of this.walls) drawRect(w, TOOL_COLOR.wall, 'W');
+    this.terrain.forEach((t, i) => drawZone(t, TOOL_COLOR[t.kind], this.sel?.kind === 'terrain' && this.sel.idx === i));
+    this.walls.forEach((w, i) => drawZone(w, TOOL_COLOR.wall, this.sel?.kind === 'wall' && this.sel.idx === i));
   }
 
   // ---- toolbar ----
@@ -182,8 +249,8 @@ export class EditorScene extends Phaser.Scene {
     // Bottom toolbar
     this.add.rectangle(GAME_W / 2, GAME_H - BAR / 2, GAME_W, BAR, 0x0c0c16, 0.92).setDepth(5);
 
-    const tools: Tool[] = ['wall', 'water', 'lava', 'erase'];
-    const btnW = 150;
+    const tools: Tool[] = ['wall', 'water', 'lava', 'erase', 'select'];
+    const btnW = 132;
     let x = 24;
     const y = GAME_H - BAR / 2;
     for (const t of tools) {
@@ -206,9 +273,11 @@ export class EditorScene extends Phaser.Scene {
     const actions: [string, number, () => void][] = [
       ['◀', 0x2a3a55, () => this.loadMap(this.idx - 1)],
       ['▶', 0x2a3a55, () => this.loadMap(this.idx + 1)],
+      ['↺', 0x3a4a6a, () => this.rotateSel(-15)],
+      ['↻', 0x3a4a6a, () => this.rotateSel(15)],
       ['UNDO', 0x3a3a55, () => this.undo()],
       ['CLEAR', 0x553030, () => this.clearThis()],
-      ['EXPORT', 0x2a553a, () => this.doExport()],
+      ['COPY ALL', 0x2a553a, () => this.doExport()],
       ['PLAY', 0x1f6f4a, () => this.exit()],
     ];
     let ax = GAME_W - 24;
@@ -228,10 +297,10 @@ export class EditorScene extends Phaser.Scene {
   private refreshToolBtns(): void {
     for (const b of this.toolBtns) {
       const active = b.tool === this.tool;
-      const col = b.tool === 'erase' ? 0x883333 : TOOL_COLOR[b.tool as Exclude<Tool, 'erase'>];
+      const col = b.tool === 'erase' ? 0x883333 : b.tool === 'select' ? 0x3a5a8a : TOOL_COLOR[b.tool as 'wall' | 'water' | 'lava'];
       b.rect.setFillStyle(active ? col : 0x222233, 1);
       b.rect.setStrokeStyle(3, active ? 0xffffff : 0x556677);
-      b.label.setColor(active && b.tool !== 'wall' ? '#ffffff' : active ? '#111111' : '#ffffff');
+      b.label.setColor(active && b.tool === 'wall' ? '#111111' : '#ffffff');
     }
   }
 
@@ -240,6 +309,7 @@ export class EditorScene extends Phaser.Scene {
       // remove whichever was added last isn't tracked; pop terrain then walls
       if (this.terrain.length) this.terrain.pop();
       else this.walls.pop();
+      this.sel = null;
       this.save();
       this.redraw();
     }
@@ -248,6 +318,7 @@ export class EditorScene extends Phaser.Scene {
   private clearThis(): void {
     this.walls = [];
     this.terrain = [];
+    this.sel = null;
     clearEdit(MAPS[this.idx].id);
     setEdit(MAPS[this.idx].id, { walls: [], terrain: [] });
     this.redraw();
@@ -255,13 +326,13 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private async doExport(): Promise<void> {
-    const text = exportEdits();
+    const text = exportAll();
     try {
       await navigator.clipboard.writeText(text);
-      this.flash('Copied all map collision to clipboard ✔  (paste it to Claude)');
+      this.flash('Copied ALL changes (maps + balance) to clipboard ✔  paste it to Claude');
     } catch {
       // eslint-disable-next-line no-console
-      console.log('=== MAP COLLISION EXPORT ===\n' + text);
+      console.log(text);
       this.flash('Clipboard blocked — dumped to console (F12)');
     }
   }

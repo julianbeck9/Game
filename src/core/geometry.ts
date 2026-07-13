@@ -52,35 +52,63 @@ export function pointInPillar(x: number, y: number, r = 0): boolean {
   return false;
 }
 
+/** Center-anchored rectangle, optionally rotated by `rot` degrees. */
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rot?: number;
+}
+
+/** Point in the rect's local (un-rotated) frame. */
+function localOf(px: number, py: number, rct: Rect): Vec {
+  const a = -((rct.rot ?? 0) * Math.PI) / 180;
+  const dx = px - rct.x;
+  const dy = py - rct.y;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return { x: dx * c - dy * s, y: dx * s + dy * c };
+}
+
+/** Is a circle (radius r) overlapping the (possibly rotated) rect? */
+function rectContains(px: number, py: number, r: number, rct: Rect): boolean {
+  const l = localOf(px, py, rct);
+  return Math.abs(l.x) < rct.w / 2 + r && Math.abs(l.y) < rct.h / 2 + r;
+}
+
+/** Push a circle out of a (possibly rotated) rect along its shallow local axis. */
+function rectResolve(px: number, py: number, r: number, rct: Rect): Vec {
+  const l = localOf(px, py, rct);
+  const hw = rct.w / 2 + r;
+  const hh = rct.h / 2 + r;
+  if (Math.abs(l.x) >= hw || Math.abs(l.y) >= hh) return { x: px, y: py };
+  const ox = hw - Math.abs(l.x);
+  const oy = hh - Math.abs(l.y);
+  let nlx = l.x;
+  let nly = l.y;
+  if (ox < oy) nlx = l.x < 0 ? -hw : hw;
+  else nly = l.y < 0 ? -hh : hh;
+  const a = ((rct.rot ?? 0) * Math.PI) / 180;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return { x: rct.x + nlx * c - nly * s, y: rct.y + nlx * s + nly * c };
+}
+
 /**
  * Push a circle of radius r out of any impassable terrain zone (water/lava).
  * Terrain blocks WALKING only — dashes pass over it, so this is applied by
  * moveBy when overTerrain is false.
  */
 export function resolveTerrain(x: number, y: number, r: number): Vec {
-  let px = x;
-  let py = y;
-  for (const t of activeTerrain()) {
-    const hw = t.w / 2 + r;
-    const hh = t.h / 2 + r;
-    const dx = px - t.x;
-    const dy = py - t.y;
-    if (Math.abs(dx) < hw && Math.abs(dy) < hh) {
-      // Overlapping: shove out along the shallower axis
-      const ox = hw - Math.abs(dx);
-      const oy = hh - Math.abs(dy);
-      if (ox < oy) px = t.x + (dx < 0 ? -hw : hw);
-      else py = t.y + (dy < 0 ? -hh : hh);
-    }
-  }
-  return { x: px, y: py };
+  let p = { x, y };
+  for (const t of activeTerrain()) p = rectResolve(p.x, p.y, r, t);
+  return p;
 }
 
 /** Is the point inside any terrain zone (for lava damage checks, spawn avoidance)? */
 export function pointInTerrain(x: number, y: number, r = 0): boolean {
-  for (const t of activeTerrain()) {
-    if (Math.abs(x - t.x) < t.w / 2 + r && Math.abs(y - t.y) < t.h / 2 + r) return true;
-  }
+  for (const t of activeTerrain()) if (rectContains(x, y, r, t)) return true;
   return false;
 }
 
@@ -90,27 +118,13 @@ export function pointInTerrain(x: number, y: number, r = 0): boolean {
  * applies this (even when overTerrain is true).
  */
 export function resolveWalls(x: number, y: number, r: number): Vec {
-  let px = x;
-  let py = y;
-  for (const w of activeWalls()) {
-    const hw = w.w / 2 + r;
-    const hh = w.h / 2 + r;
-    const dx = px - w.x;
-    const dy = py - w.y;
-    if (Math.abs(dx) < hw && Math.abs(dy) < hh) {
-      const ox = hw - Math.abs(dx);
-      const oy = hh - Math.abs(dy);
-      if (ox < oy) px = w.x + (dx < 0 ? -hw : hw);
-      else py = w.y + (dy < 0 ? -hh : hh);
-    }
-  }
-  return { x: px, y: py };
+  let p = { x, y };
+  for (const w of activeWalls()) p = rectResolve(p.x, p.y, r, w);
+  return p;
 }
 
 /** Is the point inside a solid wall (projectiles are eaten by walls)? */
 export function pointInWall(x: number, y: number, r = 0): boolean {
-  for (const w of activeWalls()) {
-    if (Math.abs(x - w.x) < w.w / 2 + r && Math.abs(y - w.y) < w.h / 2 + r) return true;
-  }
+  for (const w of activeWalls()) if (rectContains(x, y, r, w)) return true;
   return false;
 }

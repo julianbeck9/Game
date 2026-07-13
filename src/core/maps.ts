@@ -22,12 +22,14 @@ export interface MapObstacle {
   r: number;
 }
 
-/** Solid wall: blocks walking, dashing AND projectiles. Center-anchored rect. */
+/** Solid wall: blocks walking, dashing AND projectiles. Center-anchored rect, rot° optional. */
 export interface MapWall {
   x: number;
   y: number;
   w: number;
   h: number;
+  /** Rotation in degrees (0 = axis-aligned). */
+  rot?: number;
 }
 
 /** Impassable terrain: you can't walk over it (dashes cross it, shots fly over). */
@@ -37,6 +39,8 @@ export interface TerrainZone {
   y: number;
   w: number;
   h: number;
+  /** Rotation in degrees (0 = axis-aligned). */
+  rot?: number;
 }
 
 export type ObstacleStyle = 'baum' | 'obelisk' | 'stachel' | 'saeule' | 'fels';

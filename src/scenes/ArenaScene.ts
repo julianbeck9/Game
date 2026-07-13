@@ -1058,42 +1058,49 @@ export class ArenaScene extends Phaser.Scene implements Combat {
    * for water/lava (shimmer is added by the ambient layer) and a faint raised
    * slab for each cover wall — enough to read the cover without hiding the art.
    */
+  private rectCorners(r: { x: number; y: number; w: number; h: number; rot?: number }): { x: number; y: number }[] {
+    const a = ((r.rot ?? 0) * Math.PI) / 180;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    const hw = r.w / 2;
+    const hh = r.h / 2;
+    return [
+      [-hw, -hh],
+      [hw, -hh],
+      [hw, hh],
+      [-hw, hh],
+    ].map(([lx, ly]) => ({ x: r.x + lx * c - ly * s, y: r.y + lx * s + ly * c }));
+  }
+
   private drawCollisionOverlay(m: MapDef): void {
     const g = this.add.graphics().setDepth(1);
     for (const t of activeTerrain()) {
-      const x = t.x - t.w / 2;
-      const y = t.y - t.h / 2;
       const water = t.kind === 'water';
-      // Soft glow rather than a hard box, so it blends into the painted liquid
-      g.fillStyle(water ? 0x2a6ad0 : 0xd8480e, 0.16);
-      g.fillRoundedRect(x - 8, y - 8, t.w + 16, t.h + 16, 40);
-      g.fillStyle(water ? 0x2a6ad0 : 0xd8480e, 0.16);
-      g.fillRoundedRect(x, y, t.w, t.h, 30);
-      g.lineStyle(2, water ? 0x9fd8ff : 0xffb35a, 0.3);
-      g.strokeRoundedRect(x, y, t.w, t.h, 30);
+      const pts = this.rectCorners(t);
+      g.fillStyle(water ? 0x2a6ad0 : 0xd8480e, 0.18);
+      g.fillPoints(pts, true);
+      g.fillStyle(water ? 0x2a6ad0 : 0xd8480e, 0.14);
+      g.fillPoints(this.rectCorners({ ...t, w: t.w + 16, h: t.h + 16 }), true);
+      g.lineStyle(2, water ? 0x9fd8ff : 0xffb35a, 0.35);
+      g.strokePoints(pts, true, true);
     }
-    // Solid stone cover blocks (opaque, with a raised lit top + cast shadow)
+    // Solid stone cover blocks (rotated quad: shadow + body + lit top edge)
     for (const w of activeWalls()) {
-      const x = w.x - w.w / 2;
-      const y = w.y - w.h / 2;
-      const lip = 12;
-      g.fillStyle(0x000000, 0.34);
-      g.fillEllipse(w.x + 6, y + w.h + 2, w.w * 1.05, 26);
-      g.fillStyle(shade(m.wallColor, -0.5), 1);
-      g.fillRect(x, y - lip, w.w, w.h + lip);
-      g.fillStyle(m.wallColor, 1);
-      g.fillRect(x, y - lip, w.w, w.h - lip);
-      g.fillStyle(shade(m.wallColor, 0.3), 1);
-      g.fillRect(x, y - lip, w.w, 6);
-      g.lineStyle(2, shade(m.wallColor, -0.6), 0.85);
-      const horiz = w.w >= w.h;
-      if (horiz) {
-        for (let sx = x + 40; sx < x + w.w - 8; sx += 40) g.lineBetween(sx, y - lip, sx, y + w.h - lip);
-      } else {
-        for (let sy = y + 40 - lip; sy < y + w.h - 8; sy += 40) g.lineBetween(x, sy, x + w.w, sy);
-      }
-      g.strokeRect(x, y - lip, w.w, w.h);
+      const pts = this.rectCorners(w);
+      const sh = this.rectCorners({ ...w, x: w.x + 6, y: w.y + 10 });
+      g.fillStyle(0x000000, 0.32);
+      g.fillPoints(sh, true);
+      g.fillStyle(shade(m.wallColor, -0.15), 1);
+      g.fillPoints(pts, true);
+      g.fillStyle(shade(m.wallColor, 0.28), 1);
+      g.fillPoints([pts[0], pts[1], this.lerp(pts[1], pts[2], 0.22), this.lerp(pts[0], pts[3], 0.22)], true); // lit top strip
+      g.lineStyle(3, shade(m.wallColor, -0.6), 0.9);
+      g.strokePoints(pts, true, true);
     }
+  }
+
+  private lerp(a: { x: number; y: number }, b: { x: number; y: number }, t: number): { x: number; y: number } {
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
   }
 
   private drawMap(m: MapDef): void {
