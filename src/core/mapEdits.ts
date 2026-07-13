@@ -1,4 +1,5 @@
 import type { MapWall, TerrainZone } from './maps';
+import type { PaintLayers } from './paintgrid';
 
 /**
  * Player-authored collision, saved in the browser. The in-game Map Editor
@@ -9,6 +10,8 @@ import type { MapWall, TerrainZone } from './maps';
 export interface MapEdit {
   walls: MapWall[];
   terrain: TerrainZone[];
+  /** Freehand painted collision cells (indices into the paint grid). */
+  paint?: PaintLayers;
 }
 
 const KEY = 'cc_map_edits_v1';
@@ -61,7 +64,10 @@ export function exportEdits(): string {
       const terrain = e.terrain
         .map((t) => `{ kind: '${t.kind}', x: ${Math.round(t.x)}, y: ${Math.round(t.y)}, w: ${Math.round(t.w)}, h: ${Math.round(t.h)} }`)
         .join(', ');
-      return `// ${id}\nwalls: [${walls}],\nterrain: [${terrain}],`;
+      const paint = e.paint && (e.paint.wall.length || e.paint.water.length || e.paint.lava.length)
+        ? `\npaint: { wall: [${e.paint.wall.join(',')}], water: [${e.paint.water.join(',')}], lava: [${e.paint.lava.join(',')}] },`
+        : '';
+      return `// ${id}\nwalls: [${walls}],\nterrain: [${terrain}],${paint}`;
     })
     .join('\n\n');
 }

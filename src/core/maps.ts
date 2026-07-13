@@ -291,6 +291,7 @@ export const MAPS: MapDef[] = [
 
 let active: MapDef = MAPS[0];
 let lastId = '';
+let activePaintSets = { wall: new Set<number>(), water: new Set<number>(), lava: new Set<number>() };
 
 export function activeMap(): MapDef {
   return active;
@@ -298,6 +299,17 @@ export function activeMap(): MapDef {
 
 export function setActiveMap(m: MapDef): void {
   active = m;
+  const p = getEdit(m.id)?.paint;
+  activePaintSets = {
+    wall: new Set(p?.wall ?? []),
+    water: new Set(p?.water ?? []),
+    lava: new Set(p?.lava ?? []),
+  };
+}
+
+/** Painted collision cells for the active map (built by setActiveMap). */
+export function activePaint(): { wall: Set<number>; water: Set<number>; lava: Set<number> } {
+  return activePaintSets;
 }
 
 export function activeObstacles(): MapObstacle[] {

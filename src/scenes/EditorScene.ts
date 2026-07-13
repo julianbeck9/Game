@@ -1,64 +1,40 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H } from '../config';
-import { MAPS, MAP_IMAGE_KEYS, MapWall, TerrainZone } from '../core/maps';
-import { getEdit, setEdit, clearEdit } from '../core/mapEdits';
+import { MAPS, MAP_IMAGE_KEYS } from '../core/maps';
+import { getEdit, setEdit } from '../core/mapEdits';
 import { exportAll } from '../core/exportAll';
+import { CELL, COLS, ROWS, PaintKind } from '../core/paintgrid';
 
-type Tool = 'wall' | 'water' | 'lava' | 'erase' | 'select';
+type Tool = PaintKind | 'erase';
 
-const TOOL_COLOR: Record<'wall' | 'water' | 'lava', number> = {
+const KIND_COLOR: Record<PaintKind, number> = {
   wall: 0xcfcfd8,
   water: 0x2a8ad0,
   lava: 0xe0561a,
 };
 
-const BAR = 92; // toolbar height (top + bottom reserved)
+const BAR = 92;
 
 /**
- * In-game collision editor. Draw rectangles onto each painted map to mark
- * Walls / Water / Lava; it saves to the browser (applied live in the arena)
- * and Export copies the coordinates to the clipboard to bake in permanently.
+ * Freehand collision editor. Brush Wall / Water / Lava straight onto the
+ * painted map (drag to paint, Erase to remove), pick a brush size, cycle maps.
+ * Saves per map to the browser and applies live; COPY ALL exports everything.
  */
 export class EditorScene extends Phaser.Scene {
   private idx = 0;
   private tool: Tool = 'wall';
-  private walls: MapWall[] = [];
-  private terrain: TerrainZone[] = [];
+  private brush = 1; // cell radius: 0=small, 1=med, 2=large
+  private cells: Record<PaintKind, Set<number>> = { wall: new Set(), water: new Set(), lava: new Set() };
+  private undoStack: Record<PaintKind, number[]>[] = [];
   private zoneGfx!: Phaser.GameObjects.Graphics;
   private bg?: Phaser.GameObjects.Image;
   private status!: Phaser.GameObjects.Text;
   private toolBtns: { tool: Tool; rect: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text }[] = [];
-  private drawing = false;
-  private sx = 0;
-  private sy = 0;
-  /** Currently selected zone (for rotate). */
-  private sel: { kind: 'wall' | 'terrain'; idx: number } | null = null;
+  private brushBtns: { size: number; rect: Phaser.GameObjects.Rectangle }[] = [];
+  private painting = false;
 
   constructor() {
     super('editor');
-  }
-
-  private corners(z: { x: number; y: number; w: number; h: number; rot?: number }): { x: number; y: number }[] {
-    const a = ((z.rot ?? 0) * Math.PI) / 180;
-    const c = Math.cos(a);
-    const s = Math.sin(a);
-    const hw = z.w / 2;
-    const hh = z.h / 2;
-    return [
-      [-hw, -hh],
-      [hw, -hh],
-      [hw, hh],
-      [-hw, hh],
-    ].map(([lx, ly]) => ({ x: z.x + lx * c - ly * s, y: z.y + lx * s + ly * c }));
-  }
-
-  private contains(px: number, py: number, z: { x: number; y: number; w: number; h: number; rot?: number }): boolean {
-    const a = -((z.rot ?? 0) * Math.PI) / 180;
-    const dx = px - z.x;
-    const dy = py - z.y;
-    const lx = dx * Math.cos(a) - dy * Math.sin(a);
-    const ly = dx * Math.sin(a) + dy * Math.cos(a);
-    return Math.abs(lx) <= z.w / 2 && Math.abs(ly) <= z.h / 2;
   }
 
   preload(): void {
@@ -71,13 +47,12 @@ export class EditorScene extends Phaser.Scene {
     this.zoneGfx = this.add.graphics().setDepth(2);
     this.buildToolbar();
     this.loadMap(0);
-
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onDown(p));
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onMove(p));
-    this.input.on('pointerup', (p: Phaser.Input.Pointer) => this.onUp(p));
+    this.input.on('pointerup', () => (this.painting = false));
   }
 
-  // ---- map switching ----
+  // ---- maps ----
 
   private loadMap(i: number): void {
     this.idx = (i + MAPS.length) % MAPS.length;
@@ -91,127 +66,87 @@ export class EditorScene extends Phaser.Scene {
       this.bg = undefined;
       this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, m.floor[0]).setDepth(0);
     }
-    const saved = getEdit(m.id);
-    // Deep-copy so editing doesn't mutate the saved/default arrays
-    this.walls = (saved?.walls ?? m.walls).map((w) => ({ ...w }));
-    this.terrain = (saved?.terrain ?? m.terrain).map((t) => ({ ...t }));
-    this.sel = null;
+    const p = getEdit(m.id)?.paint;
+    this.cells = { wall: new Set(p?.wall ?? []), water: new Set(p?.water ?? []), lava: new Set(p?.lava ?? []) };
+    this.undoStack = [];
     this.redraw();
     this.updateStatus();
   }
 
   private save(): void {
-    setEdit(MAPS[this.idx].id, { walls: this.walls, terrain: this.terrain });
+    // Painting a map replaces its default box collision entirely.
+    setEdit(MAPS[this.idx].id, {
+      walls: [],
+      terrain: [],
+      paint: { wall: [...this.cells.wall], water: [...this.cells.water], lava: [...this.cells.lava] },
+    });
     this.updateStatus();
   }
 
-  // ---- drawing input ----
+  // ---- painting ----
 
   private inCanvas(p: Phaser.Input.Pointer): boolean {
     return p.y > BAR && p.y < GAME_H - BAR;
   }
 
+  private snapshot(): void {
+    this.undoStack.push({ wall: [...this.cells.wall], water: [...this.cells.water], lava: [...this.cells.lava] });
+    if (this.undoStack.length > 24) this.undoStack.shift();
+  }
+
   private onDown(p: Phaser.Input.Pointer): void {
     if (!this.inCanvas(p)) return;
-    if (this.tool === 'erase') {
-      this.eraseAt(p.worldX, p.worldY);
-      return;
-    }
-    if (this.tool === 'select') {
-      this.selectAt(p.worldX, p.worldY);
-      return;
-    }
-    this.drawing = true;
-    this.sx = p.worldX;
-    this.sy = p.worldY;
-  }
-
-  private selectAt(x: number, y: number): void {
-    for (let i = this.terrain.length - 1; i >= 0; i--) {
-      if (this.contains(x, y, this.terrain[i])) {
-        this.sel = { kind: 'terrain', idx: i };
-        this.redraw();
-        return;
-      }
-    }
-    for (let i = this.walls.length - 1; i >= 0; i--) {
-      if (this.contains(x, y, this.walls[i])) {
-        this.sel = { kind: 'wall', idx: i };
-        this.redraw();
-        return;
-      }
-    }
-    this.sel = null;
-    this.redraw();
-  }
-
-  private rotateSel(delta: number): void {
-    if (!this.sel) return;
-    const z = this.sel.kind === 'wall' ? this.walls[this.sel.idx] : this.terrain[this.sel.idx];
-    if (!z) return;
-    z.rot = Math.round((((z.rot ?? 0) + delta) % 360) * 10) / 10;
-    this.save();
-    this.redraw();
+    this.snapshot();
+    this.painting = true;
+    this.paintAt(p.worldX, p.worldY);
   }
 
   private onMove(p: Phaser.Input.Pointer): void {
-    if (!this.drawing) return;
-    this.redraw();
-    // preview rectangle
-    const g = this.zoneGfx;
-    const c = TOOL_COLOR[this.tool as 'wall' | 'water' | 'lava'];
-    const x = Math.min(this.sx, p.worldX);
-    const y = Math.min(this.sy, p.worldY);
-    const w = Math.abs(p.worldX - this.sx);
-    const h = Math.abs(p.worldY - this.sy);
-    g.fillStyle(c, 0.35);
-    g.fillRect(x, y, w, h);
-    g.lineStyle(3, c, 1);
-    g.strokeRect(x, y, w, h);
+    if (!this.painting || !this.inCanvas(p)) return;
+    this.paintAt(p.worldX, p.worldY);
   }
 
-  private onUp(p: Phaser.Input.Pointer): void {
-    if (!this.drawing) return;
-    this.drawing = false;
-    const x = Math.min(this.sx, p.worldX);
-    const y = Math.min(this.sy, p.worldY);
-    const w = Math.abs(p.worldX - this.sx);
-    const h = Math.abs(p.worldY - this.sy);
-    if (w < 24 || h < 24) {
-      this.redraw();
-      return; // ignore stray taps
-    }
-    const zone = { x: Math.round(x + w / 2), y: Math.round(y + h / 2), w: Math.round(w), h: Math.round(h), rot: 0 };
-    if (this.tool === 'wall') {
-      this.walls.push(zone);
-      this.sel = { kind: 'wall', idx: this.walls.length - 1 };
-    } else {
-      this.terrain.push({ kind: this.tool as 'water' | 'lava', ...zone });
-      this.sel = { kind: 'terrain', idx: this.terrain.length - 1 };
+  private paintAt(x: number, y: number): void {
+    const col = Math.floor(x / CELL);
+    const row = Math.floor(y / CELL);
+    const R = this.brush;
+    for (let dr = -R; dr <= R; dr++) {
+      for (let dc = -R; dc <= R; dc++) {
+        if (dc * dc + dr * dr > R * R + 0.5) continue;
+        const c = col + dc;
+        const r = row + dr;
+        if (c < 0 || c >= COLS || r < 0 || r >= ROWS) continue;
+        const idx = r * COLS + c;
+        if (this.tool === 'erase') {
+          this.cells.wall.delete(idx);
+          this.cells.water.delete(idx);
+          this.cells.lava.delete(idx);
+        } else {
+          // a cell belongs to one kind at a time
+          this.cells.wall.delete(idx);
+          this.cells.water.delete(idx);
+          this.cells.lava.delete(idx);
+          this.cells[this.tool].add(idx);
+        }
+      }
     }
     this.save();
     this.redraw();
   }
 
-  private eraseAt(x: number, y: number): void {
-    for (let i = this.terrain.length - 1; i >= 0; i--) {
-      if (this.contains(x, y, this.terrain[i])) {
-        this.terrain.splice(i, 1);
-        this.sel = null;
-        this.save();
-        this.redraw();
-        return;
-      }
-    }
-    for (let i = this.walls.length - 1; i >= 0; i--) {
-      if (this.contains(x, y, this.walls[i])) {
-        this.walls.splice(i, 1);
-        this.sel = null;
-        this.save();
-        this.redraw();
-        return;
-      }
-    }
+  private undo(): void {
+    const s = this.undoStack.pop();
+    if (!s) return;
+    this.cells = { wall: new Set(s.wall), water: new Set(s.water), lava: new Set(s.lava) };
+    this.save();
+    this.redraw();
+  }
+
+  private clearThis(): void {
+    this.snapshot();
+    this.cells = { wall: new Set(), water: new Set(), lava: new Set() };
+    this.save();
+    this.redraw();
   }
 
   // ---- rendering ----
@@ -219,117 +154,112 @@ export class EditorScene extends Phaser.Scene {
   private redraw(): void {
     const g = this.zoneGfx;
     g.clear();
-    const drawZone = (z: { x: number; y: number; w: number; h: number; rot?: number }, color: number, selected: boolean) => {
-      const pts = this.corners(z);
-      g.fillStyle(color, 0.32);
-      g.fillPoints(pts, true);
-      g.lineStyle(selected ? 5 : 3, selected ? 0xffffff : color, selected ? 1 : 0.95);
-      g.strokePoints(pts, true, true);
-      if (selected) {
-        // little handle marking the "top" edge so rotation is readable
-        const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
-        g.fillStyle(0xffff00, 1);
-        g.fillCircle(mid.x, mid.y, 8);
-      }
+    // faint default box collision as reference (until painted over)
+    const m = MAPS[this.idx];
+    if (this.cells.wall.size + this.cells.water.size + this.cells.lava.size === 0) {
+      g.lineStyle(2, 0xffffff, 0.25);
+      for (const w of m.walls) g.strokeRect(w.x - w.w / 2, w.y - w.h / 2, w.w, w.h);
+      for (const t of m.terrain) g.strokeRect(t.x - t.w / 2, t.y - t.h / 2, t.w, t.h);
+    }
+    const fillCells = (set: Set<number>, color: number, a: number) => {
+      g.fillStyle(color, a);
+      set.forEach((i) => g.fillRect((i % COLS) * CELL, Math.floor(i / COLS) * CELL, CELL, CELL));
     };
-    this.terrain.forEach((t, i) => drawZone(t, TOOL_COLOR[t.kind], this.sel?.kind === 'terrain' && this.sel.idx === i));
-    this.walls.forEach((w, i) => drawZone(w, TOOL_COLOR.wall, this.sel?.kind === 'wall' && this.sel.idx === i));
+    fillCells(this.cells.water, KIND_COLOR.water, 0.42);
+    fillCells(this.cells.lava, KIND_COLOR.lava, 0.46);
+    fillCells(this.cells.wall, KIND_COLOR.wall, 0.6);
   }
 
   // ---- toolbar ----
 
   private buildToolbar(): void {
-    // Top status bar
     this.add.rectangle(GAME_W / 2, BAR / 2, GAME_W, BAR, 0x0c0c16, 0.9).setDepth(5);
-    this.status = this.add
-      .text(24, BAR / 2, '', { fontFamily: 'sans-serif', fontSize: '30px', color: '#e8ecf8' })
-      .setOrigin(0, 0.5)
-      .setDepth(6);
+    this.status = this.add.text(24, BAR / 2, '', { fontFamily: 'sans-serif', fontSize: '28px', color: '#e8ecf8' }).setOrigin(0, 0.5).setDepth(6);
 
-    // Bottom toolbar
     this.add.rectangle(GAME_W / 2, GAME_H - BAR / 2, GAME_W, BAR, 0x0c0c16, 0.92).setDepth(5);
-
-    const tools: Tool[] = ['wall', 'water', 'lava', 'erase', 'select'];
-    const btnW = 132;
-    let x = 24;
     const y = GAME_H - BAR / 2;
+
+    const tools: Tool[] = ['wall', 'water', 'lava', 'erase'];
+    const btnW = 138;
+    let x = 20;
     for (const t of tools) {
       const rect = this.add.rectangle(x + btnW / 2, y, btnW, 64, 0x222233, 1).setStrokeStyle(3, 0x556).setDepth(6).setInteractive({ useHandCursor: true });
-      const label = this.add
-        .text(x + btnW / 2, y, t.toUpperCase(), { fontFamily: 'sans-serif', fontSize: '26px', fontStyle: 'bold', color: '#ffffff' })
-        .setOrigin(0.5)
-        .setDepth(7);
+      const label = this.add.text(x + btnW / 2, y, t.toUpperCase(), { fontFamily: 'sans-serif', fontSize: '25px', fontStyle: 'bold', color: '#fff' }).setOrigin(0.5).setDepth(7);
       rect.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
         this.tool = t;
-        this.refreshToolBtns();
+        this.refreshBtns();
       });
       this.toolBtns.push({ tool: t, rect, label });
-      x += btnW + 12;
+      x += btnW + 10;
     }
-    this.refreshToolBtns();
 
-    // Right-side action buttons
+    // brush size S / M / L
+    x += 8;
+    this.add.text(x, y, 'Brush', { fontFamily: 'sans-serif', fontSize: '22px', color: '#8a94b0' }).setOrigin(0, 0.5).setDepth(7);
+    x += 80;
+    ['S', 'M', 'L'].forEach((s, i) => {
+      const rect = this.add.rectangle(x + 30, y, 56, 64, 0x222233, 1).setStrokeStyle(3, 0x556).setDepth(6).setInteractive({ useHandCursor: true });
+      this.add.text(x + 30, y, s, { fontFamily: 'sans-serif', fontSize: '25px', fontStyle: 'bold', color: '#fff' }).setOrigin(0.5).setDepth(7);
+      rect.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => {
+        ev.stopPropagation();
+        this.brush = i;
+        this.refreshBtns();
+      });
+      this.brushBtns.push({ size: i, rect });
+      x += 62;
+    });
+    this.refreshBtns();
+
+    // right-side actions
     const actions: [string, number, () => void][] = [
       ['◀', 0x2a3a55, () => this.loadMap(this.idx - 1)],
       ['▶', 0x2a3a55, () => this.loadMap(this.idx + 1)],
-      ['↺', 0x3a4a6a, () => this.rotateSel(-15)],
-      ['↻', 0x3a4a6a, () => this.rotateSel(15)],
       ['UNDO', 0x3a3a55, () => this.undo()],
       ['CLEAR', 0x553030, () => this.clearThis()],
       ['COPY ALL', 0x2a553a, () => this.doExport()],
-      ['PLAY', 0x1f6f4a, () => this.exit()],
+      ['PLAY', 0x1f6f4a, () => this.scene.start('menu')],
     ];
-    let ax = GAME_W - 24;
+    let ax = GAME_W - 20;
     for (const [txt, col, fn] of [...actions].reverse()) {
-      const w = txt.length <= 2 ? 74 : 130;
+      const w = txt.length <= 2 ? 72 : 132;
       ax -= w;
       const rect = this.add.rectangle(ax + w / 2, y, w, 64, col, 1).setStrokeStyle(3, 0x667).setDepth(6).setInteractive({ useHandCursor: true });
-      this.add.text(ax + w / 2, y, txt, { fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5).setDepth(7);
+      this.add.text(ax + w / 2, y, txt, { fontFamily: 'sans-serif', fontSize: '23px', fontStyle: 'bold', color: '#fff' }).setOrigin(0.5).setDepth(7);
       rect.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
         fn();
       });
-      ax -= 12;
+      ax -= 10;
     }
   }
 
-  private refreshToolBtns(): void {
+  private refreshBtns(): void {
     for (const b of this.toolBtns) {
       const active = b.tool === this.tool;
-      const col = b.tool === 'erase' ? 0x883333 : b.tool === 'select' ? 0x3a5a8a : TOOL_COLOR[b.tool as 'wall' | 'water' | 'lava'];
+      const col = b.tool === 'erase' ? 0x883333 : KIND_COLOR[b.tool];
       b.rect.setFillStyle(active ? col : 0x222233, 1);
       b.rect.setStrokeStyle(3, active ? 0xffffff : 0x556677);
       b.label.setColor(active && b.tool === 'wall' ? '#111111' : '#ffffff');
     }
-  }
-
-  private undo(): void {
-    if (this.terrain.length || this.walls.length) {
-      // remove whichever was added last isn't tracked; pop terrain then walls
-      if (this.terrain.length) this.terrain.pop();
-      else this.walls.pop();
-      this.sel = null;
-      this.save();
-      this.redraw();
+    for (const b of this.brushBtns) {
+      const active = b.size === this.brush;
+      b.rect.setFillStyle(active ? 0x3a5a8a : 0x222233, 1);
+      b.rect.setStrokeStyle(3, active ? 0xffffff : 0x556677);
     }
   }
 
-  private clearThis(): void {
-    this.walls = [];
-    this.terrain = [];
-    this.sel = null;
-    clearEdit(MAPS[this.idx].id);
-    setEdit(MAPS[this.idx].id, { walls: [], terrain: [] });
-    this.redraw();
-    this.updateStatus();
+  private updateStatus(): void {
+    const m = MAPS[this.idx];
+    const n = this.cells.wall.size + this.cells.water.size + this.cells.lava.size;
+    this.status.setText(`Paint · ${m.name} (${this.idx + 1}/${MAPS.length}) · ${n} cells · drag to paint`);
   }
 
   private async doExport(): Promise<void> {
     const text = exportAll();
     try {
       await navigator.clipboard.writeText(text);
-      this.flash('Copied ALL changes (maps + balance) to clipboard ✔  paste it to Claude');
+      this.flash('Copied ALL changes (maps + balance) ✔  paste it to Claude');
     } catch {
       // eslint-disable-next-line no-console
       console.log(text);
@@ -337,26 +267,11 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
-  private exit(): void {
-    this.scene.start('menu');
-  }
-
-  private updateStatus(): void {
-    const m = MAPS[this.idx];
-    this.status.setText(
-      `Editor · ${m.name} (${this.idx + 1}/${MAPS.length}) · walls ${this.walls.length} · water/lava ${this.terrain.length} · drag to draw`,
-    );
-  }
-
   private flash(msg: string): void {
     const t = this.add
       .text(GAME_W / 2, GAME_H / 2, msg, {
-        fontFamily: 'sans-serif',
-        fontSize: '34px',
-        fontStyle: 'bold',
-        color: '#ffffff',
-        backgroundColor: '#000000cc',
-        padding: { x: 24, y: 16 },
+        fontFamily: 'sans-serif', fontSize: '32px', fontStyle: 'bold',
+        color: '#fff', backgroundColor: '#000000cc', padding: { x: 22, y: 14 },
       })
       .setOrigin(0.5)
       .setDepth(20);
