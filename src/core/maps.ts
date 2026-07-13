@@ -1,5 +1,7 @@
 import { GAME_W, GAME_H } from '../config';
 import { getEdit } from './mapEdits';
+import { BAKED_PAINT } from './bakedPaint';
+import { expandLegacyLayers } from './paintgrid';
 
 /**
  * Fullscreen battle maps. Each map is a themed rectangle: the whole screen
@@ -319,7 +321,10 @@ export function activeMap(): MapDef {
 
 export function setActiveMap(m: MapDef): void {
   active = m;
-  const p = getEdit(m.id)?.paint;
+  // Local edit wins (already on the current grid); otherwise fall back to the
+  // permanently-baked paint, expanded from the legacy grid it was authored on.
+  const baked = BAKED_PAINT[m.id];
+  const p = getEdit(m.id)?.paint ?? (baked ? expandLegacyLayers(baked) : undefined);
   const wall = new Set(p?.wall ?? []);
   const air = new Set(p?.air ?? []);
   const water = new Set(p?.water ?? []);
@@ -339,11 +344,15 @@ export function activeObstacles(): MapObstacle[] {
 }
 
 export function activeWalls(): MapWall[] {
-  return getEdit(active.id)?.walls ?? active.walls;
+  const e = getEdit(active.id);
+  if (e) return e.walls;
+  return BAKED_PAINT[active.id] ? [] : active.walls; // baked paint replaces boxes
 }
 
 export function activeTerrain(): TerrainZone[] {
-  return getEdit(active.id)?.terrain ?? active.terrain;
+  const e = getEdit(active.id);
+  if (e) return e.terrain;
+  return BAKED_PAINT[active.id] ? [] : active.terrain;
 }
 
 /** Pick a random map, never the same twice in a row. */

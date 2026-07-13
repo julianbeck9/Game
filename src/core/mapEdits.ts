@@ -1,5 +1,5 @@
 import type { MapWall, TerrainZone } from './maps';
-import type { PaintLayers } from './paintgrid';
+import { PaintLayers, expandLegacyLayers } from './paintgrid';
 
 /**
  * Player-authored collision, saved in the browser. The in-game Map Editor
@@ -14,13 +14,30 @@ export interface MapEdit {
   paint?: PaintLayers;
 }
 
-const KEY = 'cc_map_edits_v1';
+const KEY = 'cc_map_edits_v2'; // v2 = finer (24px) paint grid
+const LEGACY_KEY = 'cc_map_edits_v1'; // v1 = 48px grid (auto-migrated once)
 let cache: Record<string, MapEdit> | null = null;
 
 function load(): Record<string, MapEdit> {
   if (cache) return cache;
   try {
-    cache = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, MapEdit>;
+    const v2 = localStorage.getItem(KEY);
+    if (v2) {
+      cache = JSON.parse(v2) as Record<string, MapEdit>;
+      return cache;
+    }
+    // One-time migration: expand old 48px paint cells to the 24px grid.
+    const v1 = localStorage.getItem(LEGACY_KEY);
+    if (v1) {
+      const old = JSON.parse(v1) as Record<string, MapEdit>;
+      for (const e of Object.values(old)) {
+        if (e.paint) e.paint = expandLegacyLayers(e.paint);
+      }
+      cache = old;
+      localStorage.setItem(KEY, JSON.stringify(cache));
+      return cache;
+    }
+    cache = {};
   } catch {
     cache = {};
   }

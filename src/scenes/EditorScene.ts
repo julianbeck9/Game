@@ -3,7 +3,8 @@ import { GAME_W, GAME_H } from '../config';
 import { MAPS, MAP_IMAGE_KEYS } from '../core/maps';
 import { getEdit, setEdit } from '../core/mapEdits';
 import { exportAll } from '../core/exportAll';
-import { CELL, COLS, ROWS, PaintKind } from '../core/paintgrid';
+import { CELL, COLS, ROWS, PaintKind, expandLegacyLayers } from '../core/paintgrid';
+import { BAKED_PAINT } from '../core/bakedPaint';
 
 type Tool = PaintKind | 'erase';
 
@@ -34,6 +35,7 @@ export class EditorScene extends Phaser.Scene {
   private toolBtns: { tool: Tool; rect: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text }[] = [];
   private brushBtns: { size: number; rect: Phaser.GameObjects.Rectangle }[] = [];
   private clearBtn?: { rect: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text };
+  private bar!: Phaser.GameObjects.Container;
   private painting = false;
 
   constructor() {
@@ -69,7 +71,9 @@ export class EditorScene extends Phaser.Scene {
       this.bg = undefined;
       this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, m.floor[0]).setDepth(0);
     }
-    const p = getEdit(m.id)?.paint;
+    // Local edit first; else the permanently-baked paint (so it stays editable)
+    const baked = BAKED_PAINT[m.id];
+    const p = getEdit(m.id)?.paint ?? (baked ? expandLegacyLayers(baked) : undefined);
     this.cells = {
       wall: new Set(p?.wall ?? []),
       air: new Set(p?.air ?? []),
@@ -100,7 +104,10 @@ export class EditorScene extends Phaser.Scene {
   // ---- painting ----
 
   private inCanvas(p: Phaser.Input.Pointer): boolean {
-    return p.y > BAR && p.y < GAME_H - BAR;
+    // Top is fully paintable now (status is a small pill). Only the bottom
+    // toolbar blocks painting — and only while it's shown.
+    if (this.bar && !this.bar.visible) return p.y < GAME_H - 6;
+    return p.y < GAME_H - BAR;
   }
 
   private snapshot(): void {
@@ -205,39 +212,49 @@ export class EditorScene extends Phaser.Scene {
   // ---- toolbar ----
 
   private buildToolbar(): void {
-    this.add.rectangle(GAME_W / 2, BAR / 2, GAME_W, BAR, 0x0c0c16, 0.9).setDepth(5);
-    this.status = this.add.text(24, BAR / 2, '', { fontFamily: 'sans-serif', fontSize: '28px', color: '#e8ecf8' }).setOrigin(0, 0.5).setDepth(6);
+    // Everything toolbar-ish lives in a container we can hide to paint freely.
+    this.bar = this.add.container(0, 0).setDepth(5);
 
-    this.add.rectangle(GAME_W / 2, GAME_H - BAR / 2, GAME_W, BAR, 0x0c0c16, 0.92).setDepth(5);
+    // Compact status pill (top-left) instead of a full-width header bar
+    const pill = this.add.rectangle(20, 20, 560, 44, 0x0c0c16, 0.82).setOrigin(0, 0).setStrokeStyle(2, 0x33334a);
+    this.status = this.add.text(34, 42, '', { fontFamily: 'sans-serif', fontSize: '24px', color: '#e8ecf8' }).setOrigin(0, 0.5);
+    this.bar.add(pill);
+    this.bar.add(this.status);
+
     const y = GAME_H - BAR / 2;
+    this.bar.add(this.add.rectangle(GAME_W / 2, y, GAME_W, BAR, 0x0c0c16, 0.92));
 
     const tools: Tool[] = ['wall', 'air', 'water', 'lava', 'erase'];
     const btnW = 116;
     let x = 20;
     for (const t of tools) {
-      const rect = this.add.rectangle(x + btnW / 2, y, btnW, 64, 0x222233, 1).setStrokeStyle(3, 0x556).setDepth(6).setInteractive({ useHandCursor: true });
-      const label = this.add.text(x + btnW / 2, y, t.toUpperCase(), { fontFamily: 'sans-serif', fontSize: '25px', fontStyle: 'bold', color: '#fff' }).setOrigin(0.5).setDepth(7);
+      const rect = this.add.rectangle(x + btnW / 2, y, btnW, 64, 0x222233, 1).setStrokeStyle(3, 0x556).setInteractive({ useHandCursor: true });
+      const label = this.add.text(x + btnW / 2, y, t.toUpperCase(), { fontFamily: 'sans-serif', fontSize: '25px', fontStyle: 'bold', color: '#fff' }).setOrigin(0.5);
       rect.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
         this.tool = t;
         this.refreshBtns();
       });
+      this.bar.add(rect);
+      this.bar.add(label);
       this.toolBtns.push({ tool: t, rect, label });
       x += btnW + 10;
     }
 
     // brush size S / M / L
     x += 8;
-    this.add.text(x, y, 'Brush', { fontFamily: 'sans-serif', fontSize: '22px', color: '#8a94b0' }).setOrigin(0, 0.5).setDepth(7);
+    this.bar.add(this.add.text(x, y, 'Brush', { fontFamily: 'sans-serif', fontSize: '22px', color: '#8a94b0' }).setOrigin(0, 0.5));
     x += 80;
     ['S', 'M', 'L'].forEach((s, i) => {
-      const rect = this.add.rectangle(x + 30, y, 56, 64, 0x222233, 1).setStrokeStyle(3, 0x556).setDepth(6).setInteractive({ useHandCursor: true });
-      this.add.text(x + 30, y, s, { fontFamily: 'sans-serif', fontSize: '25px', fontStyle: 'bold', color: '#fff' }).setOrigin(0.5).setDepth(7);
+      const rect = this.add.rectangle(x + 30, y, 56, 64, 0x222233, 1).setStrokeStyle(3, 0x556).setInteractive({ useHandCursor: true });
+      const lbl = this.add.text(x + 30, y, s, { fontFamily: 'sans-serif', fontSize: '25px', fontStyle: 'bold', color: '#fff' }).setOrigin(0.5);
       rect.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
         this.brush = i;
         this.refreshBtns();
       });
+      this.bar.add(rect);
+      this.bar.add(lbl);
       this.brushBtns.push({ size: i, rect });
       x += 62;
     });
@@ -256,15 +273,27 @@ export class EditorScene extends Phaser.Scene {
     for (const [txt, col, fn] of [...actions].reverse()) {
       const w = txt.length <= 2 ? 72 : 132;
       ax -= w;
-      const rect = this.add.rectangle(ax + w / 2, y, w, 64, col, 1).setStrokeStyle(3, 0x667).setDepth(6).setInteractive({ useHandCursor: true });
-      const label = this.add.text(ax + w / 2, y, txt, { fontFamily: 'sans-serif', fontSize: '23px', fontStyle: 'bold', color: '#fff' }).setOrigin(0.5).setDepth(7);
+      const rect = this.add.rectangle(ax + w / 2, y, w, 64, col, 1).setStrokeStyle(3, 0x667).setInteractive({ useHandCursor: true });
+      const label = this.add.text(ax + w / 2, y, txt, { fontFamily: 'sans-serif', fontSize: '23px', fontStyle: 'bold', color: '#fff' }).setOrigin(0.5);
       rect.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
         fn();
       });
+      this.bar.add(rect);
+      this.bar.add(label);
       if (txt === 'CLEAR') this.clearBtn = { rect, label };
       ax -= 10;
     }
+
+    // Persistent Hide/Show toggle (outside the container) so the bottom edge
+    // can be painted too.
+    const tRect = this.add.rectangle(GAME_W - 90, GAME_H - BAR - 40, 140, 52, 0x1e2a44, 0.95).setStrokeStyle(2, 0x6a8ac0).setDepth(9).setInteractive({ useHandCursor: true });
+    const tTxt = this.add.text(tRect.x, tRect.y, 'Hide ▾', { fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'bold', color: '#cfe0ff' }).setOrigin(0.5).setDepth(10);
+    tRect.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => {
+      ev.stopPropagation();
+      this.bar.setVisible(!this.bar.visible);
+      tTxt.setText(this.bar.visible ? 'Hide ▾' : 'Show ▴');
+    });
   }
 
   private refreshBtns(): void {
