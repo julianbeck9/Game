@@ -75,6 +75,8 @@ export class Enemy extends Unit {
   private nextSwingAt = 0;
   private strafeSign = 1;
   private strafeSwitchAt = 0;
+  /** Personal flank slot on a ring around the target — squads surround, not queue. */
+  private surroundAngle = 0;
   private dodgeUntil = 0;
   private dodgeDir: Vec = { x: 0, y: 0 };
   private threatSince = 0;
@@ -101,6 +103,10 @@ export class Enemy extends Unit {
       // Stagger initial ability use a little so fights don't open with a windup
       this.abilityReadyAt.set(a.id, combat.now + 600 + Math.random() * 800);
     }
+    // Spread the squad: everyone claims a different approach angle, so they
+    // flank and surround instead of walking in from one side in a line.
+    const t0 = combat.botTarget();
+    this.surroundAngle = Math.atan2(y - t0.y, x - t0.x) + (Math.random() - 0.5) * 2.8;
   }
 
   get target(): Unit {
@@ -174,6 +180,15 @@ export class Enemy extends Unit {
       return { x: this.dodgeDir.x * speed * 1.25, y: this.dodgeDir.y * speed * 1.25 };
     }
 
+    // Never loiter in the player's damage zones (poison clouds, fire trails …)
+    for (const h of this.combat.hazards) {
+      if (h.team !== 'player') continue;
+      if (dist(this.x, this.y, h.x, h.y) < h.r + this.radius + 6) {
+        const away = norm(this.x - h.x, this.y - h.y);
+        return this.withSeparation({ x: away.x * speed * 1.1, y: away.y * speed * 1.1 });
+      }
+    }
+
     // Brief retreat at low HP
     if (this.hpPct < 0.3 && time >= this.retreatCdUntil && time >= this.retreatUntil) {
       this.retreatUntil = time + 1100;
@@ -181,7 +196,7 @@ export class Enemy extends Unit {
     }
     if (time < this.retreatUntil) {
       const away = norm(this.x - t.x, this.y - t.y);
-      return { x: away.x * speed, y: away.y * speed };
+      return this.withSeparation({ x: away.x * speed, y: away.y * speed });
     }
 
     // Range keeping + strafe
@@ -196,20 +211,47 @@ export class Enemy extends Unit {
     const perp = { x: -toT.y * this.strafeSign, y: toT.x * this.strafeSign };
 
     if (d > outer) {
-      // Close in, drifting sideways a bit
-      return {
-        x: (toT.x * 0.9 + perp.x * 0.35) * speed,
-        y: (toT.y * 0.9 + perp.y * 0.35) * speed,
+      // Head for your own flank slot on a ring around the target, so the
+      // squad closes in from several directions at once.
+      const slot = {
+        x: t.x + Math.cos(this.surroundAngle) * this.cfg.preferredRange,
+        y: t.y + Math.sin(this.surroundAngle) * this.cfg.preferredRange,
       };
+      const toSlot = norm(slot.x - this.x, slot.y - this.y);
+      return this.withSeparation({
+        x: (toSlot.x * 0.75 + toT.x * 0.25) * speed,
+        y: (toSlot.y * 0.75 + toT.y * 0.25) * speed,
+      });
     }
+    // Near the band: the slot follows the live orbit position
+    this.surroundAngle = Math.atan2(this.y - t.y, this.x - t.x);
     if (d < inner) {
-      return {
+      return this.withSeparation({
         x: (-toT.x * 0.8 + perp.x * 0.45) * speed,
         y: (-toT.y * 0.8 + perp.y * 0.45) * speed,
-      };
+      });
     }
     // In band: strafe
-    return { x: perp.x * speed * 0.75, y: perp.y * speed * 0.75 };
+    return this.withSeparation({ x: perp.x * speed * 0.75, y: perp.y * speed * 0.75 });
+  }
+
+  /** Soft push away from stacked allies — no more enemy piles on one pixel. */
+  private withSeparation(v: Vec): Vec {
+    let sx = 0;
+    let sy = 0;
+    for (const u of this.combat.units) {
+      if (u === this || !u.alive || u.team !== 'enemy') continue;
+      const dd = dist(this.x, this.y, u.x, u.y);
+      const min = this.radius + u.radius + 24;
+      if (dd < min && dd > 0.01) {
+        const f = (min - dd) / min;
+        sx += ((this.x - u.x) / dd) * f;
+        sy += ((this.y - u.y) / dd) * f;
+      }
+    }
+    if (sx === 0 && sy === 0) return v;
+    const speed = this.stats.get('moveSpeed');
+    return { x: v.x + sx * speed * 0.9, y: v.y + sy * speed * 0.9 };
   }
 
   /** Watch for player skillshots on a collision course; sidestep after a reaction delay. */

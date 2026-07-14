@@ -41,8 +41,9 @@ const ROSTER: Row[] = [
   { id: 'nocturne', name: 'Nocturne', tagline: 'The Nightmare', region: 'The Dark', kit: 'assassin' },
   { id: 'warwick', name: 'Warwick', tagline: 'The Hunter', region: 'Zaun', kit: 'bruiserbleed', base: { lifesteal: 0.12 } },
   { id: 'blitzcrank', name: 'Blitzcrank', tagline: 'The Golem', region: 'Zaun', kit: 'hooktank' },
+  { id: 'amumu', name: 'Amumu', tagline: 'The Lonely Mummy', region: 'Shurima', kit: 'hooktank', base: { maxHP: 330 } },
   { id: 'brand', name: 'Brand', tagline: 'The Ember', region: 'Runeterra', kit: 'casterdot', base: { abilityPower: 30 } },
-  { id: 'vayne', name: 'Vayne', tagline: 'The Nightstalker', region: 'Demacia', kit: 'frostarrow', base: { attackSpeed: 1.25 } },
+  { id: 'varus', name: 'Varus', tagline: 'The Piercing Arrow', region: 'Ionia', kit: 'frostarrow', base: { attackRange: 540 } },
   { id: 'masteryi', name: 'Master Yi', tagline: 'The Blade', region: 'Ionia', kit: 'windblade', base: { attackSpeed: 1.4 } },
   { id: 'fiddlesticks', name: 'Fiddlesticks', tagline: 'The Dread', region: 'The Dark', kit: 'casterdot' },
   { id: 'lux', name: 'Lux', tagline: 'The Light', region: 'Demacia', kit: 'mage' },
@@ -53,7 +54,6 @@ const ROSTER: Row[] = [
   { id: 'karthus', name: 'Karthus', tagline: 'The Deathsinger', region: 'The Dark', kit: 'casterdot', base: { maxHP: 190 } },
   { id: 'lucian', name: 'Lucian', tagline: 'The Purifier', region: 'Demacia', kit: 'rockets' },
   { id: 'shen', name: 'Shen', tagline: 'The Eye', region: 'Ionia', kit: 'cleavetank' },
-  { id: 'pantheon', name: 'Pantheon', tagline: 'The Spear', region: 'Targon', kit: 'cleavetank', base: { damage: 24 } },
 ];
 
 function build(row: Row): ChampionDef {

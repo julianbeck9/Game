@@ -3,7 +3,7 @@ import { GAME_W, GAME_H } from '../config';
 import { MAPS, MAP_IMAGE_KEYS } from '../core/maps';
 import { getEdit, setEdit } from '../core/mapEdits';
 import { exportAll } from '../core/exportAll';
-import { CELL, COLS, ROWS, PaintKind, expandLegacyLayers } from '../core/paintgrid';
+import { CELL, COLS, ROWS, PaintKind } from '../core/paintgrid';
 import { BAKED_PAINT } from '../core/bakedPaint';
 
 type Tool = PaintKind | 'erase';
@@ -71,9 +71,9 @@ export class EditorScene extends Phaser.Scene {
       this.bg = undefined;
       this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, m.floor[0]).setDepth(0);
     }
-    // Local edit first; else the permanently-baked paint (so it stays editable)
-    const baked = BAKED_PAINT[m.id];
-    const p = getEdit(m.id)?.paint ?? (baked ? expandLegacyLayers(baked) : undefined);
+    // Local edit first; else the permanently-baked paint (so it stays editable).
+    // Baked data is already on the current 24px grid — never expand it.
+    const p = getEdit(m.id)?.paint ?? BAKED_PAINT[m.id];
     this.cells = {
       wall: new Set(p?.wall ?? []),
       air: new Set(p?.air ?? []),

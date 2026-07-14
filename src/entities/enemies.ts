@@ -2,6 +2,8 @@ import type Phaser from 'phaser';
 import { EnemyConfig, Enemy, EnemyAbilitySpec } from './Enemy';
 import { COLORS } from '../config';
 import { AUGMENTS } from '../augments/registry';
+import { CHAMPIONS } from '../champions/registry';
+import { run } from '../core/run';
 import { clampToArena, resolvePillars } from '../core/geometry';
 
 /** Valid blink destination: inside the arena, outside any pillar. */
@@ -512,6 +514,31 @@ export function makeUsurpator(s: DifficultyScale, final: boolean): EnemyConfig {
   return cfg;
 }
 
+/**
+ * Fighter-type enemies appear as random rival champions from the roster:
+ * melee kinds draw a melee champion, ranged kinds a ranged one, and the
+ * player's own pick is excluded. Wardens, thralls and the boss keep their
+ * monster identity. Behaviour/stats stay the archetype's — this is a skin.
+ */
+const RIVAL_KINDS: Record<string, 'melee' | 'ranged'> = {
+  haescher: 'melee',
+  berserker: 'melee',
+  speermaid: 'melee',
+  schuetze: 'ranged',
+  hexer: 'ranged',
+};
+
+function dressAsRival(cfg: EnemyConfig): EnemyConfig {
+  const style = RIVAL_KINDS[cfg.kind];
+  if (!style || cfg.championSprite) return cfg;
+  const pool = CHAMPIONS.filter(
+    (c) => c.id !== run.champion && (style === 'melee' ? !c.ranged : c.ranged),
+  );
+  if (pool.length === 0) return cfg;
+  const champ = pool[Math.floor(Math.random() * pool.length)];
+  return { ...cfg, championSprite: champ.id, name: champ.name };
+}
+
 export function spawnEnemy(
   scene: Phaser.Scene,
   combat: Enemy['combat'],
@@ -519,5 +546,5 @@ export function spawnEnemy(
   y: number,
   cfg: EnemyConfig,
 ): Enemy {
-  return new Enemy(scene, combat, x, y, cfg);
+  return new Enemy(scene, combat, x, y, dressAsRival(cfg));
 }

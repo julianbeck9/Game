@@ -1,5 +1,5 @@
 import type { MapWall, TerrainZone } from './maps';
-import { PaintLayers, expandLegacyLayers } from './paintgrid';
+import { PaintLayers } from './paintgrid';
 
 /**
  * Player-authored collision, saved in the browser. The in-game Map Editor
@@ -14,30 +14,17 @@ export interface MapEdit {
   paint?: PaintLayers;
 }
 
-const KEY = 'cc_map_edits_v2'; // v2 = finer (24px) paint grid
-const LEGACY_KEY = 'cc_map_edits_v1'; // v1 = 48px grid (auto-migrated once)
+// v3: fresh start. Older keys (v1 = coarse grid, v2 = polluted by a bug that
+// double-expanded the baked paint in the editor) are intentionally ignored —
+// the authored maps live in bakedPaint.ts now, so dropping local edits is safe.
+const KEY = 'cc_map_edits_v3';
 let cache: Record<string, MapEdit> | null = null;
 
 function load(): Record<string, MapEdit> {
   if (cache) return cache;
   try {
-    const v2 = localStorage.getItem(KEY);
-    if (v2) {
-      cache = JSON.parse(v2) as Record<string, MapEdit>;
-      return cache;
-    }
-    // One-time migration: expand old 48px paint cells to the 24px grid.
-    const v1 = localStorage.getItem(LEGACY_KEY);
-    if (v1) {
-      const old = JSON.parse(v1) as Record<string, MapEdit>;
-      for (const e of Object.values(old)) {
-        if (e.paint) e.paint = expandLegacyLayers(e.paint);
-      }
-      cache = old;
-      localStorage.setItem(KEY, JSON.stringify(cache));
-      return cache;
-    }
-    cache = {};
+    const v3 = localStorage.getItem(KEY);
+    cache = v3 ? (JSON.parse(v3) as Record<string, MapEdit>) : {};
   } catch {
     cache = {};
   }

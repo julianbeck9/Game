@@ -40,7 +40,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private aimGfx!: Phaser.GameObjects.Graphics;
   private hazardGfx!: Phaser.GameObjects.Graphics;
   private aimPreview: Vec | null = null;
-  private hazards: Hazard[] = [];
+  hazards: Hazard[] = [];
   private walls: { x1: number; y1: number; x2: number; y2: number; until: number }[] = [];
   private taunt: { unit: Unit; until: number } | null = null;
   private flashes: { x1: number; y1: number; x2: number; y2: number; color: number; until: number }[] = [];

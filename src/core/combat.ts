@@ -22,6 +22,8 @@ export interface Combat {
   readonly bus: EventBus;
   readonly units: Unit[];
   readonly projectiles: Projectile[];
+  /** Live damage zones — bots read these to step out of the player's puddles. */
+  readonly hazards: Hazard[];
   readonly now: number;
   readonly playerUnit: Unit;
   spawnProjectile(opts: ProjectileOpts): Projectile;
