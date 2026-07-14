@@ -50,6 +50,12 @@ export interface ChampionDef {
   fireQ(p: Player, dir: Vec, scale: number): void;
   /** dir: aim direction (mouse on desktop, facing/joystick on touch). */
   castE(p: Player, dir?: Vec): void;
+  /**
+   * Champion-specific Dash effect (leap, hook, blink…). Runs when the player
+   * dashes; return true to take over movement (the generic dash slide is
+   * suppressed) or false/undefined to keep the plain directional dash.
+   */
+  onDash?(p: Player, dir: Vec): boolean | void;
   /** Optional on-hit rider for auto-attacks (frost, marks, executes…). */
   onAutoHit?(p: Player, target: Unit): void;
   /** Passive setup at combat start (reset stacks, seed state). */

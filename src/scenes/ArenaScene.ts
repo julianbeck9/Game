@@ -520,6 +520,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     if (!target.alive || amount <= 0) return 0;
     // Phasensprung rule flag: invulnerable while dashing
     if (target === this.player && this.player.dashing && run.flags.dashIFrames) return 0;
+    // Champion dash i-frames (Fizz/Yi/Fiddlesticks) grant brief invulnerability.
+    if (target === this.player && this.now < this.player.invulnUntil) return 0;
 
     // LoL-like mitigation: Rüstung vs physisch, MR vs magisch, wahr ignores both
     const sch: School =

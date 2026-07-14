@@ -132,6 +132,13 @@ export class Enemy extends Unit {
 
     if (this.cfg.regenPctPerSec) this.heal(this.maxHP * this.cfg.regenPctPerSec * dt);
 
+    // Crowd control: stunned/knocked-up bots can't move, cast or attack.
+    if (time < this.ctrlUntil) {
+      this.telegraphing = null;
+      this.lunge = null;
+      return;
+    }
+
     const t = this.target;
     if (!t.alive) return;
     const d = dist(this.x, this.y, t.x, t.y);

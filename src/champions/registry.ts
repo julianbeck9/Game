@@ -1,13 +1,12 @@
 import Phaser from 'phaser';
 import { ChampionDef } from './types';
 import { shade } from '../core/draw';
-import { KITS, KitName } from './kits';
+import { KITS } from './kits';
 
 /**
- * The champion roster. Each champion is a data row that picks a reusable kit
- * archetype (see kits.ts) and supplies its own name / region / stat tweaks and
- * a PNG sprite (public/champs/<id>.png). Original text throughout — a private
- * fan homage, no third-party data copied.
+ * The champion roster. Each champion is a data row (name / tagline / region)
+ * bound to its bespoke kit (see kits.ts, keyed by id) and a PNG sprite
+ * (public/champs/<id>.png). Original text throughout — a private fan homage.
  */
 
 // Fallback pixel sprite, only drawn if a champion's PNG fails to load.
@@ -22,42 +21,40 @@ interface Row {
   name: string;
   tagline: string;
   region: string;
-  kit: KitName;
-  base?: ChampionDef['base'];
 }
 
 /** id order matches the sprite sheet the art came from (see public/champs). */
 const ROSTER: Row[] = [
-  { id: 'zac', name: 'Zac', tagline: 'The Ooze', region: 'Zaun', kit: 'hooktank', base: { maxHP: 340 } },
-  { id: 'fizz', name: 'Fizz', tagline: 'The Trickster', region: 'Bilgewater', kit: 'assassin', base: { moveSpeed: 345 } },
-  { id: 'jarvan', name: 'Jarvan', tagline: 'The Vanguard', region: 'Demacia', kit: 'cleavetank' },
-  { id: 'taric', name: 'Taric', tagline: 'The Gem Knight', region: 'Demacia', kit: 'mage', base: { maxHP: 220 } },
-  { id: 'teemo', name: 'Teemo', tagline: 'The Scout', region: 'Bandle', kit: 'casterdot', base: { moveSpeed: 320 } },
-  { id: 'kogmaw', name: "Kog'Maw", tagline: 'The Maw', region: 'The Void', kit: 'rockets', base: { attackRange: 560 } },
-  { id: 'alistar', name: 'Alistar', tagline: 'The Bull', region: 'Runeterra', kit: 'hooktank' },
-  { id: 'cassiopeia', name: 'Cassiopeia', tagline: 'The Serpent', region: 'Noxus', kit: 'casterdot' },
-  { id: 'leesin', name: 'Lee Sin', tagline: 'The Monk', region: 'Ionia', kit: 'windblade' },
-  { id: 'ziggs', name: 'Ziggs', tagline: 'The Bombardier', region: 'Zaun', kit: 'mage', base: { attackRange: 520 } },
-  { id: 'nocturne', name: 'Nocturne', tagline: 'The Nightmare', region: 'The Dark', kit: 'assassin' },
-  { id: 'warwick', name: 'Warwick', tagline: 'The Hunter', region: 'Zaun', kit: 'bruiserbleed', base: { lifesteal: 0.12 } },
-  { id: 'blitzcrank', name: 'Blitzcrank', tagline: 'The Golem', region: 'Zaun', kit: 'hooktank' },
-  { id: 'amumu', name: 'Amumu', tagline: 'The Lonely Mummy', region: 'Shurima', kit: 'hooktank', base: { maxHP: 330 } },
-  { id: 'brand', name: 'Brand', tagline: 'The Ember', region: 'Runeterra', kit: 'casterdot', base: { abilityPower: 30 } },
-  { id: 'varus', name: 'Varus', tagline: 'The Piercing Arrow', region: 'Ionia', kit: 'frostarrow', base: { attackRange: 540 } },
-  { id: 'masteryi', name: 'Master Yi', tagline: 'The Blade', region: 'Ionia', kit: 'windblade', base: { attackSpeed: 1.4 } },
-  { id: 'fiddlesticks', name: 'Fiddlesticks', tagline: 'The Dread', region: 'The Dark', kit: 'casterdot' },
-  { id: 'lux', name: 'Lux', tagline: 'The Light', region: 'Demacia', kit: 'mage' },
-  { id: 'sivir', name: 'Sivir', tagline: 'The Warrior', region: 'Shurima', kit: 'boomerang' },
-  { id: 'chogath', name: "Cho'Gath", tagline: 'The Terror', region: 'The Void', kit: 'hooktank', base: { maxHP: 360, damage: 22 } },
-  { id: 'ashe', name: 'Ashe', tagline: 'The Frost Archer', region: 'Freljord', kit: 'frostarrow' },
-  { id: 'gragas', name: 'Gragas', tagline: 'The Reveler', region: 'Freljord', kit: 'cleavetank', base: { maxHP: 300 } },
-  { id: 'karthus', name: 'Karthus', tagline: 'The Deathsinger', region: 'The Dark', kit: 'casterdot', base: { maxHP: 190 } },
-  { id: 'lucian', name: 'Lucian', tagline: 'The Purifier', region: 'Demacia', kit: 'rockets' },
-  { id: 'shen', name: 'Shen', tagline: 'The Eye', region: 'Ionia', kit: 'cleavetank' },
+  { id: 'zac', name: 'Zac', tagline: 'The Secret Weapon', region: 'Zaun' },
+  { id: 'fizz', name: 'Fizz', tagline: 'The Tidal Trickster', region: 'Bilgewater' },
+  { id: 'jarvan', name: 'Jarvan', tagline: 'The Exemplar', region: 'Demacia' },
+  { id: 'taric', name: 'Taric', tagline: 'The Gem Knight', region: 'Demacia' },
+  { id: 'teemo', name: 'Teemo', tagline: 'The Swift Scout', region: 'Bandle' },
+  { id: 'kogmaw', name: "Kog'Maw", tagline: 'The Mouth of the Abyss', region: 'The Void' },
+  { id: 'alistar', name: 'Alistar', tagline: 'The Minotaur', region: 'Runeterra' },
+  { id: 'cassiopeia', name: 'Cassiopeia', tagline: 'The Serpent', region: 'Noxus' },
+  { id: 'leesin', name: 'Lee Sin', tagline: 'The Blind Monk', region: 'Ionia' },
+  { id: 'ziggs', name: 'Ziggs', tagline: 'The Hexplosives Expert', region: 'Zaun' },
+  { id: 'nocturne', name: 'Nocturne', tagline: 'The Eternal Nightmare', region: 'The Dark' },
+  { id: 'warwick', name: 'Warwick', tagline: 'The Uncaged Wrath', region: 'Zaun' },
+  { id: 'blitzcrank', name: 'Blitzcrank', tagline: 'The Great Steam Golem', region: 'Zaun' },
+  { id: 'amumu', name: 'Amumu', tagline: 'The Sad Mummy', region: 'Shurima' },
+  { id: 'brand', name: 'Brand', tagline: 'The Burning Vengeance', region: 'Runeterra' },
+  { id: 'varus', name: 'Varus', tagline: 'The Arrow of Retribution', region: 'Ionia' },
+  { id: 'masteryi', name: 'Master Yi', tagline: 'The Wuju Bladesman', region: 'Ionia' },
+  { id: 'fiddlesticks', name: 'Fiddlesticks', tagline: 'The Ancient Fear', region: 'The Dark' },
+  { id: 'lux', name: 'Lux', tagline: 'The Lady of Luminosity', region: 'Demacia' },
+  { id: 'sivir', name: 'Sivir', tagline: 'The Battle Mistress', region: 'Shurima' },
+  { id: 'chogath', name: "Cho'Gath", tagline: 'The Terror of the Void', region: 'The Void' },
+  { id: 'ashe', name: 'Ashe', tagline: 'The Frost Archer', region: 'Freljord' },
+  { id: 'gragas', name: 'Gragas', tagline: 'The Rabble Rouser', region: 'Freljord' },
+  { id: 'karthus', name: 'Karthus', tagline: 'The Deathsinger', region: 'The Dark' },
+  { id: 'lucian', name: 'Lucian', tagline: 'The Purifier', region: 'Demacia' },
+  { id: 'shen', name: 'Shen', tagline: 'The Eye of Twilight', region: 'Ionia' },
 ];
 
 function build(row: Row): ChampionDef {
-  const k = KITS[row.kit];
+  const k = KITS[row.id];
   return {
     id: row.id,
     name: row.name,
@@ -65,7 +62,7 @@ function build(row: Row): ChampionDef {
     region: row.region,
     kitLine: k.kitLine,
     info: k.info,
-    base: { ...k.base, ...row.base },
+    base: { ...k.base },
     ranged: k.ranged,
     qRange: k.qRange,
     cds: k.cds,
@@ -74,10 +71,10 @@ function build(row: Row): ChampionDef {
     scales: k.scales,
     fireQ: k.fireQ,
     castE: k.castE,
+    onDash: k.onDash,
     onAutoHit: k.onAutoHit,
     onCombatInit: k.onCombatInit,
     passiveTick: k.passiveTick,
-    onDamageTaken: k.onDamageTaken,
     image: true,
     sprite: FALLBACK,
     palette: PAL,

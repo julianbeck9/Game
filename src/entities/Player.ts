@@ -30,6 +30,10 @@ export class Player extends Unit {
   /** Remaining Königsruf-empowered autos (König kit). */
   empoweredAutos = 0;
   dashing = false;
+  /** While now < invulnUntil the player takes no damage (Fizz/Yi/Fiddle dashes). */
+  invulnUntil = 0;
+  /** Champion Dash took over movement this dash — suppress the generic slide. */
+  private dashCustom = false;
   /** Direction of the last Q cast (Echo re-fires along it). */
   lastQDir: Vec = { x: 1, y: 0 };
   /** Kit-local state for champion scripts (Yasuo Q stacks, Ashe focus timer…). */
@@ -82,9 +86,12 @@ export class Player extends Unit {
   move(dt: number, moveVec: Vec): void {
     if (!this.alive) return;
     if (this.dashing) {
-      const speed = ABILITIES.Dash.dist / ABILITIES.Dash.duration;
-      // Dashes cross impassable terrain (water/lava)
-      this.moveBy(this.dashDir.x * speed * dt, this.dashDir.y * speed * dt, true);
+      // Champion dashes that teleport/leap move the player themselves; the
+      // generic slide only runs for the plain directional dash.
+      if (!this.dashCustom) {
+        const speed = ABILITIES.Dash.dist / ABILITIES.Dash.duration;
+        this.moveBy(this.dashDir.x * speed * dt, this.dashDir.y * speed * dt, true); // crosses terrain
+      }
       this.phaseSlash();
       this.isMoving = true;
       return;
@@ -227,6 +234,8 @@ export class Player extends Unit {
     this.dashDir = { ...this.facing };
     this.dashUntil = this.combat.now + ABILITIES.Dash.duration * 1000;
     this.dashSlashed.clear();
+    // Champion-specific dash (leap / hook / blink); may take over movement.
+    this.dashCustom = this.champ.onDash?.(this, this.dashDir) === true;
     this.combat.bus.emit('dashStart', undefined);
     return true;
   }
@@ -330,7 +339,10 @@ export class Player extends Unit {
     const bob = this.isMoving && !this.dashing ? Math.sin(this.combat.now / 105) * 2.2 : 0;
     this.sprite.setPosition(this.x, this.y - 4 - Math.abs(bob));
     this.sprite.setFlipX(this.facing.x < 0);
-    this.sprite.setAlpha(this.dashing ? 0.6 : 1);
+    // Fade for dashing / brief-untargetable (Fizz/Yi/Fiddle) / idle-stealth (Teemo/Fiddle).
+    const untarget = this.combat.now < this.invulnUntil;
+    const stealth = (this.memory.stealthUntil ?? 0) > this.combat.now;
+    this.sprite.setAlpha(this.dashing ? 0.6 : untarget ? 0.45 : stealth ? 0.4 : 1);
     this.sprite.setVisible(this.alive);
   }
 

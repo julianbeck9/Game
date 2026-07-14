@@ -21,6 +21,8 @@ export abstract class Unit {
   hitFlashUntil = 0;
   /** Juice: accumulated healing waiting to be shown as a floating number. */
   healDisplayAcc = 0;
+  /** Crowd control: while now < ctrlUntil the unit is stunned (bots can't act). */
+  ctrlUntil = 0;
   stats: StatBlock;
   gfx: Phaser.GameObjects.Graphics;
 
