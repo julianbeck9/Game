@@ -84,25 +84,32 @@ export abstract class Unit {
 
   /**
    * Displaced movement with pillar/arena resolution. By default it also blocks
-   * impassable terrain (water/lava); pass overTerrain=true for dashes, which
-   * are allowed to cross it.
+   * impassable terrain (water/lava), solid walls, and painted collision.
+   * Dashes/leaps (overTerrain=true) phase through ALL of it — the only thing
+   * that still stops them is the arena boundary.
    */
   moveBy(dx: number, dy: number, overTerrain = false): void {
-    // Substep so a fast move (dash) can't tunnel through a thin wall in one hop:
+    const r = this.radius;
+    // Dashes phase through all collision; only the arena bounds hold them in.
+    if (overTerrain) {
+      const p = clampToArena(this.x + dx, this.y + dy, r);
+      this.x = p.x;
+      this.y = p.y;
+      return;
+    }
+    // Substep so a fast move can't tunnel through a thin wall in one hop:
     // each collision check advances at most ~8px.
     const dlen = Math.sqrt(dx * dx + dy * dy);
     const steps = dlen > 8 ? Math.ceil(dlen / 8) : 1;
     const sx = dx / steps;
     const sy = dy / steps;
-    const r = this.radius;
     for (let i = 0; i < steps; i++) {
       const p1 = resolvePillars(this.x + sx, this.y + sy, r);
-      const p2 = overTerrain ? p1 : resolveTerrain(p1.x, p1.y, r);
-      // Solid walls resolve LAST so they always win — hard cover blocks
-      // walking and dashing alike and can't be overridden by terrain pushout.
+      const p2 = resolveTerrain(p1.x, p1.y, r);
+      // Solid walls resolve LAST so they always win — hard cover blocks walking.
       const pw = resolveWalls(p2.x, p2.y, r);
-      // Painted collision (walls + air block dash; water/lava block only walk)
-      const pp = resolvePaintMove(pw.x, pw.y, r, overTerrain);
+      // Painted collision (walls/air/water/lava all block walking).
+      const pp = resolvePaintMove(pw.x, pw.y, r, false);
       const p3 = clampToArena(pp.x, pp.y, r);
       this.x = p3.x;
       this.y = p3.y;
