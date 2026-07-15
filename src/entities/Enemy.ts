@@ -44,6 +44,12 @@ export interface EnemyConfig {
   championSprite?: string;
 }
 
+/** Linear falloff 1→0 over `ms` since a trigger time (0 when expired). */
+function pulse01(at: number, now: number, ms: number): number {
+  const dt = now - at;
+  return dt >= 0 && dt < ms ? 1 - dt / ms : 0;
+}
+
 interface Lunge {
   dir: Vec;
   speed: number;
@@ -64,6 +70,11 @@ export class Enemy extends Unit {
   facing: Vec = { x: 0, y: 1 };
   private telegraphGfx: Phaser.GameObjects.Graphics;
   private sprite?: Phaser.GameObjects.Image;
+  /** Rest scale of the champion sprite; animations scale around it. */
+  private spriteScale = 1;
+  /** Last-frame position, to detect movement for the walk bob. */
+  private animX = 0;
+  private animY = 0;
   private telegraphing: EnemyAbilitySpec | null = null;
   private telegraphStart = 0;
   private telegraphUntil = 0;
@@ -97,8 +108,11 @@ export class Enemy extends Unit {
     this.telegraphGfx = scene.add.graphics().setDepth(5);
     if (cfg.championSprite && scene.textures.exists(`champ:${cfg.championSprite}`)) {
       this.sprite = scene.add.image(x, y, `champ:${cfg.championSprite}`).setDepth(11);
-      if (this.sprite.height > 0) this.sprite.setScale((this.radius * 3.1) / this.sprite.height);
+      this.spriteScale = this.sprite.height > 0 ? (this.radius * 3.1) / this.sprite.height : 1;
+      this.sprite.setScale(this.spriteScale);
     }
+    this.animX = x;
+    this.animY = y;
     for (const a of cfg.abilities) {
       // Stagger initial ability use a little so fights don't open with a windup
       this.abilityReadyAt.set(a.id, combat.now + 600 + Math.random() * 800);
@@ -400,14 +414,43 @@ export class Enemy extends Unit {
 
     // Rival champions render their baked sprite inside an enemy-red ring
     if (this.sprite) {
-      const pulse = Math.sin(this.combat.now / 260) * 2;
+      const now = this.combat.now;
+      const pulse = Math.sin(now / 260) * 2;
       g.lineStyle(3, 0xff5a4a, 0.7);
       g.strokeCircle(this.x, this.y, this.radius + 6 + pulse);
       g.fillStyle(0xff3a2a, 0.1);
       g.fillCircle(this.x, this.y, this.radius + 6 + pulse);
-      this.sprite.setPosition(this.x, this.y);
+
+      // ---- Procedural sprite animation (single-frame art) ----
+      const moved = Math.hypot(this.x - this.animX, this.y - this.animY);
+      this.animX = this.x;
+      this.animY = this.y;
+      const moving = moved > 0.6;
+      const bob = moving ? Math.abs(Math.sin(now / 96)) * 2.6 : Math.sin(now / 520) * 1.0;
+      let sx = this.spriteScale;
+      let sy = this.spriteScale;
+      let ox = 0;
+      let oy = -bob;
+      // Wind-up squash while telegraphing an ability (anticipation).
+      if (this.telegraphing) {
+        const p = Math.min(1, (now - this.telegraphStart) / Math.max(1, this.telegraphUntil - this.telegraphStart));
+        sy *= 1 - 0.16 * p;
+        sx *= 1 + 0.1 * p;
+        oy += 2 * p;
+      }
+      // Release pop right after an ability fires.
+      const pop = pulse01(this.memory.castPop ?? 0, now, 160);
+      if (pop > 0) { sx *= 1 + 0.18 * pop; sy *= 1 + 0.18 * pop; }
+      // Lunge stretch along the leap direction.
+      const lungeAmt = pulse01(this.memory.swingAt ?? 0, now, 130);
+      if (swinging || lungeAmt > 0) { ox += this.facing.x * this.radius * 0.5 * (lungeAmt || 1); oy += this.facing.y * this.radius * 0.5 * (lungeAmt || 1); }
+      // Hit recoil.
+      if (now < this.hitFlashUntil) sy *= 0.9;
+
+      this.sprite.setPosition(this.x + ox, this.y + oy);
+      this.sprite.setScale(sx, sy);
       this.sprite.setFlipX(this.facing.x < 0);
-      this.sprite.setTint(swinging ? 0xffffff : 0xffb0a4);
+      this.sprite.setTint(swinging || pop > 0 ? 0xffffff : 0xffb0a4);
       this.drawInsignia(g);
       return;
     }

@@ -3,6 +3,7 @@ import { EnemyConfig, Enemy, EnemyAbilitySpec } from './Enemy';
 import { COLORS } from '../config';
 import { AUGMENTS } from '../augments/registry';
 import { CHAMPIONS } from '../champions/registry';
+import { rivalAbilitiesFor } from '../champions/rivalKits';
 import { run } from '../core/run';
 import { clampToArena, resolvePillars } from '../core/geometry';
 
@@ -536,7 +537,10 @@ function dressAsRival(cfg: EnemyConfig): EnemyConfig {
   );
   if (pool.length === 0) return cfg;
   const champ = pool[Math.floor(Math.random() * pool.length)];
-  return { ...cfg, championSprite: champ.id, name: champ.name };
+  // Borrow the champion's signature ability so the rival actually fights like
+  // them; fall back to the archetype's kit if none is defined.
+  const abilities = rivalAbilitiesFor(champ.id) ?? cfg.abilities;
+  return { ...cfg, championSprite: champ.id, name: champ.name, abilities };
 }
 
 export function spawnEnemy(

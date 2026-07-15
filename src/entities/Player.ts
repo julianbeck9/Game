@@ -40,6 +40,8 @@ export class Player extends Unit {
   memory: Record<string, number> = {};
 
   private sprite: Phaser.GameObjects.Image;
+  /** Rest scale of the sprite (art normalised to a common height); animations scale around it. */
+  private spriteScale = 1;
   private nextAttackAt = 0;
   private readyAt: Record<AbilityId, number> = { Q: 0, E: 0, Dash: 0 };
   private lastCd: Record<AbilityId, number> = { Q: 1, E: 1, Dash: 1 };
@@ -61,7 +63,8 @@ export class Player extends Unit {
     this.champ = champ;
     this.sprite = scene.add.image(x, y, `champ:${champ.id}`).setDepth(11);
     // PNG champion art varies in crop size — normalise to a consistent height.
-    if (champ.image && this.sprite.height > 0) this.sprite.setScale((this.radius * 3.1) / this.sprite.height);
+    this.spriteScale = champ.image && this.sprite.height > 0 ? (this.radius * 3.1) / this.sprite.height : 1;
+    this.sprite.setScale(this.spriteScale);
     // Passive setup (reset per combat — Player is recreated each round)
     this.champ.onCombatInit?.(this);
   }
@@ -206,6 +209,7 @@ export class Player extends Unit {
     this.lastQDir = { ...d };
     this.startCooldown('Q');
     this.combat.bus.emit('abilityCast', { ability: 'Q' });
+    this.memory.abilityPop = this.combat.now; // sprite cast-pop
     this.fireQ(d);
     return true;
   }
@@ -220,6 +224,7 @@ export class Player extends Unit {
     if (!this.isReady('E')) return false;
     this.startCooldown('E');
     this.combat.bus.emit('abilityCast', { ability: 'E' });
+    this.memory.abilityPop = this.combat.now; // sprite cast-pop
     this.champ.castE(this, dir && len(dir.x, dir.y) > 0.01 ? norm(dir.x, dir.y) : undefined);
     return true;
   }
@@ -236,6 +241,7 @@ export class Player extends Unit {
     this.dashSlashed.clear();
     // Champion-specific dash (leap / hook / blink); may take over movement.
     this.dashCustom = this.champ.onDash?.(this, this.dashDir) === true;
+    this.memory.abilityPop = this.combat.now; // sprite cast-pop
     this.combat.bus.emit('dashStart', undefined);
     return true;
   }
@@ -274,6 +280,7 @@ export class Player extends Unit {
     const atkSpeed = Math.max(0.1, this.stats.get('attackSpeed'));
     this.nextAttackAt = time + 1000 / atkSpeed;
     this.facing = norm(target.x - this.x, target.y - this.y);
+    this.memory.swingPop = time; // sprite lunge on the swing
 
     let dmg = this.stats.get('damage');
     // Yasuo: crit chance counts double
@@ -315,6 +322,12 @@ export class Player extends Unit {
 
   // ---- Rendering (8-bit sprite + effect overlays) ----
 
+  /** Linear falloff 1→0 over `ms` since a trigger time (0 when expired). */
+  private animPulse(at: number, now: number, ms: number): number {
+    const dt = now - at;
+    return dt >= 0 && dt < ms ? 1 - dt / ms : 0;
+  }
+
   protected drawBody(g: Phaser.GameObjects.Graphics): void {
     // Drop shadow under the sprite (stays grounded while the sprite bobs — 3D feel)
     g.fillStyle(0x000000, 0.32);
@@ -335,13 +348,31 @@ export class Player extends Unit {
     // Crown marker above whoever you play — you are the would-be king
     crown(g, this.x, this.y - this.radius - 12, 18, COLORS.player, 0.9);
 
-    // Walk bounce + sprite sync
-    const bob = this.isMoving && !this.dashing ? Math.sin(this.combat.now / 105) * 2.2 : 0;
-    this.sprite.setPosition(this.x, this.y - 4 - Math.abs(bob));
+    // ---- Procedural sprite animation (single-frame art, so motion is faked) ----
+    const now = this.combat.now;
+    const moving = this.isMoving && !this.dashing;
+    // Walk bounce while moving, gentle idle breathing while standing.
+    const bob = moving ? Math.abs(Math.sin(now / 100)) * 2.4 : Math.sin(now / 560) * 1.1;
+    let sx = this.spriteScale;
+    let sy = this.spriteScale;
+    let ox = 0;
+    let oy = -4 - bob;
+    // Cast pop: brief scale-up on Q/E/Dash.
+    const pop = this.animPulse(this.memory.abilityPop ?? 0, now, 170);
+    if (pop > 0) { sx *= 1 + 0.16 * pop; sy *= 1 + 0.16 * pop; }
+    // Auto-attack lunge: shove the sprite toward the target on the swing.
+    const swing = this.animPulse(this.memory.swingPop ?? 0, now, 150);
+    if (swing > 0) { ox += this.facing.x * this.radius * 0.45 * swing; oy += this.facing.y * this.radius * 0.45 * swing; }
+    // Hit recoil: squash briefly when struck.
+    if (now < this.hitFlashUntil) sy *= 0.9;
+    // Dash lean: stretch along the dash direction.
+    if (this.dashing) { sx *= 1.12; sy *= 0.92; }
+    this.sprite.setPosition(this.x + ox, this.y + oy);
+    this.sprite.setScale(sx, sy);
     this.sprite.setFlipX(this.facing.x < 0);
     // Fade for dashing / brief-untargetable (Fizz/Yi/Fiddle) / idle-stealth (Teemo/Fiddle).
-    const untarget = this.combat.now < this.invulnUntil;
-    const stealth = (this.memory.stealthUntil ?? 0) > this.combat.now;
+    const untarget = now < this.invulnUntil;
+    const stealth = (this.memory.stealthUntil ?? 0) > now;
     this.sprite.setAlpha(this.dashing ? 0.6 : untarget ? 0.45 : stealth ? 0.4 : 1);
     this.sprite.setVisible(this.alive);
   }
