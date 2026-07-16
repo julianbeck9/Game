@@ -7,6 +7,7 @@ import { Player } from '../entities/Player';
 import { Clone } from '../entities/Clone';
 import { Decoy } from '../entities/Decoy';
 import { spawnEnemy } from '../entities/enemies';
+import { ChampionVfx } from '../champions/ChampionVfx';
 import { Projectile, ProjectileOpts } from '../entities/Projectile';
 import { roundSpec, MAX_ROUND, ModifierId, MODIFIER_NAMES } from '../core/rounds';
 import { Joystick } from '../ui/Joystick';
@@ -31,6 +32,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   units: Unit[] = [];
   projectiles: Projectile[] = [];
   player!: Player;
+  champVfx!: ChampionVfx;
 
   private augments!: AugmentManager;
   private joystick!: Joystick;
@@ -105,6 +107,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     setActiveMap(spec.map);
     this.drawMap(spec.map);
     ensureChampionTextures(this);
+
+    // Champion-sprite VFX layer — created before any Player/Enemy so their
+    // constructors can bind their animated sprite to it.
+    this.champVfx = new ChampionVfx(this);
 
     this.player = new Player(this, this, ARENA_X, GAME_H - 220);
     this.units.push(this.player);
@@ -559,6 +565,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     }
     // ---- Juice: numbers, flashes, shake, slow-mo ----
     target.hitFlashUntil = this.now + 90;
+    if (dealt > 0) target.notifyHurt();
     this.spawnDamageNumber(target, dealt, type);
     if (target === this.player && dealt > 0) {
       this.cameras.main.shake(130, Math.min(0.012, 0.003 + dealt / 8000));

@@ -9,6 +9,10 @@ import { run } from '../core/run';
 import { crown } from '../core/draw';
 import { ChampionDef } from '../champions/types';
 import { championById } from '../champions/registry';
+import { AnimatedChampion } from '../champions/AnimatedChampion';
+
+/** Foot-pivot sprites (origin.y = 60/64) sit this far below the unit centre. */
+const SPRITE_FOOT_OFFSET = (radius: number) => -4 + radius * 1.356;
 
 /** Stats every champion shares unless their sheet overrides them. */
 const CHAMP_DEFAULTS: Partial<Record<StatName, number>> = {
@@ -39,9 +43,7 @@ export class Player extends Unit {
   /** Kit-local state for champion scripts (Yasuo Q stacks, Ashe focus timer…). */
   memory: Record<string, number> = {};
 
-  private sprite: Phaser.GameObjects.Image;
-  /** Rest scale of the sprite (art normalised to a common height); animations scale around it. */
-  private spriteScale = 1;
+  private sprite: AnimatedChampion;
   private nextAttackAt = 0;
   private readyAt: Record<AbilityId, number> = { Q: 0, E: 0, Dash: 0 };
   private lastCd: Record<AbilityId, number> = { Q: 1, E: 1, Dash: 1 };
@@ -61,10 +63,11 @@ export class Player extends Unit {
     const champ = championById(run.champion);
     super(scene, x, y, 'player', new StatBlock({ ...CHAMP_DEFAULTS, ...champ.base }));
     this.champ = champ;
-    this.sprite = scene.add.image(x, y, `champ:${champ.id}`).setDepth(11);
-    // PNG champion art varies in crop size — normalise to a consistent height.
-    this.spriteScale = champ.image && this.sprite.height > 0 ? (this.radius * 3.1) / this.sprite.height : 1;
-    this.sprite.setScale(this.spriteScale);
+    // Procedurally-animated champion sprite (idle/walk/attack/cast/hurt).
+    this.sprite = new AnimatedChampion(scene, x, y, `champ:${champ.id}`, champ.id);
+    scene.add.existing(this.sprite);
+    this.sprite.setDepth(11).setBaseScale((this.radius * 3.1) / 64);
+    this.combat.champVfx.bind(this.sprite);
     // Passive setup (reset per combat — Player is recreated each round)
     this.champ.onCombatInit?.(this);
   }
@@ -209,7 +212,7 @@ export class Player extends Unit {
     this.lastQDir = { ...d };
     this.startCooldown('Q');
     this.combat.bus.emit('abilityCast', { ability: 'Q' });
-    this.memory.abilityPop = this.combat.now; // sprite cast-pop
+    this.sprite.cast();
     this.fireQ(d);
     return true;
   }
@@ -224,7 +227,7 @@ export class Player extends Unit {
     if (!this.isReady('E')) return false;
     this.startCooldown('E');
     this.combat.bus.emit('abilityCast', { ability: 'E' });
-    this.memory.abilityPop = this.combat.now; // sprite cast-pop
+    this.sprite.cast();
     this.champ.castE(this, dir && len(dir.x, dir.y) > 0.01 ? norm(dir.x, dir.y) : undefined);
     return true;
   }
@@ -241,7 +244,7 @@ export class Player extends Unit {
     this.dashSlashed.clear();
     // Champion-specific dash (leap / hook / blink); may take over movement.
     this.dashCustom = this.champ.onDash?.(this, this.dashDir) === true;
-    this.memory.abilityPop = this.combat.now; // sprite cast-pop
+    this.sprite.cast();
     this.combat.bus.emit('dashStart', undefined);
     return true;
   }
@@ -280,7 +283,7 @@ export class Player extends Unit {
     const atkSpeed = Math.max(0.1, this.stats.get('attackSpeed'));
     this.nextAttackAt = time + 1000 / atkSpeed;
     this.facing = norm(target.x - this.x, target.y - this.y);
-    this.memory.swingPop = time; // sprite lunge on the swing
+    this.sprite.attack();
 
     let dmg = this.stats.get('damage');
     // Yasuo: crit chance counts double
@@ -320,12 +323,12 @@ export class Player extends Unit {
     }
   }
 
-  // ---- Rendering (8-bit sprite + effect overlays) ----
+  // ---- Rendering (sprite is a self-animating AnimatedChampion; here we drive
+  // its state + draw the effect overlays around it) ----
 
-  /** Linear falloff 1→0 over `ms` since a trigger time (0 when expired). */
-  private animPulse(at: number, now: number, ms: number): number {
-    const dt = now - at;
-    return dt >= 0 && dt < ms ? 1 - dt / ms : 0;
+  /** Play the hurt reaction (routed from the combat core on damage). */
+  notifyHurt(): void {
+    if (this.alive) this.sprite.hurt();
   }
 
   protected drawBody(g: Phaser.GameObjects.Graphics): void {
@@ -348,28 +351,11 @@ export class Player extends Unit {
     // Crown marker above whoever you play — you are the would-be king
     crown(g, this.x, this.y - this.radius - 12, 18, COLORS.player, 0.9);
 
-    // ---- Procedural sprite animation (single-frame art, so motion is faked) ----
+    // Drive the self-animating champion sprite: home (foot pivot), facing, loop.
     const now = this.combat.now;
-    const moving = this.isMoving && !this.dashing;
-    // Walk bounce while moving, gentle idle breathing while standing.
-    const bob = moving ? Math.abs(Math.sin(now / 100)) * 2.4 : Math.sin(now / 560) * 1.1;
-    let sx = this.spriteScale;
-    let sy = this.spriteScale;
-    let ox = 0;
-    let oy = -4 - bob;
-    // Cast pop: brief scale-up on Q/E/Dash.
-    const pop = this.animPulse(this.memory.abilityPop ?? 0, now, 170);
-    if (pop > 0) { sx *= 1 + 0.16 * pop; sy *= 1 + 0.16 * pop; }
-    // Auto-attack lunge: shove the sprite toward the target on the swing.
-    const swing = this.animPulse(this.memory.swingPop ?? 0, now, 150);
-    if (swing > 0) { ox += this.facing.x * this.radius * 0.45 * swing; oy += this.facing.y * this.radius * 0.45 * swing; }
-    // Hit recoil: squash briefly when struck.
-    if (now < this.hitFlashUntil) sy *= 0.9;
-    // Dash lean: stretch along the dash direction.
-    if (this.dashing) { sx *= 1.12; sy *= 0.92; }
-    this.sprite.setPosition(this.x + ox, this.y + oy);
-    this.sprite.setScale(sx, sy);
-    this.sprite.setFlipX(this.facing.x < 0);
+    this.sprite.setHome(this.x, this.y + SPRITE_FOOT_OFFSET(this.radius));
+    this.sprite.face(this.facing.x < 0 ? 'left' : 'right');
+    this.sprite.setBase(this.isMoving && !this.dashing ? 'walk' : 'idle');
     // Fade for dashing / brief-untargetable (Fizz/Yi/Fiddle) / idle-stealth (Teemo/Fiddle).
     const untarget = now < this.invulnUntil;
     const stealth = (this.memory.stealthUntil ?? 0) > now;

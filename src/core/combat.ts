@@ -2,6 +2,7 @@ import type { Unit } from '../entities/Unit';
 import type { Projectile, ProjectileOpts } from '../entities/Projectile';
 import type { EventBus, DamageType, School } from './events';
 import type { EnemyConfig } from '../entities/Enemy';
+import type { ChampionVfx } from '../champions/ChampionVfx';
 
 export interface Hazard {
   x: number;
@@ -26,6 +27,8 @@ export interface Combat {
   readonly hazards: Hazard[];
   readonly now: number;
   readonly playerUnit: Unit;
+  /** Procedural champion-sprite VFX layer; entities bind their sprite to it. */
+  readonly champVfx: ChampionVfx;
   spawnProjectile(opts: ProjectileOpts): Projectile;
   /** school defaults per type: auto/reflect/ability → physisch, burn → magisch, other → wahr. */
   dealDamage(source: Unit | null, target: Unit, amount: number, type: DamageType, school?: School): number;

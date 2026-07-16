@@ -5,6 +5,7 @@ import { Combat } from '../core/combat';
 import { norm, len, dist, Vec } from '../core/geometry';
 import { COLORS } from '../config';
 import { shadedDisc } from '../core/draw';
+import { AnimatedChampion } from '../champions/AnimatedChampion';
 
 export interface EnemyAbilitySpec {
   id: string;
@@ -44,12 +45,6 @@ export interface EnemyConfig {
   championSprite?: string;
 }
 
-/** Linear falloff 1→0 over `ms` since a trigger time (0 when expired). */
-function pulse01(at: number, now: number, ms: number): number {
-  const dt = now - at;
-  return dt >= 0 && dt < ms ? 1 - dt / ms : 0;
-}
-
 interface Lunge {
   dir: Vec;
   speed: number;
@@ -69,10 +64,9 @@ export class Enemy extends Unit {
 
   facing: Vec = { x: 0, y: 1 };
   private telegraphGfx: Phaser.GameObjects.Graphics;
-  private sprite?: Phaser.GameObjects.Image;
-  /** Rest scale of the champion sprite; animations scale around it. */
-  private spriteScale = 1;
-  /** Last-frame position, to detect movement for the walk bob. */
+  /** Rival champions render a self-animating sprite; monster enemies draw a disc. */
+  private sprite?: AnimatedChampion;
+  /** Last-frame position, to detect movement for the walk/idle loop. */
   private animX = 0;
   private animY = 0;
   private telegraphing: EnemyAbilitySpec | null = null;
@@ -107,9 +101,10 @@ export class Enemy extends Unit {
     this.radius = cfg.radius;
     this.telegraphGfx = scene.add.graphics().setDepth(5);
     if (cfg.championSprite && scene.textures.exists(`champ:${cfg.championSprite}`)) {
-      this.sprite = scene.add.image(x, y, `champ:${cfg.championSprite}`).setDepth(11);
-      this.spriteScale = this.sprite.height > 0 ? (this.radius * 3.1) / this.sprite.height : 1;
-      this.sprite.setScale(this.spriteScale);
+      this.sprite = new AnimatedChampion(scene, x, y, `champ:${cfg.championSprite}`, cfg.championSprite);
+      scene.add.existing(this.sprite);
+      this.sprite.setDepth(11).setBaseScale((this.radius * 3.1) / 64);
+      combat.champVfx.bind(this.sprite);
     }
     this.animX = x;
     this.animY = y;
@@ -336,6 +331,7 @@ export class Enemy extends Unit {
       this.telegraphUntil = time + a.telegraphMs;
       const t = this.target;
       this.telegraphAim = norm(t.x - this.x, t.y - this.y);
+      this.sprite?.cast(); // wind-up/cast animation on the champion sprite
       return;
     }
   }
@@ -345,11 +341,13 @@ export class Enemy extends Unit {
     if (this.cfg.melee && d <= this.cfg.melee.range + t.radius && time >= this.nextSwingAt) {
       this.nextSwingAt = time + this.cfg.melee.intervalMs;
       this.combat.dealDamage(this, t, this.cfg.melee.dmg * this.dmgScale(), 'auto');
-      this.memory.swingAt = time; // for the swing flash visual
+      this.memory.swingAt = time; // for the monster-disc swing flash
+      this.sprite?.attack();
     }
     if (this.cfg.rangedAuto && d <= this.cfg.rangedAuto.range && time >= this.nextSwingAt) {
       const r = this.cfg.rangedAuto;
       this.nextSwingAt = time + r.intervalMs;
+      this.sprite?.attack();
       // Non-homing, lightly lead the target so it's a dodgeable straight shot
       const lead = Math.min(0.35, d / r.projSpeed / 2);
       const aimX = t.x + this.predVX(t) * lead;
@@ -396,6 +394,11 @@ export class Enemy extends Unit {
 
   // ---- Rendering ----
 
+  /** Play the hurt reaction on the champion sprite (routed from combat). */
+  notifyHurt(): void {
+    if (this.alive) this.sprite?.hurt();
+  }
+
   protected drawBody(g: Phaser.GameObjects.Graphics): void {
     // Grounding drop shadow so the unit reads as standing on the map (3D feel)
     g.fillStyle(0x000000, 0.32);
@@ -412,7 +415,7 @@ export class Enemy extends Unit {
 
     const swinging = this.memory.swingAt && this.combat.now - this.memory.swingAt < 120;
 
-    // Rival champions render their baked sprite inside an enemy-red ring
+    // Rival champions render their self-animating sprite inside an enemy-red ring
     if (this.sprite) {
       const now = this.combat.now;
       const pulse = Math.sin(now / 260) * 2;
@@ -421,36 +424,13 @@ export class Enemy extends Unit {
       g.fillStyle(0xff3a2a, 0.1);
       g.fillCircle(this.x, this.y, this.radius + 6 + pulse);
 
-      // ---- Procedural sprite animation (single-frame art) ----
+      // Drive the animated sprite: walk when it moved this frame, else idle.
       const moved = Math.hypot(this.x - this.animX, this.y - this.animY);
       this.animX = this.x;
       this.animY = this.y;
-      const moving = moved > 0.6;
-      const bob = moving ? Math.abs(Math.sin(now / 96)) * 2.6 : Math.sin(now / 520) * 1.0;
-      let sx = this.spriteScale;
-      let sy = this.spriteScale;
-      let ox = 0;
-      let oy = -bob;
-      // Wind-up squash while telegraphing an ability (anticipation).
-      if (this.telegraphing) {
-        const p = Math.min(1, (now - this.telegraphStart) / Math.max(1, this.telegraphUntil - this.telegraphStart));
-        sy *= 1 - 0.16 * p;
-        sx *= 1 + 0.1 * p;
-        oy += 2 * p;
-      }
-      // Release pop right after an ability fires.
-      const pop = pulse01(this.memory.castPop ?? 0, now, 160);
-      if (pop > 0) { sx *= 1 + 0.18 * pop; sy *= 1 + 0.18 * pop; }
-      // Lunge stretch along the leap direction.
-      const lungeAmt = pulse01(this.memory.swingAt ?? 0, now, 130);
-      if (swinging || lungeAmt > 0) { ox += this.facing.x * this.radius * 0.5 * (lungeAmt || 1); oy += this.facing.y * this.radius * 0.5 * (lungeAmt || 1); }
-      // Hit recoil.
-      if (now < this.hitFlashUntil) sy *= 0.9;
-
-      this.sprite.setPosition(this.x + ox, this.y + oy);
-      this.sprite.setScale(sx, sy);
-      this.sprite.setFlipX(this.facing.x < 0);
-      this.sprite.setTint(swinging || pop > 0 ? 0xffffff : 0xffb0a4);
+      this.sprite.setHome(this.x, this.y + this.radius * 1.356);
+      this.sprite.face(this.facing.x < 0 ? 'left' : 'right');
+      this.sprite.setBase(moved > 0.6 ? 'walk' : 'idle');
       this.drawInsignia(g);
       return;
     }

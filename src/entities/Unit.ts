@@ -118,6 +118,9 @@ export abstract class Unit {
 
   abstract update(time: number, dt: number): void;
 
+  /** Play a hit reaction on the champion sprite (overridden by Player/Enemy). */
+  notifyHurt(): void {}
+
   draw(): void {
     const g = this.gfx;
     g.clear();
