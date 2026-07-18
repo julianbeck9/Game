@@ -90,7 +90,7 @@ export const KITS: Record<string, Kit> = {
   // ---------------------------------------------------------------- Zac
   zac: {
     ranged: false, qRange: 240, cds: { Q: 4500, E: 9000, Dash: 6000 }, scales: ['ap'],
-    base: { ...TANK, maxHP: 340 },
+    base: { ...TANK, maxHP: 360, attackRange: 175 },
     kitLine: 'Passive reform · Q unstable pulse · E stretching strikes · Dash slingshot',
     info: {
       passive: AI('Cell Division', 'The first time you would fall each fight, split and reform at 20% health.'),
@@ -120,7 +120,7 @@ export const KITS: Record<string, Kit> = {
   // ---------------------------------------------------------------- Fizz
   fizz: {
     ranged: false, qRange: 300, cds: { Q: 5000, E: 8000, Dash: 4500 }, scales: ['ap'],
-    base: { ...MELEE, maxHP: 200, moveSpeed: 345, abilityPower: 20, attackRange: 210 },
+    base: { ...MELEE, maxHP: 200, moveSpeed: 345, abilityPower: 18, attackRange: 210, damage: 22, projSpeed: 850 },
     kitLine: 'Passive nimble · Q trident lunge · E empowered strike · Dash untargetable hop',
     info: {
       passive: AI('Nimble Fighter', 'Your attacks reach a little farther and slip through the crowd.'),
@@ -491,7 +491,7 @@ export const KITS: Record<string, Kit> = {
   // ---------------------------------------------------------------- Sivir
   sivir: {
     ranged: true, qRange: 640, cds: { Q: 4200, E: 8000, Dash: 5000 }, scales: ['ad'],
-    base: { ...RANGED, damage: 21, attackRange: 500 },
+    base: { ...RANGED, damage: 100, attackRange: 500 },
     kitLine: 'Passive fleet of foot · Q boomerang blade · E spell shield · Dash ricochet step',
     info: {
       passive: AI('Fleet of Foot', 'Takedowns leave you fleet-footed. [blue speed lines on kill]'),
