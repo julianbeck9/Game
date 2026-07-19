@@ -29,14 +29,20 @@ nach https://julianbeck9.github.io/Game/.
 - `npm run build` = `tsc && vite build`. **`tsconfig.json` hat `noUnusedLocals: true`
   → toter Code bricht den Build.** Kein `console.log`-Müll hinterlassen.
 - Renderer: WebGL mit Canvas-Fallback (`?renderer=canvas`). Beide müssen laufen.
-- Playwright ist installiert (`node_modules/playwright`, v1.49). Chromium liegt unter
-  `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. **Nie `playwright install`
-  ausführen.** ESM-Import zwingend so:
+- Headless-Treiber: Playwright + Chromium. **Umgebungs-agnostisch** — hardcode keine
+  Browser-Pfade. Kanonisches Muster ist `scripts/verify.mjs` (existiert seit S0-1):
+  Node-basierter statischer Server (kein `python3` nötig) + Chromium über den
+  **bare import** `import pkg from 'playwright'; const { chromium } = pkg;` — Playwright
+  findet seinen Browser selbst.
   ```js
-  import pkg from '/home/user/Game/node_modules/playwright/index.js';
+  import pkg from 'playwright';            // bare specifier, kein absoluter Pfad
   const { chromium } = pkg;
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch();        // kein executablePath hardcoden
   ```
+  Neue Headless-Skripte (S3-1 Matrix, S5-1 Sim) **kopieren dieses Muster aus
+  `scripts/verify.mjs`** statt es neu zu erfinden. Ist Chromium in deiner Umgebung
+  nicht vorhanden, hol es einmalig mit `npx playwright install chromium` (unter Linux
+  ggf. `--with-deps`). `playwright` steht in den devDependencies.
 
 ### 0.3 Debug-Handle `window.__CC` (Test-Zugang, Quelle: `src/main.ts:77`)
 Nach Boot verfügbar. Damit testest du headless ohne UI-Klicks:
@@ -52,9 +58,15 @@ Nach Boot verfügbar. Damit testest du headless ohne UI-Klicks:
 | `__CC.scenes()` | aktive Szenen-Keys |
 
 ### 0.4 Verify vor jedem Push (Pflicht)
-Es gibt ab Ticket **S0-1** ein `npm run verify`. Sobald es existiert, gilt:
-**`npm run verify` muss grün sein, bevor du committest/pushst.** Bis S0-1 gemergt ist,
-mach mindestens `npx tsc --noEmit` (Exit 0) + einen manuellen Boot-Test.
+`npm run verify` existiert (Commit `386aadf`, S0-1): baut + bootet headless in WebGL +
+Canvas, prüft auf Konsolenfehler und Objekt-Leaks. **`npm run verify` muss grün sein
+(Exit 0), bevor du committest/pushst.** Läuft ~20 s. Ergänze pro Ticket zusätzlich die
+dort verlangten Assertions/Tests.
+
+Bekannte, **bereits vorbestehende** harmlose Konsolen-Meldung: `Texture key already in
+use: champ:*` beim erneuten Betreten der Arena via `goto` — das ist KEIN von dir
+verursachter Fehler und `verify` toleriert es. Alles andere in der Konsole ist ein
+echter Fehler und bricht `verify`.
 
 ### 0.5 Git-Flow (exakt so)
 ```bash
@@ -99,7 +111,7 @@ Feature-Commit vermischt, und beende sauber mit klarer Statusmeldung.
 
 ```
 Stage 0 (Fundament, MUSS zuerst):
-  S0-1  npm run verify (Netz aufsetzen)              ── blockiert alles danach
+  S0-1  npm run verify (Netz aufsetzen)      ✅ FERTIG (386aadf) ── blockiert alles danach
   S0-2  BUGS.md + Vitest-Setup                       ── Basis für alle Tests
 
 Stage 0.2 (Wirtschaft, hängt an S0-1 + S0-2):
@@ -109,8 +121,8 @@ Stage 0.2 (Wirtschaft, hängt an S0-1 + S0-2):
   S1-4  State-Hygiene: localStorage-Versionierung    (0.3)
 
 Stage 1 (Ability-Wahrheitsschicht, hängt an S0-1):
-  S2-1  AbilitySpec-Typ + 3 Piloten (Zac/Lux/Ashe)   (types/kits)
-  S2-2  Preview-Renderer aus Spec                     (ArenaScene) — fixt B3
+  S2-1  AbilitySpec-Typ + 3 Piloten (Zac/Lux/Ashe)  ✅ FERTIG (3a38801)
+  S2-2  Preview-Renderer aus Spec                     (ArenaScene) — fixt B3  ← jetzt startklar
   S2-3  AbilitySpec auf alle 26 Champions ausrollen
   S2-4  Beschreibungs-Generator aus Spec              — fixt B6
 
@@ -138,8 +150,12 @@ zu vermeiden.
 
 ## Stage 0 — Fundament
 
-### S0-1 · `npm run verify` — das wiederholbare Sicherheitsnetz
+### S0-1 · `npm run verify` — das wiederholbare Sicherheitsnetz  ✅ ERLEDIGT (Commit `386aadf`)
 **Phase:** DEVPLAN 0.1 · **Abhängig von:** nichts · **blockiert:** alles danach.
+> Umgesetzt: `scripts/verify.mjs` nutzt einen **Node-HTTP-Server** (kein `python3`) und
+> `import 'playwright'` (kein hardcodierter Browser-Pfad). Das ist das kanonische Muster
+> für alle weiteren Headless-Skripte. Die Beschreibung unten ist der ursprüngliche Auftrag
+> und nur noch historisch.
 
 **Ziel:** Ein Kommando, das vor jedem Push läuft und rot wird, wenn irgendwas
 strukturell kaputt ist. Ersetzt die verlorene Einmal-Harness durch etwas Dauerhaftes.
@@ -393,8 +409,11 @@ Map-Edits) überdecken frisch gebakte Werte. Ein Versionsschema + Validierung + 
 
 ## Stage 1 — Ability-Wahrheitsschicht
 
-### S2-1 · `AbilitySpec`-Typ + 3 Piloten (Zac / Lux / Ashe)
+### S2-1 · `AbilitySpec`-Typ + 3 Piloten (Zac / Lux / Ashe)  ✅ ERLEDIGT (Commit `3a38801`)
 **Phase:** DEVPLAN Phase 1 · **Abhängig von:** S0-1. **Größter Einzelhebel.**
+> Umgesetzt: `AbilityShape`/`spec` in `types.ts`; Piloten gesetzt — Zac circle/radius 200
+> self, Lux line/range 700/width 24, Ashe cone/range 620/angle 32. **Folge-Ticket S2-2
+> (Preview-Renderer) liest genau dieses `spec.q` — kann jetzt starten.**
 
 **Ziel:** Eine **deklarative Wahrheit** über die Form jeder Ability, neben dem Effekt-Code.
 Vier Konsumenten (Preview, Reichweiten-Ring, Beschreibungs-Generator, Bot-KI) lesen sie.
