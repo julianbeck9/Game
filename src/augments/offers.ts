@@ -23,17 +23,24 @@ export interface RollOpts {
   tiers?: Tier[];
   /** Allow a prisma pick (rollOffers turns this off after one prisma is shown). */
   allowPrisma?: boolean;
+  /** This is a forced trade: strictly honor `tiers`, never fall back to another tier. */
+  forced?: boolean;
 }
 
 /**
  * Roll a single augment offer: not owned, not excluded, tier-gated, prisma
  * capped by flags.prismaSlots, with a 40% bias toward owned tags. Returns
- * null only when the entire pool is exhausted.
+ * null when the tier-gated pool is exhausted — never silently substitutes a
+ * different tier for `opts.tiers`.
  */
 export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts = {}): AugmentDef | null {
   const tiers = opts.tiers ?? allowedTiers(round);
   const ownedPrisma = run.augments.filter((a) => a.tier === 'prisma').length;
-  const prismaAllowed = (opts.allowPrisma ?? true) && ownedPrisma < run.flags.prismaSlots;
+  // A forced trade (e.g. Gold→Prisma) must honor the requested tier even if
+  // the prismaSlots cap is full — the cap only throttles free/random offers.
+  const prismaAllowed = opts.forced
+    ? (opts.tiers?.includes('prisma') ?? false)
+    : (opts.allowPrisma ?? true) && ownedPrisma < run.flags.prismaSlots;
 
   const owns = (id: string) => run.augments.some((o) => o.id === id);
   const fits = (a: AugmentDef) => augmentFitsChampion(a, run.champion);
@@ -46,11 +53,7 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
       tiers.includes(a.tier) &&
       (a.tier !== 'prisma' || prismaAllowed),
   );
-  // Fallback: if the gated pool is empty, open up to anything not owned/excluded
-  if (pool.length === 0) {
-    pool = AUGMENTS.filter((a) => !owns(a.id) && !exclude.has(a.id) && !isDeleted(a.id) && fits(a) && (a.tier !== 'prisma' || prismaAllowed));
-    if (pool.length === 0) return null;
-  }
+  if (pool.length === 0) return null;
 
   // Prisma bias: when prisma is on the table, give it a real chance to show up
   // (the gold pool is large, so uniform rolls under-represent prisma).

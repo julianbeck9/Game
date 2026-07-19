@@ -243,7 +243,7 @@ export class PickScene extends Phaser.Scene {
     this.tradeRerolled = [false, false, false];
     const exclude = new Set<string>();
     while (this.tradeGold.length < 3) {
-      const def = rollOneOffer(this.offerRound, exclude, { tiers: [this.tradeTo], allowPrisma: this.tradeTo === 'prisma' });
+      const def = rollOneOffer(this.offerRound, exclude, { tiers: [this.tradeTo], allowPrisma: this.tradeTo === 'prisma', forced: true });
       if (!def) break;
       this.tradeGold.push(def);
       exclude.add(def.id);
@@ -277,7 +277,7 @@ export class PickScene extends Phaser.Scene {
   private rerollTradeGold(i: number): void {
     if (this.tradeRerolled[i]) return;
     const exclude = new Set(this.tradeGold.map((d) => d.id));
-    const def = rollOneOffer(this.offerRound, exclude, { tiers: [this.tradeTo], allowPrisma: this.tradeTo === 'prisma' });
+    const def = rollOneOffer(this.offerRound, exclude, { tiers: [this.tradeTo], allowPrisma: this.tradeTo === 'prisma', forced: true });
     if (!def) return;
     this.tradeGold[i] = def;
     this.tradeRerolled[i] = true;
