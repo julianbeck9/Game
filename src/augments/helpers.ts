@@ -2,6 +2,7 @@ import type { Unit } from '../entities/Unit';
 import type { AugmentCtx, AugmentDef, Tier } from './types';
 import type { StatName } from '../core/stats';
 import { augmentFitsChampion } from './eligibility';
+import { addAugment } from '../core/run';
 
 /**
  * Runtime reference to the full augment pool, filled in by registry.ts after
@@ -14,8 +15,14 @@ export const poolRef: { all: AugmentDef[] } = { all: [] };
  * Grant a random not-yet-owned augment permanently (Transmutationen).
  * Meant for onCombatInit-time grants: the init loop iterating run.augments
  * picks the pushed entry up and activates it — no manual grantTemp here.
+ * Goes through `addAugment` so tag counts/flags/MAX_AUGMENTS stay in one
+ * place; returns null both when the pool is exhausted and when slots are full.
  */
-export function grantRandomAugment(ctx: AugmentCtx, tier: Tier | null, announce = true): AugmentDef | null {
+export function grantRandomAugment(
+  ctx: AugmentCtx,
+  tier: Tier | null,
+  opts: { announce?: boolean; label?: string; color?: string } = {},
+): AugmentDef | null {
   const pool = poolRef.all.filter(
     (a) =>
       (tier === null || a.tier === tier) &&
@@ -24,10 +31,10 @@ export function grantRandomAugment(ctx: AugmentCtx, tier: Tier | null, announce 
   );
   if (pool.length === 0) return null;
   const rolled = pool[Math.floor(Math.random() * pool.length)];
-  ctx.run.augments.push(rolled);
-  for (const t of rolled.tags) ctx.run.tagCounts[t]++;
-  if (rolled.ruleFlags) Object.assign(ctx.run.flags, rolled.ruleFlags);
-  if (announce) ctx.combat.announce(`New: ${rolled.name}`, '#ddaaff');
+  if (!addAugment(rolled)) return null; // slots full
+  if (opts.announce ?? true) {
+    ctx.combat.announce(`${opts.label ?? 'New'}: ${rolled.name}`, opts.color ?? '#ddaaff');
+  }
   return rolled;
 }
 

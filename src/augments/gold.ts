@@ -2,6 +2,7 @@ import { AugmentDef, AugmentCtx } from './types';
 import type { Unit } from '../entities/Unit';
 import { pp, ppDmg, msPct, procDamage, procActive, slowUnit, unitLockReady, statRolls, grantRandomAugment, poolRef } from './helpers';
 import { augmentFitsChampion } from './eligibility';
+import { removeAugment } from '../core/run';
 
 /**
  * GOLD — spürbare Machtsprünge. Gleiche Herkunft wie Silber: bekannte
@@ -780,6 +781,7 @@ const transmutPrisma: AugmentDef = {
     if (ctx.run.memory.transmutPrismaDone) return;
     ctx.run.memory.transmutPrismaDone = 1;
     grantRandomAugment(ctx, 'prisma');
+    removeAugment('transmutprisma'); // one-shot: the slot it occupied is now free
   },
 };
 

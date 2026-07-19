@@ -27,11 +27,16 @@ export class AugmentManager {
     };
   }
 
-  /** Call once after the combat scene has created the player. */
+  /**
+   * Call once after the combat scene has created the player. Snapshots the
+   * arrays first: a transmute's onCombatInit grants new augments and then
+   * removes itself (splices run.augments) — iterating the live array would
+   * skip whichever entry shifts into the just-vacated index.
+   */
   init(): void {
-    for (const def of run.augments) this.activate(def);
+    for (const def of [...run.augments]) this.activate(def);
     // Items are augment-shaped: same stat pipeline, same hook bus
-    for (const item of run.items) this.activate(item);
+    for (const item of [...run.items]) this.activate(item);
   }
 
   /** Activate one augment for this combat (also used for mid-fight temp grants — Narrenwürfel). */

@@ -56,11 +56,13 @@ function newRunState(): RunState {
   };
 }
 
-/** Add a picked augment: registry entry + tag counts + rule flags. */
-export function addAugment(def: AugmentDef): void {
+/** Add a picked augment: registry entry + tag counts + rule flags. Refuses once MAX_AUGMENTS is hit. */
+export function addAugment(def: AugmentDef): boolean {
+  if (run.augments.length >= MAX_AUGMENTS) return false;
   run.augments.push(def);
   for (const t of def.tags) run.tagCounts[t]++;
   if (def.ruleFlags) Object.assign(run.flags, def.ruleFlags);
+  return true;
 }
 
 /** Drop an owned augment and rebuild tag counts + rule flags from what's left. */

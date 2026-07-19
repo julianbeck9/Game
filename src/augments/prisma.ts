@@ -2,8 +2,8 @@ import { AugmentDef } from './types';
 import type { Unit } from '../entities/Unit';
 import { COLORS } from '../config';
 import { pp, ppDmg, msPct, procDamage, procActive, slowUnit, enemiesWithin, unitLockReady, statRolls, grantRandomAugment } from './helpers';
-import { augmentFitsChampion } from './eligibility';
 import { SILBER } from './silber';
+import { removeAugment } from '../core/run';
 
 /**
  * PRISMA — Regelbrecher und Fantasie-Erfüller. Konzepte aus dem bekannten
@@ -932,6 +932,7 @@ const transmutChaos: AugmentDef = {
     ctx.run.memory.chaosDone = 1;
     grantRandomAugment(ctx, null);
     grantRandomAugment(ctx, null);
+    removeAugment('transmutchaos'); // one-shot: the slot it occupied is now free
   },
 };
 
@@ -945,16 +946,15 @@ const transmutSilber: AugmentDef = {
   onCombatInit: (ctx) => {
     if (ctx.run.memory.tsilberDone) return;
     ctx.run.memory.tsilberDone = 1;
-    const pool = SILBER.filter(
-      (a) => !ctx.run.augments.some((o) => o.id === a.id) && augmentFitsChampion(a, ctx.run.champion),
-    );
-    for (let i = 0; i < 3 && pool.length > 0; i++) {
-      const rolled = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-      ctx.run.augments.push(rolled);
-      for (const t of rolled.tags) ctx.run.tagCounts[t]++;
-      if (rolled.ruleFlags) Object.assign(ctx.run.flags, rolled.ruleFlags);
+    // 'silber' tier already scopes the shared pool to SILBER; each call excludes
+    // what the previous call just granted, so all three land distinct (or stop
+    // early once the pool/slots run out) — same addAugment path as every other grant.
+    for (let i = 0; i < 3; i++) {
+      const rolled = grantRandomAugment(ctx, 'silber', { announce: false });
+      if (!rolled) break;
       ctx.combat.announce(`Silver: ${rolled.name}`, '#cccccc');
     }
+    removeAugment('transmutsilber'); // one-shot: the slot it occupied is now free
   },
 };
 

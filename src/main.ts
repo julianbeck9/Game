@@ -105,8 +105,7 @@ window.__CC = {
   grant: (id: string) => {
     const def = augmentById(id);
     if (!def) return false;
-    addAugment(def);
-    return true;
+    return addAugment(def);
   },
   // Test helper: grant an item by id without paying (takes effect on next goto/round)
   grantItem: (id: string) => {
