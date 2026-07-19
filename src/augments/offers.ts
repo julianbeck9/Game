@@ -4,8 +4,14 @@ import { isDeleted } from '../core/balance';
 import { run } from '../core/run';
 import { augmentFitsChampion } from './eligibility';
 
-/** Tier gating per pick (after round N): early Silber · midgame Silber/Gold · lategame Gold/Prisma. */
-function allowedTiers(round: number): Tier[] {
+/**
+ * Tier gating per pick (after round N): early Silber · midgame Silber/Gold ·
+ * lategame Gold/Prisma. Exported so callers (PickScene) and tests can check a
+ * roll's tier against the same band the roll itself used — an offer rolled
+ * for round N and a reroll of it must use identical tiers, or the reroll can
+ * dead-end without ever being a bug in `rollOneOffer` itself (B4).
+ */
+export function allowedTiers(round: number): Tier[] {
   // Wagemut: alle künftigen Angebote eine Stufe höher
   const boost = run.memory.tierBoost ?? 0;
   const shift = (t: Tier): Tier =>
@@ -88,4 +94,27 @@ export function rollOffers(round: number, count = 3): AugmentDef[] {
     exclude.add(def.id);
   }
   return offers;
+}
+
+/** One offered augment card, as shown by PickScene. Kept here (not in
+ * PickScene.ts, which imports Phaser) so its pure reroll logic below is
+ * importable from tests without pulling in Phaser's device feature
+ * detection, which throws under jsdom's canvas shim. */
+export interface Offer {
+  def: AugmentDef;
+  rerolled: boolean;
+  /** Reroll was attempted but the tier-gated pool was exhausted (rollOneOffer
+   * returned null) — the card keeps its previous def; reroll is disabled. */
+  exhausted?: boolean;
+}
+
+/**
+ * Pure reroll-decision step: a fresh card on success, or the same card
+ * marked `exhausted` on a null roll. Never returns `cur` unchanged-and-still
+ * -rerollable — a null roll must always become visibly disabled, not a
+ * silent no-op (B4: "wenn du Augments ausgewählt hast und rerollst kommen
+ * die nicht mehr").
+ */
+export function nextOfferAfterReroll(cur: Offer, def: AugmentDef | null): Offer {
+  return def ? { def, rerolled: true } : { ...cur, exhausted: true };
 }

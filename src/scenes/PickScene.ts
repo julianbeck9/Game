@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { AugmentDef, Tier } from '../augments/types';
 import { addAugment, run, MAX_AUGMENTS, removeAugment } from '../core/run';
-import { rollOneOffer } from '../augments/offers';
+import { rollOneOffer, nextOfferAfterReroll, Offer } from '../augments/offers';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { sfx } from '../core/sfx';
 
@@ -15,11 +15,6 @@ const TIER_LABEL: Record<Tier, string> = {
   gold: 'Gold',
   prisma: 'Prisma',
 };
-
-interface Offer {
-  def: AugmentDef;
-  rerolled: boolean;
-}
 
 export interface PickSceneData {
   offers: AugmentDef[];
@@ -35,8 +30,7 @@ export class PickScene extends Phaser.Scene {
   private picked = false;
   private mode: 'select' | 'tradeRemove' | 'tradePick' = 'select';
   private offers: Offer[] = [];
-  private tradeGold: AugmentDef[] = [];
-  private tradeRerolled: boolean[] = [];
+  private tradeOffers: Offer[] = [];
   private tradeFrom: Tier = 'silber';
   private tradeTo: Tier = 'gold';
   private offerRound = 1;
@@ -64,20 +58,19 @@ export class PickScene extends Phaser.Scene {
     if (this.picked || this.mode !== 'select') return;
     const o = this.offers[i];
     if (!o || run.augments.length >= MAX_AUGMENTS) return;
+    if (!addAugment(o.def)) { this.render(); return; } // slots filled up elsewhere — re-render shows "Slots full"
     this.picked = true;
     sfx.pick();
-    addAugment(o.def);
     this.time.delayedCall(180, () => this.routeOn());
   }
 
   private rerollSlot(i: number): void {
     if (this.mode !== 'select') return;
     const cur = this.offers[i];
-    if (!cur || cur.rerolled) return;
+    if (!cur || cur.rerolled || cur.exhausted) return;
     const def = rollOneOffer(this.offerRound, this.excludeSet());
-    if (!def) return;
-    this.offers[i] = { def, rerolled: true };
-    sfx.cast();
+    this.offers[i] = nextOfferAfterReroll(cur, def);
+    if (def) sfx.cast();
     this.render();
   }
 
@@ -239,13 +232,12 @@ export class PickScene extends Phaser.Scene {
     if (this.picked) return;
     sfx.pick();
     removeAugment(id);
-    this.tradeGold = [];
-    this.tradeRerolled = [false, false, false];
+    this.tradeOffers = [];
     const exclude = new Set<string>();
-    while (this.tradeGold.length < 3) {
+    while (this.tradeOffers.length < 3) {
       const def = rollOneOffer(this.offerRound, exclude, { tiers: [this.tradeTo], allowPrisma: this.tradeTo === 'prisma', forced: true });
       if (!def) break;
-      this.tradeGold.push(def);
+      this.tradeOffers.push({ def, rerolled: false });
       exclude.add(def.id);
     }
     this.mode = 'tradePick';
@@ -254,34 +246,33 @@ export class PickScene extends Phaser.Scene {
 
   private renderTradePick(): void {
     this.title(`Choose your ${TIER_LABEL[this.tradeTo]} augment`);
-    if (this.tradeGold.length === 0) { this.continueButton(); return; }
+    if (this.tradeOffers.length === 0) { this.continueButton(); return; }
     const cardW = 460, cardH = 560, gap = 60;
-    const total = this.tradeGold.length * cardW + (this.tradeGold.length - 1) * gap;
+    const total = this.tradeOffers.length * cardW + (this.tradeOffers.length - 1) * gap;
     const x0 = (GAME_W - total) / 2 + cardW / 2;
     const y = GAME_H / 2 + 20;
-    this.tradeGold.forEach((def, i) => {
-      this.makeCard({ def, rerolled: this.tradeRerolled[i] }, x0 + i * (cardW + gap), y, cardW, cardH, i, true);
+    this.tradeOffers.forEach((o, i) => {
+      this.makeCard(o, x0 + i * (cardW + gap), y, cardW, cardH, i, true);
     });
   }
 
   private pickTradeGold(i: number): void {
     if (this.picked || this.mode !== 'tradePick') return;
-    const def = this.tradeGold[i];
-    if (!def) return;
+    const o = this.tradeOffers[i];
+    if (!o) return;
+    if (!addAugment(o.def)) { this.mode = 'select'; this.render(); return; } // slots filled up elsewhere
     this.picked = true;
     sfx.pick();
-    addAugment(def);
     this.time.delayedCall(180, () => this.routeOn());
   }
 
   private rerollTradeGold(i: number): void {
-    if (this.tradeRerolled[i]) return;
-    const exclude = new Set(this.tradeGold.map((d) => d.id));
+    const cur = this.tradeOffers[i];
+    if (!cur || cur.rerolled || cur.exhausted) return;
+    const exclude = new Set(this.tradeOffers.map((o) => o.def.id));
     const def = rollOneOffer(this.offerRound, exclude, { tiers: [this.tradeTo], allowPrisma: this.tradeTo === 'prisma', forced: true });
-    if (!def) return;
-    this.tradeGold[i] = def;
-    this.tradeRerolled[i] = true;
-    sfx.cast();
+    this.tradeOffers[i] = nextOfferAfterReroll(cur, def);
+    if (def) sfx.cast();
     this.render();
   }
 
@@ -322,17 +313,20 @@ export class PickScene extends Phaser.Scene {
     bg.on('pointerout', () => bg.setFillStyle(0x14141f));
     bg.on('pointerdown', () => (trade ? this.pickTradeGold(index) : this.pickSlot(index)));
 
-    // Reroll — UNDER the card, clearly separated so it can't be misclicked
+    // Reroll — UNDER the card, clearly separated so it can't be misclicked.
+    // A null roll (pool exhausted) always disables the button too — it never
+    // looks unchanged/broken, even though the card itself keeps its def (B4).
     const ry = y + h / 2 + 34;
-    const used = o.rerolled;
+    const disabled = o.rerolled || o.exhausted;
+    const label = o.exhausted ? 'no augments left' : o.rerolled ? 'reroll used' : '⟳  Reroll';
     const rBtn = this.add
-      .rectangle(x, ry, w - 40, 52, used ? 0x191922 : 0x243050, 1)
-      .setStrokeStyle(2, used ? 0x33384a : 0x6a9ad0, 1);
-    this.add.text(x, ry, used ? 'reroll used' : '⟳  Reroll', {
+      .rectangle(x, ry, w - 40, 52, disabled ? 0x191922 : 0x243050, 1)
+      .setStrokeStyle(2, disabled ? 0x33384a : 0x6a9ad0, 1);
+    this.add.text(x, ry, label, {
       fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'bold',
-      color: used ? '#44485a' : '#a8d8ff',
+      color: disabled ? '#44485a' : '#a8d8ff',
     }).setOrigin(0.5);
-    if (!used) {
+    if (!disabled) {
       rBtn.setInteractive({ useHandCursor: true });
       rBtn.on('pointerdown', () => (trade ? this.rerollTradeGold(index) : this.rerollSlot(index)));
     }
