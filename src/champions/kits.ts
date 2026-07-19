@@ -125,6 +125,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 300, cds: { Q: 5000, E: 8000, Dash: 4500 }, scales: ['ap'],
     base: { ...MELEE, maxHP: 200, moveSpeed: 345, abilityPower: 18, attackRange: 210, damage: 22, projSpeed: 850 },
     kitLine: 'Passive nimble · Q trident lunge · E empowered strike · Dash untargetable hop',
+    // fireQ leaps to a target (search up to 360) or qRange in aim dir, then AoE r=140 at landing.
+    spec: { q: { kind: 'circle', radius: 140, at: 'self' } },
     info: {
       passive: AI('Nimble Fighter', 'Your attacks reach a little farther and slip through the crowd.'),
       q: AI('Trident Lunge', 'Leap to a target, slam for magic damage + 30% slow. [arcing jump, splash on landing]'),
@@ -146,6 +148,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 300, cds: { Q: 6000, E: 8000, Dash: 7000 }, scales: ['ad'],
     base: { ...MELEE, maxHP: 260, armor: 18 },
     kitLine: 'Passive first-strike · Q flag return · E aegis shield · Dash planted lance',
+    // fireQ returns to the planted flag (or self if none), AoE r=150 on arrival.
+    spec: { q: { kind: 'circle', radius: 150, at: 'self' } },
     info: {
       passive: AI('Martial Cadence', 'Your first strike on a foe deals bonus % max health as magic. [gold flash on hit]'),
       q: AI('Standard Return', 'Dash back to your planted banner, damaging on arrival. [fade out and reappear at flag]'),
@@ -175,6 +179,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 500, cds: { Q: 5000, E: 7000, Dash: 6000 }, scales: ['ap'],
     base: { ...TANK, maxHP: 280, abilityPower: 24, attackRange: 175 },
     kitLine: 'Passive bravado CDR · Q starlight heal · E dazzle stun · Dash radiance blink',
+    // fireQ is a pure self-heal, no target/zone.
+    spec: { q: { kind: 'self' } },
     info: {
       passive: AI('Bravado', 'Your attacks reduce your cooldowns by 1s. [yellow spark on hit]'),
       q: AI("Starlight's Touch", 'Heal yourself for a burst of health. [rising star particles]'),
@@ -196,6 +202,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 560, cds: { Q: 6000, E: 0, Dash: 5000 }, scales: ['ap'],
     base: { ...CASTER, moveSpeed: 320, attackRange: 500 },
     kitLine: 'Passive camouflage · Q blinding dart · E toxic autos · Dash scout hop',
+    // fireQ: homing projectile, maxDist 700, hit-radius 8 (width = 2*radius).
+    spec: { q: { kind: 'line', range: 700, width: 16, speed: 1100 } },
     info: {
       passive: AI('Camouflage', 'Stand still and you fade from sight; your first attack from hiding hits harder. [alpha fades when idle]'),
       q: AI('Blinding Dart', 'Blind and damage a target so its attacks miss. [flashing X over eyes]'),
@@ -229,6 +237,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 620, cds: { Q: 8000, E: 6000, Dash: 5000 }, scales: ['ap'],
     base: { ...RANGED, maxHP: 175, attackRange: 540, abilityPower: 18 },
     kitLine: 'Passive death burst · Q bio-arcane range · E void ooze · Dash ooze lunge',
+    // fireQ is a pure self-buff (attack range + on-hit magic damage window), no zone.
+    spec: { q: { kind: 'self' } },
     info: {
       passive: AI('Icathian Surprise', 'When you fall, you burst — enemies nearby take a share of your max health.'),
       q: AI('Bio-Arcane Barrage', 'Gain attack range; your attacks add magic damage for a while. [mouth glows purple]'),
@@ -254,6 +264,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 260, cds: { Q: 6000, E: 7000, Dash: 6500 }, scales: ['ap'],
     base: { ...TANK, maxHP: 330 },
     kitLine: 'Passive roar-on-kill · Q trample knock-up · E roar shield · Dash headbutt',
+    // fireQ hops 120 in aim dir, then AoE r=180 around the landing spot.
+    spec: { q: { kind: 'circle', radius: 180, at: 'self' } },
     info: {
       passive: AI('Triumphant Roar', 'Takedowns heal you. [green plus particles on kill]'),
       q: AI('Trample-Hop', 'Leap in and knock up everything around you. [ground-crack, targets flip up]'),
@@ -271,6 +283,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 620, cds: { Q: 4000, E: 3000, Dash: 7000 }, scales: ['ap'],
     base: { ...CASTER, moveSpeed: 330 },
     kitLine: 'Passive serpentine speed · Q twin fang · E miasma · Dash slither',
+    // fireQ: homing projectile, maxDist 650, hit-radius 8 (width = 2*radius).
+    spec: { q: { kind: 'line', range: 650, width: 16, speed: 1200 } },
     info: {
       passive: AI('Serpentine Grace', 'You glide faster than most — no boots needed. [tail motion-lines]'),
       q: AI('Twin Fang', 'Strike a target, far harder if it is poisoned. [purple spark on poisoned]'),
@@ -295,6 +309,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 300, cds: { Q: 4500, E: 7000, Dash: 5000 }, scales: ['ad'],
     base: { ...MELEE, moveSpeed: 340 },
     kitLine: 'Passive flurry · Q sonic dash-strike · E tempest slow · Dash charge',
+    // fireQ: projectile, maxDist 600, hit-radius 9 (width = 2*radius).
+    spec: { q: { kind: 'line', range: 600, width: 18, speed: 1400 } },
     info: {
       passive: AI('Flurry', 'After casting an ability, your attack speed surges. [wind swirl on fists]'),
       q: AI('Sonic Wave', 'Send a wave; dash to the first enemy it hits. [wave then blur-dash]'),
@@ -311,6 +327,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 650, cds: { Q: 4000, E: 7000, Dash: 6000 }, scales: ['ap'],
     base: { ...CASTER, attackRange: 520 },
     kitLine: 'Passive short fuse · Q bouncing bomb · E minefield · Dash satchel jump',
+    // fireQ targets the nearest enemy within 800, delayed AoE r=130 there.
+    spec: { q: { kind: 'circle', radius: 130, at: 'cursor', range: 800 } },
     info: {
       passive: AI('Short Fuse', 'Every 3rd hit carries a bonus explosion. [fuse spark on 3rd hit]'),
       q: AI('Bouncing Bomb', 'Lob a bomb that explodes on the nearest enemy. [bounce then starburst]'),
@@ -332,6 +350,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 500, cds: { Q: 6000, E: 8000, Dash: 6000 }, scales: ['ad'],
     base: { ...MELEE, damage: 24, attackSpeed: 1.2, lifesteal: 0.06 },
     kitLine: 'Passive umbra blades · Q paranoia leap · E fear · Dash reaping blade',
+    // fireQ: unlimited-feel gap-close to any enemy within near(p, 2000), single-target hit (no AoE).
+    spec: { q: { kind: 'dash', range: 2000 } },
     info: {
       passive: AI('Umbra Blades', 'Attacks come faster and drink a little life. [dark slash trail]'),
       q: AI('Paranoia', 'Leap onto any enemy in the arena. [dissolve to shadow, reappear behind]'),
@@ -349,6 +369,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 300, cds: { Q: 5000, E: 8000, Dash: 6000 }, scales: ['ad'],
     base: { ...MELEE, maxHP: 250, lifesteal: 0.1 },
     kitLine: 'Passive eternal thirst · Q blood hunt · E primal howl · Dash leaping bite',
+    // fireQ is a pure self-buff (move speed toward wounded prey), no zone.
+    spec: { q: { kind: 'self' } },
     info: {
       passive: AI('Eternal Thirst', 'Attacks on wounded prey heal you. [red glow when target is low]'),
       q: AI('Blood Hunt', 'Surge toward wounded prey with bonus speed. [red eyes, red trail]'),
@@ -366,6 +388,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 700, cds: { Q: 8000, E: 5000, Dash: 9000 }, scales: ['ad'],
     base: { ...TANK, abilityPower: 16, attackRange: 170 },
     kitLine: 'Passive mana barrier · Q power fist · E static field · Dash rocket grab',
+    // fireQ empowers the next auto-attack (memory flag), no immediate target/zone.
+    spec: { q: { kind: 'self' } },
     info: {
       passive: AI('Mana Barrier', 'The first time you drop low, a shield absorbs the blow. [blue hex flash]'),
       q: AI('Power Fist', 'Your next attack knocks the target up. [fist glows, target flips]'),
@@ -384,6 +408,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 300, cds: { Q: 4500, E: 8000, Dash: 7000 }, scales: ['ap'],
     base: { ...TANK, maxHP: 330 },
     kitLine: 'Passive cursed touch · Q tantrum · E despair aura · Dash bandage pull',
+    // fireQ: AoE r=190 around self.
+    spec: { q: { kind: 'circle', radius: 190, at: 'self' } },
     info: {
       passive: AI('Cursed Touch', 'Your attacks carry bonus magic damage. [purple sparkle on hit]'),
       q: AI('Tantrum', 'Lash out for AoE magic damage. [flailing stomp, ground burst]'),
@@ -402,6 +428,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 620, cds: { Q: 6000, E: 5000, Dash: 6000 }, scales: ['ap'],
     base: { ...CASTER, abilityPower: 30 },
     kitLine: 'Passive blaze · Q searing stun · E pillar of flame · Dash flame step',
+    // fireQ: homing projectile, maxDist 650, hit-radius 9 (width = 2*radius).
+    spec: { q: { kind: 'line', range: 650, width: 18, speed: 1100 } },
     info: {
       passive: AI('Blaze', 'Your hits stack fire; the 3rd stack detonates. [flame icons, burst on 3rd]'),
       q: AI('Sear', 'A bolt that stuns and burns. [fireball, stun stars]'),
@@ -423,6 +451,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 700, cds: { Q: 5000, E: 0, Dash: 5000 }, scales: ['ad'],
     base: { ...RANGED, attackRange: 540 },
     kitLine: 'Passive living vengeance · Q piercing arrow · E blight stacks · Dash blades',
+    // fireQ: piercing projectile (maxHits 3), maxDist 720, hit-radius 10 (width = 2*radius).
+    spec: { q: { kind: 'line', range: 720, width: 20, speed: 1300 } },
     info: {
       passive: AI('Living Vengeance', 'Landing an ability surges your attack speed. [purple wing flare]'),
       q: AI('Piercing Arrow', 'A powerful long-range piercing arrow. [charging glow, fast streak]'),
@@ -440,6 +470,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 400, cds: { Q: 6000, E: 7000, Dash: 5000 }, scales: ['ad'],
     base: { ...MELEE, attackSpeed: 1.4, critChance: 0.15 },
     kitLine: 'Passive double strike · Q meditate · E wuju style · Dash alpha strike',
+    // fireQ is a channeled self-heal, no target/zone.
+    spec: { q: { kind: 'self' } },
     info: {
       passive: AI('Double Strike', 'Every 2nd attack strikes twice. [duplicate slash]'),
       q: AI('Meditate', 'Channel to heal over a few seconds. [kneel, green particle ring]'),
@@ -461,6 +493,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 500, cds: { Q: 7000, E: 8000, Dash: 6000 }, scales: ['ap'],
     base: { ...CASTER },
     kitLine: 'Passive dread · Q terrify · E drain channel · Dash spectral blink',
+    // fireQ targets the nearest enemy within 520, single-target stun+damage (no AoE) — radius 0 marks a point-target.
+    spec: { q: { kind: 'circle', radius: 0, at: 'cursor', range: 520 } },
     info: {
       passive: AI('Dread', 'Stand still to fade away; your first strike from hiding terrifies. [alpha fades when idle]'),
       q: AI('Terrify', 'Frighten a target and damage it. [dark hand reach, skull flash]'),
@@ -498,6 +532,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 640, cds: { Q: 4200, E: 8000, Dash: 5000 }, scales: ['ad'],
     base: { ...RANGED, damage: 100, attackRange: 500 },
     kitLine: 'Passive fleet of foot · Q boomerang blade · E spell shield · Dash ricochet step',
+    // fireQ: boomerang projectile, maxDist 640, hit-radius 13 (width = 2*radius).
+    spec: { q: { kind: 'line', range: 640, width: 26, speed: 1050 } },
     info: {
       passive: AI('Fleet of Foot', 'Takedowns leave you fleet-footed. [blue speed lines on kill]'),
       q: AI('Boomerang Blade', 'Hurl a blade that flies out and back. [crossblade spins out and back]'),
@@ -515,6 +551,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 400, cds: { Q: 6000, E: 7000, Dash: 6000 }, scales: ['ap'],
     base: { ...TANK, maxHP: 360, damage: 22 },
     kitLine: 'Passive carnivore · Q rupture knock-up · E feral scream · Dash feast lunge',
+    // fireQ: fixed-distance point in aim dir (260), delayed AoE r=130 there.
+    spec: { q: { kind: 'circle', radius: 130, at: 'cursor', range: 260 } },
     info: {
       passive: AI('Carnivore', 'Takedowns permanently grow your max health. [brief size pulse]'),
       q: AI('Rupture', 'Spikes burst from the ground, knocking up. [cracks glow, spikes erupt]'),
@@ -551,6 +589,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 600, cds: { Q: 5000, E: 8000, Dash: 6000 }, scales: ['ap'],
     base: { ...TANK, maxHP: 300, abilityPower: 22, attackRange: 300, moveSpeed: 330 },
     kitLine: 'Passive happy hour · Q barrel roll · E explosive cask · Dash body slam',
+    // fireQ: fixed-distance point in aim dir (300), AoE r=140 there.
+    spec: { q: { kind: 'circle', radius: 140, at: 'cursor', range: 300 } },
     info: {
       passive: AI('Happy Hour', 'Casting an ability tops you off with a little health. [beer-mug flash]'),
       q: AI('Barrel Roll', 'Roll a cask that bursts for damage and slow. [spinning barrel, splash]'),
@@ -567,6 +607,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 650, cds: { Q: 3500, E: 16000, Dash: 6000 }, scales: ['ap'],
     base: { ...CASTER, maxHP: 190 },
     kitLine: 'Passive death defied · Q lay waste · E requiem global · Dash spectral slide',
+    // fireQ targets the nearest enemy within 700 (or facing dir *300 fallback), delayed AoE r=90.
+    spec: { q: { kind: 'circle', radius: 90, at: 'cursor', range: 700 } },
     info: {
       passive: AI('Death Defied', 'A whisper of the grave clings to you. [ghostly grey tint]'),
       q: AI('Lay Waste', 'A delayed blast at a point. [orb travels, jagged burst]'),
@@ -583,6 +625,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 560, cds: { Q: 5000, E: 9000, Dash: 4000 }, scales: ['ad'],
     base: { ...RANGED, attackSpeed: 1.15 },
     kitLine: 'Passive lightslinger · Q piercing light · E culling burst · Dash relentless pursuit',
+    // fireQ: instant line check along aim dir, range 560, half-width 45 (+ target radius) → width 90.
+    spec: { q: { kind: 'line', range: 560, width: 90 } },
     info: {
       passive: AI('Lightslinger', 'Every 2nd ability fires a bonus shot at the nearest foe. [double muzzle flash]'),
       q: AI('Piercing Light', 'A line of light through enemies. [horizontal light-bullet]'),
@@ -600,6 +644,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 300, cds: { Q: 6000, E: 8000, Dash: 6000 }, scales: ['ad'],
     base: { ...TANK, damage: 20, attackRange: 165, magicResist: 20 },
     kitLine: 'Passive ki barrier · Q twilight %HP autos · E spirit refuge · Dash shadow taunt',
+    // fireQ is a pure self-buff (shield + next-autos-deal-%HP window), no zone.
+    spec: { q: { kind: 'self' } },
     info: {
       passive: AI('Ki Barrier', 'Casting an ability grants a shield. [blue-white hex flash]'),
       q: AI('Twilight Assault', 'Your attacks deal bonus % max-HP damage for a while. [white blade glow]'),
