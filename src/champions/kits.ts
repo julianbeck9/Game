@@ -2,7 +2,7 @@ import { COLORS } from '../config';
 import { norm } from '../core/geometry';
 import { run } from '../core/run';
 import type { StatName } from '../core/stats';
-import type { ChampionDef, AbilityInfo } from './types';
+import type { ChampionDef, AbilityInfo, AbilityShape } from './types';
 import type { Player } from '../entities/Player';
 import type { Unit } from '../entities/Unit';
 
@@ -20,6 +20,7 @@ export interface Kit {
   cds: { Q: number; E: number; Dash: number };
   base: Partial<Record<StatName, number>>;
   info: { passive: AbilityInfo; q: AbilityInfo; e: AbilityInfo; dash: AbilityInfo };
+  spec?: { q?: AbilityShape; e?: AbilityShape; dash?: AbilityShape };
   kitLine: string;
   scales: ('ad' | 'ap')[];
   qCdFromAS?: boolean;
@@ -92,6 +93,8 @@ export const KITS: Record<string, Kit> = {
     ranged: false, qRange: 240, cds: { Q: 4500, E: 9000, Dash: 6000 }, scales: ['ap'],
     base: { ...TANK, maxHP: 360, attackRange: 175 },
     kitLine: 'Passive reform · Q unstable pulse · E stretching strikes · Dash slingshot',
+    // fireQ hits enemiesIn(p, p.x, p.y, 200) around self — radius 200, not qRange.
+    spec: { q: { kind: 'circle', radius: 200, at: 'self' } },
     info: {
       passive: AI('Cell Division', 'The first time you would fall each fight, split and reform at 20% health.'),
       q: AI('Unstable Matter', 'Erupt for AoE magic damage around you. [green pulse ring expands outward]'),
@@ -476,6 +479,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 700, cds: { Q: 6000, E: 6000, Dash: 6000 }, scales: ['ap'],
     base: { ...CASTER, abilityPower: 28, attackRange: 480 },
     kitLine: 'Passive illumination · Q light binding root · E prismatic barrier · Dash light blink',
+    // fireQ: spawnProjectile maxDist 700, hit-radius 12 (width = 2*radius).
+    spec: { q: { kind: 'line', range: 700, width: 24, speed: 1100 } },
     info: {
       passive: AI('Illumination', 'Ability hits mark a target; your next hit on it pops the mark. [pink glowing dot]'),
       q: AI('Light Binding', 'A piercing beam that roots enemies. [pink orb, light-bar root]'),
@@ -527,6 +532,8 @@ export const KITS: Record<string, Kit> = {
     ranged: true, qRange: 620, cds: { Q: 5000, E: 12000, Dash: 5500 }, scales: ['ad'],
     base: { ...RANGED, attackRange: 520, critChance: 0.15 },
     kitLine: 'Passive frost shot · Q volley (slow) · E enchanted arrow stun · Dash ranger focus',
+    // fireQ: 5-bolt fan, i in [-2..2] * 0.14 rad each → 0.56 rad (~32°) total spread, maxDist 620.
+    spec: { q: { kind: 'cone', range: 620, angle: 32 } },
     info: {
       passive: AI('Frost Shot', 'Your attacks slow. [icy-blue tint on hit]'),
       q: AI('Volley', 'Fan of arrows that slow. [cone of arrows, frost bursts]'),

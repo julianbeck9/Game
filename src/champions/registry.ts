@@ -63,6 +63,7 @@ function build(row: Row): ChampionDef {
     kitLine: k.kitLine,
     info: k.info,
     base: { ...k.base },
+    spec: k.spec,
     ranged: k.ranged,
     qRange: k.qRange,
     cds: k.cds,

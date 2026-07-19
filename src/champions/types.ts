@@ -10,6 +10,19 @@ export interface AbilityInfo {
 }
 
 /**
+ * Declarative ground-truth for an ability's targeting shape, read by the aim
+ * preview, the range/radius indicators, the description generator, and bot
+ * AI — kept separate from `AbilityInfo` (which stays flavor text/name only).
+ * Numbers must match what the `fireQ`/`castE` effect code actually hits.
+ */
+export type AbilityShape =
+  | { kind: 'line'; range: number; width: number; speed?: number }
+  | { kind: 'circle'; radius: number; at: 'self' | 'cursor'; range?: number }
+  | { kind: 'cone'; range: number; angle: number } // angle in degrees
+  | { kind: 'dash'; range: number }
+  | { kind: 'self' }; // pure self-buff, no targetable shape
+
+/**
  * Playable champion: a LoL-like stat sheet plus a 3-slot kit (Q / E / Dash),
  * a passive, and a 16-bit sprite. Fan-homage kits are adapted to this game's
  * controls; all art and text here is original.
@@ -30,6 +43,12 @@ export interface ChampionDef {
     dash: AbilityInfo;
   };
   base: Partial<Record<StatName, number>>;
+  /**
+   * Declarative ability shapes for consumers that need ground truth about
+   * targeting geometry (preview renderer, description generator, bot AI).
+   * Optional per-slot so non-migrated champions don't break the build.
+   */
+  spec?: { q?: AbilityShape; e?: AbilityShape; dash?: AbilityShape };
   /**
    * Champion damage identity (LoL-like): which stats this champion's kit
    * actually scales with. Used to gate augment offers — an AP-only augment is
