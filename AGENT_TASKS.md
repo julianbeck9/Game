@@ -68,14 +68,35 @@ use: champ:*` beim erneuten Betreten der Arena via `goto` — das ist KEIN von d
 verursachter Fehler und `verify` toleriert es. Alles andere in der Konsole ist ein
 echter Fehler und bricht `verify`.
 
+**Merge-Check (Pflicht, gegen parallele Agenten):** Parallel-Agenten pushen zwischen
+deinem Start und deinem Push. Ein isolierter Verify-Lauf beweist NUR deinen Stand, nicht
+den kombinierten. Deshalb: **nach dem finalen `git rebase` IMMER `npm install` und dann
+`npm run verify` erneut laufen lassen — auf dem gemergten Baum, direkt vor dem Push.**
+`npm install` ist nötig, weil ein Geschwister-Ticket eine neue devDependency (z. B.
+`jsdom`, `vitest`) hinzugefügt haben kann, die dein `node_modules` noch nicht hat und
+ohne die `verify`/`test` scheinbar grundlos bricht. Erst wenn der Merge-Check grün ist,
+pushst du.
+
 ### 0.5 Git-Flow (exakt so)
 ```bash
+# 1) committe deine Arbeit lokal (Message-Format siehe unten)
+git add -A && git commit
+
+# 2) hol den aktuellen Remote-Stand (Geschwister-Agenten haben evtl. gepusht)
 git fetch origin claude/crown-clash-arena-game-pmb2ei
-git rebase origin/claude/crown-clash-arena-game-pmb2ei   # falls dein lokaler Stand zurückliegt
-npm run verify            # muss grün sein (bzw. tsc --noEmit vor S0-1)
-git add -A && git commit  # Message-Format siehe unten
-git push -u origin claude/crown-clash-arena-game-pmb2ei   # bei Netzfehler: 2s,4s,8s,16s Backoff, max 4 Versuche
+git rebase origin/claude/crown-clash-arena-game-pmb2ei
+
+# 3) MERGE-CHECK auf dem kombinierten Baum (§0.4) — nicht überspringen
+npm install               # zieht neue devDeps der Geschwister-Tickets (jsdom/vitest/…)
+npm run verify            # muss grün sein (Exit 0); vor S0-1 ersatzweise: npx tsc --noEmit
+
+# 4) erst jetzt pushen (bei Netzfehler 2s,4s,8s,16s Backoff, max 4 Versuche)
+git push -u origin claude/crown-clash-arena-game-pmb2ei
 ```
+Wenn der Merge-Check nach dem Rebase rot wird, obwohl dein isolierter Lauf grün war,
+liegt es fast immer an (a) einer fehlenden devDependency eines Geschwister-Tickets
+(→ `npm install`) oder (b) einem echten inhaltlichen Konflikt zweier Änderungen
+(→ auflösen, nicht wegdrücken). Push nie einen roten Merge-Check.
 Commit-Message-Format (Betreff = imperativ, kurz):
 ```
 <Ticket-ID>: <was du getan hast>
