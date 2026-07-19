@@ -1034,27 +1034,69 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     if (this.aimPreview) {
       const px = this.player.x;
       const py = this.player.y;
-      const L = this.player.qRange;
       const ax = this.aimPreview.x;
       const ay = this.aimPreview.y;
-      // Wide translucent strip + core line + arrowhead so aiming reads clearly
-      this.aimGfx.fillStyle(COLORS.playerProj, 0.14);
-      this.aimGfx.fillTriangle(
-        px - ay * 20, py + ax * 20,
-        px + ay * 20, py - ax * 20,
-        px + ax * L, py + ay * L,
-      );
-      this.aimGfx.lineStyle(5, COLORS.playerProj, 0.6);
-      this.aimGfx.beginPath();
-      this.aimGfx.moveTo(px, py);
-      this.aimGfx.lineTo(px + ax * L, py + ay * L);
-      this.aimGfx.strokePath();
-      this.aimGfx.fillStyle(COLORS.playerProj, 0.9);
-      this.aimGfx.fillTriangle(
-        px + ax * L, py + ay * L,
-        px + ax * (L - 34) - ay * 16, py + ay * (L - 34) + ax * 16,
-        px + ax * (L - 34) + ay * 16, py + ay * (L - 34) - ax * 16,
-      );
+
+      // Legacy strip + core line + arrowhead — used for non-migrated champions
+      // (no spec.q yet) and as the 'line'/'dash' renderer below.
+      const drawArrow = (L: number, width: number) => {
+        const hw = width / 2;
+        this.aimGfx.fillStyle(COLORS.playerProj, 0.14);
+        this.aimGfx.fillTriangle(
+          px - ay * hw, py + ax * hw,
+          px + ay * hw, py - ax * hw,
+          px + ax * L, py + ay * L,
+        );
+        this.aimGfx.lineStyle(5, COLORS.playerProj, 0.6);
+        this.aimGfx.beginPath();
+        this.aimGfx.moveTo(px, py);
+        this.aimGfx.lineTo(px + ax * L, py + ay * L);
+        this.aimGfx.strokePath();
+        this.aimGfx.fillStyle(COLORS.playerProj, 0.9);
+        this.aimGfx.fillTriangle(
+          px + ax * L, py + ay * L,
+          px + ax * (L - 34) - ay * 16, py + ay * (L - 34) + ax * 16,
+          px + ax * (L - 34) + ay * 16, py + ay * (L - 34) - ax * 16,
+        );
+      };
+
+      const drawRing = (cx: number, cy: number, radius: number) => {
+        this.aimGfx.fillStyle(COLORS.playerProj, 0.12);
+        this.aimGfx.fillCircle(cx, cy, radius);
+        this.aimGfx.lineStyle(4, COLORS.playerProj, 0.7);
+        this.aimGfx.strokeCircle(cx, cy, radius);
+      };
+
+      const shape = this.player.champ.spec?.q;
+      if (!shape) {
+        // Fallback for champions without a spec yet — keep the original arrow.
+        drawArrow(this.player.qRange, 40);
+      } else if (shape.kind === 'line') {
+        drawArrow(shape.range, shape.width);
+      } else if (shape.kind === 'dash') {
+        this.aimGfx.lineStyle(5, COLORS.playerProj, 0.6);
+        this.aimGfx.beginPath();
+        this.aimGfx.moveTo(px, py);
+        this.aimGfx.lineTo(px + ax * shape.range, py + ay * shape.range);
+        this.aimGfx.strokePath();
+      } else if (shape.kind === 'circle' && shape.at === 'self') {
+        drawRing(px, py, shape.radius);
+      } else if (shape.kind === 'circle') {
+        const range = shape.range ?? this.player.qRange;
+        drawRing(px + ax * range, py + ay * range, shape.radius);
+      } else if (shape.kind === 'cone') {
+        const half = (shape.angle * Math.PI) / 360;
+        const facing = Math.atan2(ay, ax);
+        this.aimGfx.fillStyle(COLORS.playerProj, 0.16);
+        this.aimGfx.beginPath();
+        this.aimGfx.moveTo(px, py);
+        this.aimGfx.arc(px, py, shape.range, facing - half, facing + half, false);
+        this.aimGfx.closePath();
+        this.aimGfx.fillPath();
+        this.aimGfx.lineStyle(3, COLORS.playerProj, 0.6);
+        this.aimGfx.strokePath();
+      }
+      // 'self' (or any other formless spec) draws nothing — no targetable zone.
     }
 
     this.joystick.draw();
