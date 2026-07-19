@@ -107,10 +107,16 @@ export function earnGold(amount: number): void {
   run.goldEarned += amount;
 }
 
-/** Buy an item: pay and stash it. Caller checks affordability/slots. */
-export function addItem(item: ItemDef): void {
+/**
+ * Buy an item: pay and stash it. Refuses (no-op) if gold is short — gold must
+ * never go negative. Caller still checks slots/uniqueness before offering the
+ * purchase; this is the last-line guard on the money itself.
+ */
+export function addItem(item: ItemDef): boolean {
+  if (run.gold < item.cost) return false;
   run.gold -= item.cost;
   run.items.push(item);
   // Items may break rules too (Schutzengel: +1 Wiederbelebung)
   if (item.ruleFlags) Object.assign(run.flags, item.ruleFlags);
+  return true;
 }
