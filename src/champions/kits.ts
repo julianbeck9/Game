@@ -87,6 +87,72 @@ const TANK = { maxHP: 320, moveSpeed: 320, damage: 19, abilityPower: 20, attackS
 
 const AI = (name: string, desc: string): AbilityInfo => ({ name, desc });
 
+/**
+ * Q's primary round-scaled magnitude, keyed by champion id — the single
+ * source `fireQ`/`onAutoHit` (via `rs(...Q_SCALE.<id>)`) AND the generated
+ * kit description (`describe.ts`) both read from, so the two can never
+ * drift apart (fixes B6). One tuple per champion: the headline number a
+ * player would want to see (damage, heal, or a scaling buff amount).
+ */
+export const Q_SCALE: Record<string, [number, number, number, number]> = {
+  zac: [60, 90, 120, 150],
+  fizz: [65, 100, 135, 170],
+  jarvan: [50, 80, 110, 140],
+  taric: [50, 75, 100, 125],
+  teemo: [60, 90, 120, 150],
+  kogmaw: [40, 60, 80, 100],
+  alistar: [50, 75, 100, 125],
+  cassiopeia: [40, 60, 80, 100],
+  leesin: [40, 65, 90, 115],
+  ziggs: [60, 90, 120, 150],
+  nocturne: [70, 110, 150, 190],
+  warwick: [0.2, 0.3, 0.4, 0.5],
+  blitzcrank: [50, 80, 110, 140],
+  amumu: [50, 75, 100, 125],
+  brand: [60, 90, 120, 150],
+  varus: [50, 90, 130, 150],
+  masteryi: [20, 30, 40, 50],
+  fiddlesticks: [50, 75, 100, 125],
+  lux: [60, 90, 120, 150],
+  sivir: [45, 70, 95, 120],
+  chogath: [60, 90, 120, 150],
+  ashe: [50, 75, 100, 125],
+  gragas: [60, 90, 120, 150],
+  karthus: [50, 80, 110, 140],
+  lucian: [45, 70, 95, 120],
+  shen: [3, 4, 5, 6],
+};
+
+/** How to label/format each champion's Q_SCALE tuple in generated text. */
+export const Q_SCALE_LABEL: Record<string, { label: string; unit?: string; toPercent?: boolean }> = {
+  zac: { label: 'damage' },
+  fizz: { label: 'damage' },
+  jarvan: { label: 'damage' },
+  taric: { label: 'healing' },
+  teemo: { label: 'damage' },
+  kogmaw: { label: 'bonus attack range' },
+  alistar: { label: 'damage' },
+  cassiopeia: { label: 'damage' },
+  leesin: { label: 'damage' },
+  ziggs: { label: 'damage' },
+  nocturne: { label: 'damage' },
+  warwick: { label: 'bonus move speed', unit: '%', toPercent: true },
+  blitzcrank: { label: 'damage' },
+  amumu: { label: 'damage' },
+  brand: { label: 'damage' },
+  varus: { label: 'damage' },
+  masteryi: { label: 'healing per tick' },
+  fiddlesticks: { label: 'damage' },
+  lux: { label: 'damage' },
+  sivir: { label: 'damage' },
+  chogath: { label: 'damage' },
+  ashe: { label: 'damage per bolt' },
+  gragas: { label: 'damage' },
+  karthus: { label: 'damage' },
+  lucian: { label: 'damage' },
+  shen: { label: 'max HP damage', unit: '%' },
+};
+
 export const KITS: Record<string, Kit> = {
   // ---------------------------------------------------------------- Zac
   zac: {
@@ -106,7 +172,7 @@ export const KITS: Record<string, Kit> = {
       p.memory.zacUsed = 1; p.heal(p.maxHP * 0.2);
       p.combat.ring(p.x, p.y, 0x66cc44, 220); p.combat.announce('Cell Division!', '#66cc44');
     },
-    fireQ: (p) => { p.combat.ring(p.x, p.y, 0x66cc44, 200); for (const u of enemiesIn(p, p.x, p.y, 200)) hit(p, u, (rs(60, 90, 120, 150) + 0.4 * AP(p)) * AMP(p), 'magisch', 'Q'); },
+    fireQ: (p) => { p.combat.ring(p.x, p.y, 0x66cc44, 200); for (const u of enemiesIn(p, p.x, p.y, 200)) hit(p, u, (rs(...Q_SCALE.zac) + 0.4 * AP(p)) * AMP(p), 'magisch', 'Q'); },
     castE: (p) => { p.memory.zacSplash = 3; p.combat.ring(p.x, p.y, 0x88dd66, 60); },
     onAutoHit: (p, t) => {
       if ((p.memory.zacSplash ?? 0) <= 0 || !t.alive) return; p.memory.zacSplash!--;
@@ -135,7 +201,7 @@ export const KITS: Record<string, Kit> = {
     },
     fireQ: (p, d) => {
       const t = near(p, 360); const tx = t ? t.x : p.x + d.x * 200, ty = t ? t.y : p.y + d.y * 200; leapTo(p, tx, ty, 30);
-      for (const u of enemiesIn(p, p.x, p.y, 140)) { hit(p, u, (rs(65, 100, 135, 170) + 0.5 * AP(p)) * AMP(p), 'magisch', 'Q'); slowU(u, 'fizz', 0.3, 1500, T(p)); }
+      for (const u of enemiesIn(p, p.x, p.y, 140)) { hit(p, u, (rs(...Q_SCALE.fizz) + 0.5 * AP(p)) * AMP(p), 'magisch', 'Q'); slowU(u, 'fizz', 0.3, 1500, T(p)); }
       p.combat.ring(p.x, p.y, 0x66ccff, 140);
     },
     castE: (p) => { p.memory.fizzE = 1; p.combat.ring(p.x, p.y, 0x66ccff, 50); },
@@ -162,7 +228,7 @@ export const KITS: Record<string, Kit> = {
     },
     fireQ: (p) => {
       const fx = p.memory.jarvanFx ?? p.x, fy = p.memory.jarvanFy ?? p.y; leapTo(p, fx, fy, 0);
-      for (const u of enemiesIn(p, p.x, p.y, 150)) hit(p, u, (rs(50, 80, 110, 140) + 0.6 * bAD(p)) * AMP(p), 'physisch', 'Q');
+      for (const u of enemiesIn(p, p.x, p.y, 150)) hit(p, u, (rs(...Q_SCALE.jarvan) + 0.6 * bAD(p)) * AMP(p), 'physisch', 'Q');
       p.combat.ring(p.x, p.y, 0xffd24a, 150);
     },
     castE: (p) => { p.addShield((rs(60, 90, 120, 150) + 0.4 * bAD(p)) * AMP(p)); p.combat.ring(p.x, p.y, 0xffe0a0, 240); for (const u of enemiesIn(p, p.x, p.y, 240)) slowU(u, 'aegis', 0.2, 2000, T(p)); },
@@ -188,7 +254,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Radiance Step', 'Blink to a nearby foe and shield yourself. [sparkle fade + shield flash]'),
     },
     onAutoHit: (p) => p.reduceCooldowns(1000),
-    fireQ: (p) => { p.heal((rs(50, 75, 100, 125) + 0.3 * AP(p)) * AMP(p)); p.combat.ring(p.x, p.y, 0xff9bd0, 120); },
+    fireQ: (p) => { p.heal((rs(...Q_SCALE.taric) + 0.3 * AP(p)) * AMP(p)); p.combat.ring(p.x, p.y, 0xff9bd0, 120); },
     castE: (p, dir) => {
       const d = dir ?? p.facing; p.combat.flashLine(p.x, p.y, p.x + d.x * 500, p.y + d.y * 500, 0xffe680);
       const dmg = (rs(40, 60, 80, 100) + 0.25 * AP(p)) * AMP(p);
@@ -218,7 +284,7 @@ export const KITS: Record<string, Kit> = {
     fireQ: (p, d) => {
       const t = near(p, 600); const dx = t ? t.x - p.x : d.x, dy = t ? t.y - p.y : d.y;
       p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: dx, dirY: dy, speed: 1100, radius: 8, color: 0x88dd55, team: 'player', homing: t ?? undefined, maxDist: 700,
-        onHit: (u) => { hit(p, u, (rs(60, 90, 120, 150) + 0.4 * AP(p)) * AMP(p), 'magisch', 'Q'); slowU(u, 'blind', 0.45, rs(1500, 1750, 2000, 2250), T(p)); } });
+        onHit: (u) => { hit(p, u, (rs(...Q_SCALE.teemo) + 0.4 * AP(p)) * AMP(p), 'magisch', 'Q'); slowU(u, 'blind', 0.45, rs(1500, 1750, 2000, 2250), T(p)); } });
     },
     castE: () => { /* passive on-hit */ },
     onAutoHit: (p, t) => {
@@ -249,7 +315,7 @@ export const KITS: Record<string, Kit> = {
       if (p.memory.kogBoom || p.hpPct > 0.02 || p.alive) return; // rarely reached; player death ends the round
       p.memory.kogBoom = 1;
     },
-    fireQ: (p) => { p.stats.set({ id: 'buff:kogrange', stat: 'attackRange', flat: rs(40, 60, 80, 100), expiresAt: T(p) + 6000 }); p.memory.kogUntil = T(p) + 6000; p.combat.ring(p.x, p.y, 0x66ffcc, 80); },
+    fireQ: (p) => { p.stats.set({ id: 'buff:kogrange', stat: 'attackRange', flat: rs(...Q_SCALE.kogmaw), expiresAt: T(p) + 6000 }); p.memory.kogUntil = T(p) + 6000; p.combat.ring(p.x, p.y, 0x66ffcc, 80); },
     castE: (p, dir) => {
       const d = dir ?? p.facing;
       p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 800, radius: 12, color: 0x88ffaa, team: 'player', maxDist: 620, maxHits: 99,
@@ -273,7 +339,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Headbutt Charge', 'Charge a foe and knock it back. [head-first impact streak]'),
     },
     onAutoHit: (p, t) => { if (!t.alive) { p.heal(rs(30, 45, 60, 60) + 0.15 * AP(p)); p.combat.ring(p.x, p.y, 0x66cc66, 60); } },
-    fireQ: (p, d) => { p.moveBy(d.x * 120, d.y * 120, true); p.combat.ring(p.x, p.y, 0xcc88ff, 180); for (const u of enemiesIn(p, p.x, p.y, 180)) { hit(p, u, (rs(50, 75, 100, 125) + 0.4 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1000, T(p)); } },
+    fireQ: (p, d) => { p.moveBy(d.x * 120, d.y * 120, true); p.combat.ring(p.x, p.y, 0xcc88ff, 180); for (const u of enemiesIn(p, p.x, p.y, 180)) { hit(p, u, (rs(...Q_SCALE.alistar) + 0.4 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1000, T(p)); } },
     castE: (p) => { p.addShield((rs(60, 90, 120, 150) + 0.3 * AP(p)) * AMP(p)); p.heal(rs(30, 45, 60, 75)); p.combat.ring(p.x, p.y, 0xaaccff, 200); },
     onDash: (p, d) => { const t = near(p, 600); if (t) { leapTo(p, t.x, t.y, 50); const a = norm(t.x - p.x, t.y - p.y); t.moveBy(a.x * 200, a.y * 200); hit(p, t, (rs(40, 65, 90, 115) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Dash'); stun(t, 500, T(p)); return true; } p.moveBy(d.x * 200, d.y * 200, true); return true; },
   },
@@ -294,7 +360,7 @@ export const KITS: Record<string, Kit> = {
     fireQ: (p, d) => {
       const t = near(p, 600); const dx = t ? t.x - p.x : d.x, dy = t ? t.y - p.y : d.y;
       p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: dx, dirY: dy, speed: 1200, radius: 8, color: 0x99ff66, team: 'player', homing: t ?? undefined, maxDist: 650,
-        onHit: (u) => { const pois = u.burns.length > 0; hit(p, u, (rs(40, 60, 80, 100) + 0.35 * AP(p)) * AMP(p) * (pois ? 1.6 : 1), 'magisch', 'Q'); if (pois) p.combat.ring(u.x, u.y, 0xcc66ff, 40); } });
+        onHit: (u) => { const pois = u.burns.length > 0; hit(p, u, (rs(...Q_SCALE.cassiopeia) + 0.35 * AP(p)) * AMP(p) * (pois ? 1.6 : 1), 'magisch', 'Q'); if (pois) p.combat.ring(u.x, u.y, 0xcc66ff, 40); } });
     },
     castE: (p, dir) => {
       const d = dir ?? p.facing; const tx = p.x + d.x * 300, ty = p.y + d.y * 300; p.combat.ring(tx, ty, 0x77cc44, 150);
@@ -317,7 +383,7 @@ export const KITS: Record<string, Kit> = {
       e: AI('Tempest', 'Slam the ground for AoE damage and a slow. [ground shockwave]'),
       dash: AI("Dragon's Rage", 'Charge forward and knock back on impact. [kick-impact streak]'),
     },
-    fireQ: (p, d) => { asBuff(p, 0.4, 3000); p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 1400, radius: 9, color: 0xffcc66, team: 'player', maxDist: 600, onHit: (u) => { leapTo(p, u.x, u.y, 50); hit(p, u, (rs(40, 65, 90, 115) + 0.5 * bAD(p)) * AMP(p), 'physisch', 'Q'); } }); },
+    fireQ: (p, d) => { asBuff(p, 0.4, 3000); p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 1400, radius: 9, color: 0xffcc66, team: 'player', maxDist: 600, onHit: (u) => { leapTo(p, u.x, u.y, 50); hit(p, u, (rs(...Q_SCALE.leesin) + 0.5 * bAD(p)) * AMP(p), 'physisch', 'Q'); } }); },
     castE: (p) => { asBuff(p, 0.4, 3000); p.combat.ring(p.x, p.y, 0xffaa55, 260); for (const u of enemiesIn(p, p.x, p.y, 260)) { hit(p, u, (rs(50, 75, 100, 125) + 0.6 * bAD(p)) * AMP(p), 'physisch', 'E'); slowU(u, 'tempest', 0.3, 1000, T(p)); } },
     onDash: (p, d) => { asBuff(p, 0.4, 3000); p.moveBy(d.x * 240, d.y * 240, true); for (const u of enemiesIn(p, p.x, p.y, 130)) { const a = norm(u.x - p.x, u.y - p.y); u.moveBy(a.x * 160, a.y * 160); hit(p, u, (rs(60, 90, 120, 150) + 0.8 * bAD(p)) * AMP(p), 'physisch', 'Dash'); stun(u, 400, T(p)); } return true; },
   },
@@ -336,7 +402,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Satchel Charge', 'Blast yourself away, damaging where you were. [launch arc]'),
     },
     onAutoHit: (p, t) => { if (!t.alive) return; p.memory.fuse = (p.memory.fuse ?? 0) + 1; if (p.memory.fuse >= 3) { p.memory.fuse = 0; hit(p, t, (rs(20, 30, 40, 50) + 0.2 * AP(p)) * AMP(p), 'magisch', 'Q'); p.combat.ring(t.x, t.y, 0xffaa33, 40); } },
-    fireQ: (p) => { const t = near(p, 800); if (!t) return; const tx = t.x, ty = t.y; p.combat.delay(250, () => { p.combat.ring(tx, ty, 0xff5555, 130); for (const u of enemiesIn(p, tx, ty, 130)) hit(p, u, (rs(60, 90, 120, 150) + 0.45 * AP(p)) * AMP(p), 'magisch', 'Q'); }); },
+    fireQ: (p) => { const t = near(p, 800); if (!t) return; const tx = t.x, ty = t.y; p.combat.delay(250, () => { p.combat.ring(tx, ty, 0xff5555, 130); for (const u of enemiesIn(p, tx, ty, 130)) hit(p, u, (rs(...Q_SCALE.ziggs) + 0.45 * AP(p)) * AMP(p), 'magisch', 'Q'); }); },
     castE: (p, dir) => {
       const d = dir ?? p.facing; const cx = p.x + d.x * 260, cy = p.y + d.y * 260;
       for (let i = 0; i < 5; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 120; p.combat.addHazard({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, r: 55, until: T(p) + 5000, dps: (rs(20, 30, 40, 50) + 0.15 * AP(p)) * AMP(p) * 3, team: 'player', color: 0xffaa33 }); }
@@ -359,7 +425,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Duskbringer', 'Hurl a blade and blink to it. [spinning sickle, shadow pull]'),
     },
     onAutoHit: (p, t) => { void t; p.heal(2); },
-    fireQ: (p) => { const t = near(p, 2000); if (!t) return; leapTo(p, t.x, t.y, 40); hit(p, t, (rs(70, 110, 150, 190) + 0.6 * bAD(p)) * AMP(p), 'physisch', 'Q'); p.combat.ring(p.x, p.y, 0x5533aa, 120); },
+    fireQ: (p) => { const t = near(p, 2000); if (!t) return; leapTo(p, t.x, t.y, 40); hit(p, t, (rs(...Q_SCALE.nocturne) + 0.6 * bAD(p)) * AMP(p), 'physisch', 'Q'); p.combat.ring(p.x, p.y, 0x5533aa, 120); },
     castE: (p) => { const t = near(p, 400); if (!t) return; stun(t, 1500, T(p)); p.combat.addBurn(t, (rs(30, 45, 60, 75) + 0.2 * AP(p)) / 3, 3000); p.combat.flashLine(p.x, p.y, t.x, t.y, 0x8844cc); },
     onDash: (p, d) => { const tx = p.x + d.x * 260, ty = p.y + d.y * 260; leapTo(p, tx, ty, 0); for (const u of enemiesIn(p, p.x, p.y, 120)) hit(p, u, (rs(50, 75, 100, 125) + 0.4 * bAD(p)) * AMP(p), 'physisch', 'Dash'); return true; },
   },
@@ -378,7 +444,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Jaws of the Beast', 'Leap and bite, healing for half the damage. [pounce, red particles]'),
     },
     onAutoHit: (p, t) => { if (t.alive && t.hpPct < 0.5) { p.heal(4); p.combat.ring(p.x, p.y, 0xcc2222, 40); } },
-    fireQ: (p) => { p.stats.set({ id: 'buff:bloodhunt', stat: 'moveSpeed', pct: rs(0.2, 0.3, 0.4, 0.5), expiresAt: T(p) + 3000 }); p.combat.ring(p.x, p.y, 0xcc2222, 70); },
+    fireQ: (p) => { p.stats.set({ id: 'buff:bloodhunt', stat: 'moveSpeed', pct: rs(...Q_SCALE.warwick), expiresAt: T(p) + 3000 }); p.combat.ring(p.x, p.y, 0xcc2222, 70); },
     castE: (p) => { p.addShield((rs(50, 80, 110, 140) + 0.3 * bAD(p)) * AMP(p)); for (const u of enemiesIn(p, p.x, p.y, 220)) stun(u, 1000, T(p)); p.combat.ring(p.x, p.y, 0xaa3333, 220); },
     onDash: (p, d) => { const t = near(p, 650); if (t) { leapTo(p, t.x, t.y, 40); const dealt = hit(p, t, (rs(60, 90, 120, 150) + 0.5 * bAD(p)) * AMP(p), 'physisch', 'Dash'); p.heal(dealt * 0.5); return true; } p.moveBy(d.x * 220, d.y * 220, true); return true; },
   },
@@ -398,7 +464,7 @@ export const KITS: Record<string, Kit> = {
     },
     passiveTick: (p) => { if (!p.memory.manaBar && p.hpPct < 0.3 && p.alive) { p.memory.manaBar = 1; p.addShield(p.maxHP * 0.15); p.combat.ring(p.x, p.y, 0x66aaff, 90); } },
     fireQ: (p) => { p.memory.blitzFist = 1; p.combat.ring(p.x, p.y, 0xffcc33, 60); },
-    onAutoHit: (p, t) => { if (!p.memory.blitzFist || !t.alive) return; p.memory.blitzFist = 0; hit(p, t, (rs(50, 80, 110, 140) + 0.5 * bAD(p)) * AMP(p), 'physisch', 'Q'); stun(t, 900, T(p)); },
+    onAutoHit: (p, t) => { if (!p.memory.blitzFist || !t.alive) return; p.memory.blitzFist = 0; hit(p, t, (rs(...Q_SCALE.blitzcrank) + 0.5 * bAD(p)) * AMP(p), 'physisch', 'Q'); stun(t, 900, T(p)); },
     castE: (p) => { p.combat.ring(p.x, p.y, 0x66ccff, 220); for (const u of enemiesIn(p, p.x, p.y, 220)) { hit(p, u, (rs(30, 45, 60, 75) + 0.2 * AP(p)) * AMP(p), 'magisch', 'E'); stun(u, 500, T(p)); } },
     onDash: (p) => { const t = near(p, 700); if (!t) return false; p.combat.flashLine(p.x, p.y, t.x, t.y, 0xffcc33); const a = norm(p.x - t.x, p.y - t.y), d = Math.hypot(t.x - p.x, t.y - p.y); t.moveBy(a.x * Math.max(0, d - 100), a.y * Math.max(0, d - 100)); stun(t, 600, T(p)); hit(p, t, (rs(40, 65, 90, 115) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Dash'); return true; },
   },
@@ -417,7 +483,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Bandage Toss', 'Fling a bandage to a foe, pulling and stunning. [bandage unspools]'),
     },
     onAutoHit: (p, t) => { if (t.alive) hit(p, t, 6 + 0.1 * AP(p), 'magisch', 'Q'); },
-    fireQ: (p) => { p.combat.ring(p.x, p.y, 0x88aa66, 190); for (const u of enemiesIn(p, p.x, p.y, 190)) hit(p, u, (rs(50, 75, 100, 125) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Q'); },
+    fireQ: (p) => { p.combat.ring(p.x, p.y, 0x88aa66, 190); for (const u of enemiesIn(p, p.x, p.y, 190)) hit(p, u, (rs(...Q_SCALE.amumu) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Q'); },
     castE: (p) => { p.memory.despairUntil = T(p) + 5000; p.combat.ring(p.x, p.y, 0x668844, 240); },
     passiveTick: (p) => { if ((p.memory.despairUntil ?? 0) <= T(p) || (p.memory.despairNext ?? 0) > T(p)) return; p.memory.despairNext = T(p) + 500; for (const u of enemiesIn(p, p.x, p.y, 240)) p.combat.dealDamage(p, u, u.maxHP * (rs(1.5, 2, 2.5, 3) / 100) * 0.5, 'ability', 'magisch'); },
     onDash: (p) => { const t = near(p, 700); if (!t) return false; p.combat.flashLine(p.x, p.y, t.x, t.y, 0xddcc88); leapTo(p, t.x, t.y, 40); hit(p, t, (rs(40, 65, 90, 115) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Dash'); stun(t, 1000, T(p)); return true; },
@@ -440,7 +506,7 @@ export const KITS: Record<string, Kit> = {
     fireQ: (p, d) => {
       const t = near(p, 600); const dx = t ? t.x - p.x : d.x, dy = t ? t.y - p.y : d.y;
       p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: dx, dirY: dy, speed: 1100, radius: 9, color: 0xff6622, team: 'player', homing: t ?? undefined, maxDist: 650,
-        onHit: (u) => { hit(p, u, (rs(60, 90, 120, 150) + 0.5 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1200, T(p)); blaze(p, u); } });
+        onHit: (u) => { hit(p, u, (rs(...Q_SCALE.brand) + 0.5 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1200, T(p)); blaze(p, u); } });
     },
     castE: (p, dir) => { const d = dir ?? p.facing; const tx = p.x + d.x * 280, ty = p.y + d.y * 280; p.combat.ring(tx, ty, 0xff5511, 150); p.combat.delay(250, () => { for (const u of enemiesIn(p, tx, ty, 150)) { hit(p, u, (rs(70, 105, 140, 175) + 0.55 * AP(p)) * AMP(p), 'magisch', 'E'); blaze(p, u); } }); },
     onDash: (p, d) => { p.moveBy(d.x * 220, d.y * 220, true); p.combat.ring(p.x, p.y, 0xff6622, 70); return true; },
@@ -459,7 +525,7 @@ export const KITS: Record<string, Kit> = {
       e: AI('Blighted Quiver', 'Attacks stack blight; three detonate for a burst. [corruption veins]'),
       dash: AI('Hail of Blades', 'Dash and seed blight on nearby foes. [purple ring pulse]'),
     },
-    fireQ: (p, d) => { asBuff(p, 0.35, 3000); p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 1300, radius: 10, color: 0xaa66ff, team: 'player', maxHits: 3, maxDist: 720, onHit: (u) => hit(p, u, (rs(50, 90, 130, 150) + 1.1 * bAD(p)) * AMP(p), 'physisch', 'Q') }); },
+    fireQ: (p, d) => { asBuff(p, 0.35, 3000); p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 1300, radius: 10, color: 0xaa66ff, team: 'player', maxHits: 3, maxDist: 720, onHit: (u) => hit(p, u, (rs(...Q_SCALE.varus) + 1.1 * bAD(p)) * AMP(p), 'physisch', 'Q') }); },
     castE: () => { /* passive blight, on-hit */ },
     onAutoHit: (p, t) => { if (!t.alive) return; if (addStack(t, T(p), 3) >= 3) { hit(p, t, (rs(10, 15, 20, 25) + 0.1 * AP(p)) * 6 * AMP(p), 'magisch', 'E'); p.combat.ring(t.x, t.y, 0xaa66ff, 60); } },
     onDash: (p, d) => { asBuff(p, 0.35, 3000); p.moveBy(d.x * 230, d.y * 230, true); for (const u of enemiesIn(p, p.x, p.y, 130)) addStack(u, T(p), 3); return true; },
@@ -483,7 +549,7 @@ export const KITS: Record<string, Kit> = {
       p.memory.yiCount = (p.memory.yiCount ?? 0) + 1;
       if (p.memory.yiCount >= 2 && t.alive) { p.memory.yiCount = 0; p.combat.dealDamage(p, t, AD(p) * 0.5, 'auto', 'physisch'); }
     },
-    fireQ: (p) => { for (let i = 0; i < 3; i++) p.combat.delay(i * 1000, () => { if (p.alive) p.heal((rs(20, 30, 40, 50) + 0.15 * AP(p)) * AMP(p)); }); p.combat.ring(p.x, p.y, 0xffe0a0, 80); },
+    fireQ: (p) => { for (let i = 0; i < 3; i++) p.combat.delay(i * 1000, () => { if (p.alive) p.heal((rs(...Q_SCALE.masteryi) + 0.15 * AP(p)) * AMP(p)); }); p.combat.ring(p.x, p.y, 0xffe0a0, 80); },
     castE: (p) => { p.memory.wujuUntil = T(p) + 4000; p.combat.ring(p.x, p.y, 0xff8866, 60); },
     onDash: (p) => { const targets = enemiesIn(p, p.x, p.y, 500).slice(0, 4); if (targets.length === 0) return false; p.invulnUntil = T(p) + 700; targets.forEach((u, i) => p.combat.delay(i * 90, () => { if (u.alive) { leapTo(p, u.x, u.y, 30); hit(p, u, (rs(40, 60, 80, 100) + 0.5 * bAD(p)) * AMP(p), 'physisch', 'Dash'); } })); return true; },
   },
@@ -503,7 +569,7 @@ export const KITS: Record<string, Kit> = {
     },
     passiveTick: (p) => { const still = p.isStationary; p.memory.fidIdle = still ? (p.memory.fidIdle ?? 0) + 1 : 0; if (still && (p.memory.fidIdle ?? 0) > 90) p.memory.stealthUntil = T(p) + 200; },
     onAutoHit: (p, t) => { if (t.alive && (p.memory.stealthUntil ?? 0) > T(p)) { p.memory.stealthUntil = 0; stun(t, 1200, T(p)); p.combat.ring(t.x, t.y, 0x66aa66, 50); } },
-    fireQ: (p) => { const t = near(p, 520); if (!t) return; stun(t, 1500, T(p)); hit(p, t, (rs(50, 75, 100, 125) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); p.combat.flashLine(p.x, p.y, t.x, t.y, 0x448844); },
+    fireQ: (p) => { const t = near(p, 520); if (!t) return; stun(t, 1500, T(p)); hit(p, t, (rs(...Q_SCALE.fiddlesticks) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); p.combat.flashLine(p.x, p.y, t.x, t.y, 0x448844); },
     castE: (p) => { const t = near(p, 500); if (!t) return; p.combat.flashLine(p.x, p.y, t.x, t.y, 0x66aa66); for (let i = 0; i < 3; i++) p.combat.delay(i * 500, () => { const tt = near(p, 550); if (tt) { const dealt = hit(p, tt, (rs(30, 45, 60, 75) + 0.25 * AP(p)) / 2 * AMP(p), 'magisch', 'E'); p.heal(dealt * 0.5); } }); },
     onDash: (p, d) => { p.moveBy(d.x * 200, d.y * 200, true); p.invulnUntil = T(p) + 500; p.combat.ring(p.x, p.y, 0x66aa66, 60); return true; },
   },
@@ -522,7 +588,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Singularity Step', 'Blink and leave a slowing field. [light streak, glow zone]'),
     },
     onAutoHit: (p, t) => { if (t.alive && (luxMark.get(t) ?? 0) > T(p)) { luxMark.delete(t); hit(p, t, (rs(20, 30, 40, 50) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Q'); p.combat.ring(t.x, t.y, 0xffb3f0, 40); } },
-    fireQ: (p, d) => { p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 1100, radius: 12, color: 0xfff0a0, team: 'player', maxHits: 2, maxDist: 700, onHit: (u) => { hit(p, u, (rs(60, 90, 120, 150) + 0.45 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1500, T(p)); luxMark.set(u, T(p) + 5000); } }); },
+    fireQ: (p, d) => { p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 1100, radius: 12, color: 0xfff0a0, team: 'player', maxHits: 2, maxDist: 700, onHit: (u) => { hit(p, u, (rs(...Q_SCALE.lux) + 0.45 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1500, T(p)); luxMark.set(u, T(p) + 5000); } }); },
     castE: (p) => { p.addShield((rs(50, 75, 100, 125) + 0.3 * AP(p)) * AMP(p)); p.combat.ring(p.x, p.y, 0xfff0a0, 90); },
     onDash: (p, d) => { const ox = p.x, oy = p.y; p.moveBy(d.x * 200, d.y * 200, true); p.combat.addHazard({ x: ox, y: oy, r: 100, until: T(p) + 2000, dps: 0.01, team: 'player', color: 0xfff0a0 }); for (const u of enemiesIn(p, ox, oy, 100)) slowU(u, 'singularity', 0.2, 2000, T(p)); return true; },
   },
@@ -541,7 +607,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Ricochet Step', 'Dash forward while your blade returns. [synced dust-trail dash]'),
     },
     onAutoHit: (p, t) => { if (!t.alive) p.stats.set({ id: 'buff:fleet', stat: 'moveSpeed', pct: 0.3, expiresAt: T(p) + 2000 }); },
-    fireQ: (p, d) => { const dmg = (rs(45, 70, 95, 120) + 0.45 * bAD(p)) * AMP(p); p.combat.spawnProjectile({ x: p.x + d.x * (p.radius + 6), y: p.y + d.y * (p.radius + 6), dirX: d.x, dirY: d.y, speed: 1050, radius: 13, color: COLORS.playerProj, team: 'player', maxHits: 2, maxDist: 640, boomerangTo: p, spin: true, onHit: (u) => hit(p, u, dmg, 'physisch', 'Q') }); },
+    fireQ: (p, d) => { const dmg = (rs(...Q_SCALE.sivir) + 0.45 * bAD(p)) * AMP(p); p.combat.spawnProjectile({ x: p.x + d.x * (p.radius + 6), y: p.y + d.y * (p.radius + 6), dirX: d.x, dirY: d.y, speed: 1050, radius: 13, color: COLORS.playerProj, team: 'player', maxHits: 2, maxDist: 640, boomerangTo: p, spin: true, onHit: (u) => hit(p, u, dmg, 'physisch', 'Q') }); },
     castE: (p) => { p.invulnUntil = T(p) + 1200; p.combat.ring(p.x, p.y, 0xffe066, 60); p.combat.announce('Spell Shield!', '#ffe066'); },
     onDash: (p, d) => { p.moveBy(d.x * 220, d.y * 220, true); return true; },
   },
@@ -560,7 +626,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Ravenous Lunge', 'Leap and bite. [pounce, bite clamp]'),
     },
     onAutoHit: (p, t) => { if (!t.alive) { p.stats.set({ id: 'perm:carn', stat: 'maxHP', flat: (p.memory.carn = (p.memory.carn ?? 0) + 20) }); p.heal(20); } },
-    fireQ: (p, dir) => { const d = dir ?? p.facing; const tx = p.x + d.x * 260, ty = p.y + d.y * 260; p.combat.ring(tx, ty, 0x9955cc, 130); p.combat.delay(600, () => { for (const u of enemiesIn(p, tx, ty, 130)) { hit(p, u, (rs(60, 90, 120, 150) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1000, T(p)); } }); },
+    fireQ: (p, dir) => { const d = dir ?? p.facing; const tx = p.x + d.x * 260, ty = p.y + d.y * 260; p.combat.ring(tx, ty, 0x9955cc, 130); p.combat.delay(600, () => { for (const u of enemiesIn(p, tx, ty, 130)) { hit(p, u, (rs(...Q_SCALE.chogath) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1000, T(p)); } }); },
     castE: (p, dir) => { const d = dir ?? p.facing; for (const u of p.combat.units) { if (!u.alive || u.team !== 'enemy') continue; const rx = u.x - p.x, ry = u.y - p.y, along = rx * d.x + ry * d.y; if (along < 0 || along > 380 || Math.abs(rx * d.y - ry * d.x) > 140) continue; hit(p, u, (rs(50, 80, 110, 140) + 0.35 * AP(p)) * AMP(p), 'magisch', 'E'); stun(u, 1000, T(p)); } p.combat.ring(p.x, p.y, 0x9955cc, 100); },
     onDash: (p, d) => { const t = near(p, 600); if (t) { leapTo(p, t.x, t.y, 40); hit(p, t, (rs(40, 65, 90, 115) + 0.25 * AP(p)) * AMP(p), 'magisch', 'Dash'); return true; } p.moveBy(d.x * 200, d.y * 200, true); return true; },
   },
@@ -579,7 +645,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI("Ranger's Focus", 'Sprint, then fire from farther for a few seconds. [bow glows blue]'),
     },
     onAutoHit: (p, t) => { if (t.alive) slowU(t, 'frostshot', 0.2, 1200, T(p)); },
-    fireQ: (p, d) => { const dmg = (rs(50, 75, 100, 125) + 0.5 * bAD(p)) * AMP(p); for (let i = -2; i <= 2; i++) { const a = Math.atan2(d.y, d.x) + i * 0.14; p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: Math.cos(a), dirY: Math.sin(a), speed: 1000, radius: 7, color: 0x9fe8ff, team: 'player', maxDist: 620, onHit: (u) => { hit(p, u, dmg, 'physisch', 'Q'); slowU(u, 'volley', 0.3, 1500, T(p)); } }); } },
+    fireQ: (p, d) => { const dmg = (rs(...Q_SCALE.ashe) + 0.5 * bAD(p)) * AMP(p); for (let i = -2; i <= 2; i++) { const a = Math.atan2(d.y, d.x) + i * 0.14; p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: Math.cos(a), dirY: Math.sin(a), speed: 1000, radius: 7, color: 0x9fe8ff, team: 'player', maxDist: 620, onHit: (u) => { hit(p, u, dmg, 'physisch', 'Q'); slowU(u, 'volley', 0.3, 1500, T(p)); } }); } },
     castE: (p, dir) => { const d = dir ?? p.facing; const start = T(p); p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 700, radius: 12, color: 0x66ccff, team: 'player', maxDist: 1400, onHit: (u) => { hit(p, u, (rs(100, 150, 200, 250) + 1.0 * bAD(p)) * AMP(p), 'physisch', 'E'); stun(u, Math.min(2500, 1500 + (T(p) - start)), T(p)); } }); },
     onDash: (p, d) => { p.moveBy(d.x * 200, d.y * 200, true); p.stats.set({ id: 'buff:focus', stat: 'attackRange', flat: 150, expiresAt: T(p) + 3000 }); return true; },
   },
@@ -597,7 +663,7 @@ export const KITS: Record<string, Kit> = {
       e: AI('Explosive Cask', 'Blast a zone, knocking enemies away. [barrel arcs and bursts]'),
       dash: AI('Body Slam', 'Charge into a foe, knocking it back. [rolling belly-flop]'),
     },
-    fireQ: (p, dir) => { p.heal(8 + 0.05 * AP(p)); const d = dir ?? p.facing; const tx = p.x + d.x * 300, ty = p.y + d.y * 300; p.combat.ring(tx, ty, 0xcc8844, 140); for (const u of enemiesIn(p, tx, ty, 140)) { hit(p, u, (rs(60, 90, 120, 150) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); slowU(u, 'barrel', 0.25, 1500, T(p)); } },
+    fireQ: (p, dir) => { p.heal(8 + 0.05 * AP(p)); const d = dir ?? p.facing; const tx = p.x + d.x * 300, ty = p.y + d.y * 300; p.combat.ring(tx, ty, 0xcc8844, 140); for (const u of enemiesIn(p, tx, ty, 140)) { hit(p, u, (rs(...Q_SCALE.gragas) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); slowU(u, 'barrel', 0.25, 1500, T(p)); } },
     castE: (p, dir) => { p.heal(8 + 0.05 * AP(p)); const d = dir ?? p.facing; const tx = p.x + d.x * 260, ty = p.y + d.y * 260; p.combat.ring(tx, ty, 0xffaa55, 170); for (const u of enemiesIn(p, tx, ty, 170)) { hit(p, u, (rs(60, 90, 120, 150) + 0.35 * AP(p)) * AMP(p), 'magisch', 'E'); const a = norm(u.x - tx, u.y - ty); u.moveBy(a.x * 200, a.y * 200); } },
     onDash: (p, d) => { p.heal(8 + 0.05 * AP(p)); const t = near(p, 600); if (t) { leapTo(p, t.x, t.y, 50); const a = norm(t.x - p.x, t.y - p.y); t.moveBy(a.x * 160, a.y * 160); hit(p, t, (rs(50, 80, 110, 140) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Dash'); stun(t, 500, T(p)); return true; } p.moveBy(d.x * 220, d.y * 220, true); return true; },
   },
@@ -615,7 +681,7 @@ export const KITS: Record<string, Kit> = {
       e: AI('Requiem', 'A long-cooldown nuke that hits every enemy. [beam from above on each]'),
       dash: AI('Spectral Slide', 'A ghostly glide over terrain. [wispy trailing streak]'),
     },
-    fireQ: (p, dir) => { const t = near(p, 700); const d = dir ?? p.facing; const tx = t ? t.x : p.x + d.x * 300, ty = t ? t.y : p.y + d.y * 300; p.combat.ring(tx, ty, 0x8866cc, 90); p.combat.delay(300, () => { for (const u of enemiesIn(p, tx, ty, 90)) hit(p, u, (rs(50, 80, 110, 140) + 0.4 * AP(p)) * AMP(p), 'magisch', 'Q'); }); },
+    fireQ: (p, dir) => { const t = near(p, 700); const d = dir ?? p.facing; const tx = t ? t.x : p.x + d.x * 300, ty = t ? t.y : p.y + d.y * 300; p.combat.ring(tx, ty, 0x8866cc, 90); p.combat.delay(300, () => { for (const u of enemiesIn(p, tx, ty, 90)) hit(p, u, (rs(...Q_SCALE.karthus) + 0.4 * AP(p)) * AMP(p), 'magisch', 'Q'); }); },
     castE: (p) => { p.combat.announce('Requiem…', '#aa88ff'); const dmg = (rs(150, 150, 225, 300) + 0.7 * AP(p)) * AMP(p); p.combat.delay(700, () => { for (const u of p.combat.units) if (u.alive && u.team === 'enemy') { hit(p, u, dmg, 'magisch', 'E'); p.combat.ring(u.x, u.y, 0xaa88ff, 70); } }); },
     onDash: (p, d) => { p.moveBy(d.x * 200, d.y * 200, true); p.stats.set({ id: 'buff:slide', stat: 'moveSpeed', pct: 0.25, expiresAt: T(p) + 1000 }); return true; },
   },
@@ -633,7 +699,7 @@ export const KITS: Record<string, Kit> = {
       e: AI('The Culling', 'A burst of attack speed and a volley of shots. [rapid muzzle flashes]'),
       dash: AI('Relentless Pursuit', 'Dash; your next attack hits harder. [guns glow after]'),
     },
-    fireQ: (p, dir) => { lightslinger(p); const d = dir ?? p.facing; p.combat.flashLine(p.x, p.y, p.x + d.x * 560, p.y + d.y * 560, 0xffee99); const dmg = (rs(45, 70, 95, 120) + 0.55 * bAD(p)) * AMP(p); for (const u of p.combat.units) { if (!u.alive || u.team !== 'enemy') continue; const rx = u.x - p.x, ry = u.y - p.y, along = rx * d.x + ry * d.y; if (along < 0 || along > 560 || Math.abs(rx * d.y - ry * d.x) > 45 + u.radius) continue; hit(p, u, dmg, 'physisch', 'Q'); } },
+    fireQ: (p, dir) => { lightslinger(p); const d = dir ?? p.facing; p.combat.flashLine(p.x, p.y, p.x + d.x * 560, p.y + d.y * 560, 0xffee99); const dmg = (rs(...Q_SCALE.lucian) + 0.55 * bAD(p)) * AMP(p); for (const u of p.combat.units) { if (!u.alive || u.team !== 'enemy') continue; const rx = u.x - p.x, ry = u.y - p.y, along = rx * d.x + ry * d.y; if (along < 0 || along > 560 || Math.abs(rx * d.y - ry * d.x) > 45 + u.radius) continue; hit(p, u, dmg, 'physisch', 'Q'); } },
     castE: (p) => { lightslinger(p); p.stats.set({ id: 'buff:culling', stat: 'attackSpeed', pct: 0.4, expiresAt: T(p) + 3000 }); const t = near(p, 600); if (!t) return; const dmg = (rs(20, 30, 40, 50) + 0.2 * bAD(p)) * AMP(p); for (let i = 0; i < 3; i++) p.combat.delay(i * 150, () => { const tt = near(p, 700) ?? t; if (tt.alive) p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: tt.x - p.x, dirY: tt.y - p.y, speed: 1300, radius: 6, color: 0xffee99, team: 'player', homing: tt, maxDist: 700, onHit: (u) => hit(p, u, dmg, 'physisch', 'E') }); }); },
     onDash: (p, d) => { p.moveBy(d.x * 180, d.y * 180, true); p.memory.lucianE = 1; return true; },
     onAutoHit: (p, t) => { if (!p.memory.lucianE || !t.alive) return; p.memory.lucianE = 0; hit(p, t, (rs(20, 30, 40, 50) + 0.2 * bAD(p)) * AMP(p), 'physisch', 'Dash'); },
@@ -653,7 +719,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Shadow Dash', 'Dash through enemies, taunting them. [blur streak, taunt flash]'),
     },
     fireQ: (p) => { p.addShield(20 + 0.1 * bAD(p)); p.memory.shenQ = T(p) + 4000; p.combat.ring(p.x, p.y, 0x66ccff, 70); },
-    onAutoHit: (p, t) => { if (t.alive && (p.memory.shenQ ?? 0) > T(p)) p.combat.dealDamage(p, t, t.maxHP * (rs(3, 4, 5, 6) / 100), 'ability', 'magisch'); },
+    onAutoHit: (p, t) => { if (t.alive && (p.memory.shenQ ?? 0) > T(p)) p.combat.dealDamage(p, t, t.maxHP * (rs(...Q_SCALE.shen) / 100), 'ability', 'magisch'); },
     castE: (p) => { p.addShield((rs(40, 60, 80, 100) + 0.2 * bAD(p)) * AMP(p)); p.combat.ring(p.x, p.y, 0x66ccff, 140); },
     onDash: (p, d) => { p.addShield(20 + 0.1 * bAD(p)); p.moveBy(d.x * 240, d.y * 240, true); for (const u of enemiesIn(p, p.x, p.y, 140)) { hit(p, u, (rs(40, 60, 80, 100) + 0.2 * bAD(p)) * AMP(p), 'physisch', 'Dash'); stun(u, 800, T(p)); } return true; },
   },

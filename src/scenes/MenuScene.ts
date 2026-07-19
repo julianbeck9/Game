@@ -5,6 +5,7 @@ import { newRun, run } from '../core/run';
 import { initAudio } from '../core/sfx';
 import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/draw';
 import { CHAMPIONS, CHAMP_IMAGE_KEYS, ensureChampionTextures } from '../champions/registry';
+import { describeQ } from '../champions/describe';
 import { addFullscreenButton } from '../core/fullscreen';
 import { MAP_IMAGE_KEYS } from '../core/maps';
 import { isAdmin } from '../core/admin';
@@ -159,9 +160,12 @@ export class MenuScene extends Phaser.Scene {
         .setOrigin(0, 0.5),
     );
 
+    // Q's desc is flavor-only; the mechanical ground truth (shape + round-scaled
+    // numbers) is generated from spec.q/Q_SCALE so it can never drift (B6).
+    const qGenerated = describeQ(c);
     const slots: [string, { name: string; desc: string }, number][] = [
       ['Passive', c.info.passive, 0xcc9bff],
-      ['Q', c.info.q, 0xffc36a],
+      ['Q', { ...c.info.q, desc: qGenerated ? `${c.info.q.desc} ${qGenerated}` : c.info.q.desc }, 0xffc36a],
       ['E', c.info.e, 0xffe680],
       ['Dash / Space', c.info.dash, 0x6ab8ff],
     ];

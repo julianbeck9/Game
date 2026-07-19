@@ -7,6 +7,7 @@ import { drawStatIcon, IconKey } from '../core/icons';
 import { drawItemIcon } from '../items/icons';
 import { previewStats } from '../core/preview';
 import { championById } from '../champions/registry';
+import { describeQ } from '../champions/describe';
 
 const TIER_COLOR: Record<Tier, number> = {
   silber: COLORS.silver,
@@ -154,9 +155,12 @@ export class BuildScene extends Phaser.Scene {
     const champ = championById(run.champion);
     this.panel(40, 764, GAME_W - 80, 232);
     this.add.text(76, 792, `${champ.name} — Abilities`, this.h2()).setOrigin(0, 0.5);
+    // Q's desc is flavor-only; the mechanical ground truth (shape + round-scaled
+    // numbers) is generated from spec.q/Q_SCALE so it can never drift (B6).
+    const qGenerated = describeQ(champ);
     const slots: [string, { name: string; desc: string }, number][] = [
       ['Passive', champ.info.passive, 0xcc9bff],
-      ['Q', champ.info.q, 0xffc36a],
+      ['Q', { ...champ.info.q, desc: qGenerated ? `${champ.info.q.desc} ${qGenerated}` : champ.info.q.desc }, 0xffc36a],
       ['E', champ.info.e, 0xffe680],
       ['Space', champ.info.dash, 0x6ab8ff],
     ];
