@@ -3,6 +3,7 @@ import { AUGMENTS } from '../augments/registry';
 import { ITEMS } from '../items/registry';
 import type { AugmentStatMod } from '../augments/types';
 import type { StatName } from './stats';
+import { isPlainObject, loadVersioned, saveVersioned } from './storage';
 
 /**
  * Admin balance overrides, saved in the browser. The Balance tuner writes here;
@@ -17,26 +18,34 @@ interface BalanceStore {
   deleted: Record<string, true>;
 }
 
-const KEY = 'cc_balance_v1';
+function emptyStore(): BalanceStore {
+  return { champ: {}, cost: {}, statMods: {}, deleted: {} };
+}
+
+// Bump on every bake: exporting the Balance tuner's overrides via
+// exportBalance()/exportAll() into champions/kits.ts, items/registry.ts etc.
+// means the *baseline* now already has these numbers, so leftover browser
+// overrides from before the bake must not silently re-cover them. Bumping
+// this changes the key below, orphaning any pre-bake store.
+const SCHEMA_VERSION = 1;
+const KEY = `cc_balance_v${SCHEMA_VERSION}`;
+
+/** Structural check: only accept a shape `applyBalance`/the editors can use. */
+function isBalanceStore(raw: unknown): raw is BalanceStore {
+  if (!isPlainObject(raw)) return false;
+  const { champ, cost, statMods, deleted } = raw as Partial<BalanceStore>;
+  return isPlainObject(champ) && isPlainObject(cost) && isPlainObject(statMods) && isPlainObject(deleted);
+}
+
 let store: BalanceStore | null = null;
 
 function load(): BalanceStore {
-  if (store) return store;
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}');
-    store = { champ: {}, cost: {}, statMods: {}, deleted: {}, ...raw };
-  } catch {
-    store = { champ: {}, cost: {}, statMods: {}, deleted: {} };
-  }
-  return store!;
+  if (!store) store = loadVersioned(KEY, isBalanceStore, emptyStore);
+  return store;
 }
 
 function save(): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(load()));
-  } catch {
-    /* ignore */
-  }
+  saveVersioned(KEY, load());
 }
 
 /** Fold saved overrides into the live registries. Call once at boot. */

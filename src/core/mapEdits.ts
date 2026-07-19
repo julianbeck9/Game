@@ -1,5 +1,6 @@
 import type { MapWall, TerrainZone } from './maps';
 import { PaintLayers } from './paintgrid';
+import { isPlainObject, loadVersioned, saveVersioned } from './storage';
 
 /**
  * Player-authored collision, saved in the browser. The in-game Map Editor
@@ -14,20 +15,31 @@ export interface MapEdit {
   paint?: PaintLayers;
 }
 
-// v3: fresh start. Older keys (v1 = coarse grid, v2 = polluted by a bug that
-// double-expanded the baked paint in the editor) are intentionally ignored —
-// the authored maps live in bakedPaint.ts now, so dropping local edits is safe.
-const KEY = 'cc_map_edits_v3';
+// Bump on every bake: exporting the Map Editor's edits via exportEdits() into
+// maps.ts/bakedPaint.ts means the baseline now already has this collision, so
+// a leftover browser store from before the bake must not silently re-cover
+// it. Bumping this changes the key below, orphaning any pre-bake store.
+// (v1 = coarse grid, v2 = polluted by a bug that double-expanded the baked
+// paint in the editor — both already retired the same way.)
+const SCHEMA_VERSION = 3;
+const KEY = `cc_map_edits_v${SCHEMA_VERSION}`;
+
+function isMapEdit(raw: unknown): raw is MapEdit {
+  if (!isPlainObject(raw)) return false;
+  return Array.isArray(raw.walls) && Array.isArray(raw.terrain);
+}
+
+/** Structural check: every entry must look like a real MapEdit, or the whole
+ * store is treated as corrupt and dropped in favor of clean defaults. */
+function isEditStore(raw: unknown): raw is Record<string, MapEdit> {
+  if (!isPlainObject(raw)) return false;
+  return Object.values(raw).every(isMapEdit);
+}
+
 let cache: Record<string, MapEdit> | null = null;
 
 function load(): Record<string, MapEdit> {
-  if (cache) return cache;
-  try {
-    const v3 = localStorage.getItem(KEY);
-    cache = v3 ? (JSON.parse(v3) as Record<string, MapEdit>) : {};
-  } catch {
-    cache = {};
-  }
+  if (!cache) cache = loadVersioned(KEY, isEditStore, () => ({}));
   return cache;
 }
 
@@ -39,22 +51,14 @@ export function setEdit(id: string, e: MapEdit): void {
   const all = load();
   all[id] = e;
   cache = all;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(all));
-  } catch {
-    /* storage full / disabled — edits stay in memory for this session */
-  }
+  saveVersioned(KEY, all);
 }
 
 export function clearEdit(id: string): void {
   const all = load();
   delete all[id];
   cache = all;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(all));
-  } catch {
-    /* ignore */
-  }
+  saveVersioned(KEY, all);
 }
 
 /** TS-ready dump of every edited map, for pasting back into maps.ts. */

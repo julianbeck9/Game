@@ -7,6 +7,7 @@ import type { StatName } from '../core/stats';
 import { setChampBase, setItemCost, setStatMod, toggleDeleted, isDeleted } from '../core/balance';
 import { exportAll } from '../core/exportAll';
 import { setAdmin } from '../core/admin';
+import { resetAllCCStorage } from '../core/storage';
 
 type Tab = 'champ' | 'item' | 'augment';
 
@@ -25,6 +26,8 @@ export class AdminScene extends Phaser.Scene {
   private page = 0;
   private sel: string | null = null; // selected entity id (detail view)
   private dyn: Phaser.GameObjects.GameObject[] = [];
+  /** "Reset all" needs one confirming click so a stray tap can't wipe overrides. */
+  private resetArmed = false;
 
   constructor() {
     super('admin');
@@ -97,9 +100,14 @@ export class AdminScene extends Phaser.Scene {
 
     // Top action row
     this.btn('🛠 Map Editor', 40, 110, 220, 0x1e2a44, () => this.scene.start('editor'));
-    this.btn('Export', 280, 110, 150, 0x2a553a, () => this.doExport());
-    this.btn('Admin: OFF', 448, 110, 200, 0x553030, () => { setAdmin(false); this.scene.start('menu'); });
-    this.btn('◀ Menu', 668, 110, 150, 0x2a3a55, () => this.scene.start('menu'));
+    this.btn('Export', 272, 110, 150, 0x2a553a, () => this.doExport());
+    this.btn(
+      this.resetArmed ? 'Confirm reset?' : '⚠ Reset all',
+      434, 110, 200, this.resetArmed ? 0x883030 : 0x553030,
+      () => this.doResetAll(),
+    );
+    this.btn('Admin: OFF', 646, 110, 200, 0x553030, () => { setAdmin(false); this.scene.start('menu'); });
+    this.btn('◀ Menu', 858, 110, 150, 0x2a3a55, () => this.scene.start('menu'));
 
     if (this.sel) {
       this.renderDetail();
@@ -173,6 +181,21 @@ export class AdminScene extends Phaser.Scene {
     }
     const gone = isDeleted(id);
     this.btn(gone ? 'Restore' : 'Delete', 80, y + 30, 220, gone ? 0x2a553a : 0x883030, () => { toggleDeleted(id); this.render(); });
+  }
+
+  /** First click arms the button (visible warning, no data touched yet);
+   * the confirming second click wipes every `cc_*` key and reloads so all
+   * in-memory store caches restart clean alongside localStorage. */
+  private doResetAll(): void {
+    if (!this.resetArmed) {
+      this.resetArmed = true;
+      this.flash('Tap "Confirm reset?" again to wipe ALL saved overrides');
+      this.render();
+      return;
+    }
+    resetAllCCStorage();
+    this.flash('All saved overrides cleared — reloading…');
+    this.time.delayedCall(700, () => location.reload());
   }
 
   private async doExport(): Promise<void> {
