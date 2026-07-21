@@ -148,8 +148,9 @@ Stage 1 (Ability-Wahrheitsschicht, hängt an S0-1):
   S2-4  Beschreibungs-Generator aus Spec              — fixt B6
 
 Stage 2 (Wirkungs-Audit, hängt an S0-2 + S2-*):
-  S3-1  Wirkungs-Harness "wirkt wie beschrieben"      (PASS/FAIL-Matrix)
-  S3-2  rote Augments fixen oder streichen
+  S3-1  Wirkungs-Harness "wirkt wie beschrieben"   ✅ FERTIG (30fb3e1) — ABER Klassifikator falsch-rot
+  S3-1b Assertion-Klassen ehrlich machen              ⚠️ VOR S3-2 (fixt 43 falsch-rote FAILs)
+  S3-2  rote Augments fixen oder streichen             (erst nach ehrlicher FAIL-Liste)
   S3-3  Item-/Gold-Invarianten
 
 Stage 3 (Game Feel, hängt an S2-*/S3-*):
@@ -587,8 +588,44 @@ richtiger Höhe" heben. Output: PASS/FAIL über alle 144 Augments, danach Teil v
 
 ---
 
+### S3-1b · Assertion-Klassen ehrlich machen (Klassifikator-Korrektur)  ⚠️ VOR S3-2
+**Phase:** DEVPLAN Phase 2 · **Abhängig von:** S3-1 · **blockiert:** S3-2.
+
+**Warum:** Der erste S3-1-Lauf hat **43 von 44 FAILs allein per „Schadens-Delta gegen
+Dummy" beurteilt** — auch reine Schilde (`berstschild`, `bannschild`), CC (`frostgeist`
+Root), Wirtschaft (`goldsegen` +400 Gold) und Zähigkeit (`schwergewicht`). Diese Augments
+KÖNNEN gegen einen Dummy keinen DPS-Anstieg zeigen → sie sind **falsch-rot**. 24 tragen das
+identische Rausch-Delta `-224` (≈ Null). Würde S3-2 diese Liste abarbeiten, würden
+funktionierende Defensiv-/Utility-Augments gestrichen. FAIL muss „tut nachweislich NICHT
+das Beschriebene" bedeuten, nicht „macht keinen Schaden".
+
+**Umsetzung (`scripts/effect-matrix.mjs`):** Wähle die Assertion-Klasse pro Augment aus
+seiner Rolle (Description/Tags/`augIds()`-Metadaten), nicht pauschal DPS:
+- **Schild/Absorb** (Description nennt „shield/absorb", `ruleFlags`): messe absorbierten
+  Schaden bzw. effektive HP nach Treffer-Einschlag — nicht Schadensausstoß.
+- **CC (Slow/Root/Stun)**: messe Gegner-`moveSpeed`/Kontrollzustand am gehookten Ziel.
+- **Wirtschaft/Gold**: messe `run.gold`-Delta (z. B. `goldsegen` → +400).
+- **Heilung/Sustain**: messe wiederhergestellte HP / effektive HP über Zeit.
+- **On-Hit-/Proc-Schaden, AD/AP-Stat-Boni**: DPS-Delta bzw. `stats.get(x)` — hier ist die
+  bisherige Assertion korrekt.
+- Erst wenn KEINE Rolle passt: „inconclusive" markieren (nicht FAIL) und in der Matrix
+  gesondert ausweisen — inconclusive ist nicht dasselbe wie broken.
+Danach `npm run matrix` erneut laufen lassen; die neue FAIL-Liste ist die **ehrliche**
+Grundlage für S3-2.
+
+**Akzeptanzkriterien:**
+- Kein defensiv/CC/Gold-Augment steht mehr wegen „no damage increase" auf FAIL.
+- Die Matrix weist drei Zustände aus: PASS · FAIL (tut nachweislich nicht das Beschriebene)
+  · inconclusive (nicht messbar mit vorhandenen Mitteln), mit Zählern je Tier.
+- Artefakt (`effect-matrix.json`) aktualisiert; `BUGS.md` B7 trägt die ehrliche FAIL-Zahl.
+- `npm run verify` grün.
+
+**Commit:** `S3-1b: route effect assertions by augment role (fix false-red defensive/utility)`
+
+---
+
 ### S3-2 · Rote Augments fixen oder streichen
-**Phase:** DEVPLAN Phase 2 · **Abhängig von:** S3-1.
+**Phase:** DEVPLAN Phase 2 · **Abhängig von:** S3-1, **S3-1b** (ehrliche FAIL-Liste!).
 
 **Ziel:** Jede FAIL-Zeile der Matrix auflösen: entweder korrekt implementieren oder
 **streichen** (100 gute > 144 halbe — Streichen ist ausdrücklich erlaubt, via `isDeleted`
