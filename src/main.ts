@@ -12,7 +12,7 @@ import { applyBalance } from './core/balance';
 
 // Fold any admin balance overrides into the registries before the game starts.
 applyBalance();
-import { run, addAugment } from './core/run';
+import { run, addAugment, newRun } from './core/run';
 import { augmentById, AUGMENTS } from './augments/registry';
 import { championUsesAP } from './champions/registry';
 import { itemById } from './items/registry';
@@ -69,8 +69,12 @@ declare global {
         statMods: boolean;
         ruleFlags: boolean;
         needs: string[];
+        statModsList: { stat: string; flat?: number; pct?: number }[];
+        ruleFlagsObj: Record<string, number | boolean>;
       }[];
       champUsesAP: (id: string) => boolean;
+      /** Test helper: wipe the run back to its fresh starting state (S3-1 effect-matrix). */
+      reset: () => void;
     };
   }
 }
@@ -98,9 +102,13 @@ window.__CC = {
       statMods: !!a.statMods,
       ruleFlags: !!a.ruleFlags,
       needs: a.needs ?? [],
+      statModsList: a.statMods ?? [],
+      ruleFlagsObj: a.ruleFlags ?? {},
     })),
   // Test helper: does this champion's kit use AP? (augment gating input)
   champUsesAP: (id: string) => championUsesAP(id),
+  // Test helper: wipe the run back to its fresh starting state (S3-1 effect-matrix)
+  reset: () => { newRun(); },
   // Test helper: grant an augment by id (takes effect on next goto/round)
   grant: (id: string) => {
     const def = augmentById(id);

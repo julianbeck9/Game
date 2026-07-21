@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "verify": "npm run build && npm run test && node scripts/verify.mjs"
+    "verify": "npm run build && npm run test && node scripts/verify.mjs",
+    "matrix": "npm run build && node scripts/effect-matrix.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0"
