@@ -12,7 +12,7 @@ import { applyBalance } from './core/balance';
 
 // Fold any admin balance overrides into the registries before the game starts.
 applyBalance();
-import { run, addAugment, newRun } from './core/run';
+import { run, addAugment, newRun, upgradeItem } from './core/run';
 import { augmentById, AUGMENTS } from './augments/registry';
 import { championUsesAP } from './champions/registry';
 import { itemById } from './items/registry';
@@ -58,6 +58,7 @@ declare global {
       goto: (round: number) => void;
       grant: (id: string) => boolean;
       grantItem: (id: string) => boolean;
+      forgeItem: (id: string) => boolean;
       arena: () => unknown;
       augIds: () => {
         id: string;
@@ -123,5 +124,7 @@ window.__CC = {
     if (def.ruleFlags) Object.assign(run.flags, def.ruleFlags);
     return true;
   },
+  // Test helper: forge an owned item one star up (charges gold, like the shop)
+  forgeItem: (id: string) => upgradeItem(id),
 };
 

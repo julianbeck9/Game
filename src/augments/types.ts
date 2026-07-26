@@ -81,6 +81,11 @@ export interface AugmentDef {
   hooks?: AugmentHooks;
   /** Permanent stat mods, re-applied at each combat init through the pipeline. */
   statMods?: AugmentStatMod[];
+  /**
+   * Multiplier folded into `ctx.power(def)`, so hook-driven effects scale with
+   * the source's rank. Set by item star forging (items/stars.ts).
+   */
+  powerMult?: number;
   ruleFlags?: Partial<RuleFlags>;
   /** Per-frame tick for dynamic augments (Schwungmasse etc.). */
   onUpdate?: (dt: number, ctx: AugmentCtx) => void;

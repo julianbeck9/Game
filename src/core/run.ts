@@ -1,5 +1,7 @@
 import { AugmentDef, Tag, RuleFlags, DEFAULT_FLAGS } from '../augments/types';
 import type { ItemDef } from '../items/registry';
+// Runtime-safe: items/stars only imports types from the registry, so no cycle.
+import { starUpgradeCost, starsOf, withStars } from '../items/stars';
 
 /**
  * State of one run (no persistence — a page reload is a fresh run).
@@ -71,6 +73,22 @@ export function removeAugment(id: string): void {
   if (i < 0) return;
   run.augments.splice(i, 1);
   recomputeDerived();
+}
+
+/**
+ * Forge an owned item one star higher (see items/stars.ts). Returns false when
+ * the item is already ★3 or the gold is short — the caller shows why.
+ */
+export function upgradeItem(id: string): boolean {
+  const i = run.items.findIndex((it) => it.id === id);
+  if (i < 0) return false;
+  const cur = run.items[i];
+  const cost = starUpgradeCost(cur);
+  if (cost === null || run.gold < cost) return false;
+  run.gold -= cost;
+  run.items[i] = withStars(cur, starsOf(cur) + 1);
+  recomputeDerived();
+  return true;
 }
 
 /** Sell an item: refund 70% and rebuild flags. */

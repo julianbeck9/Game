@@ -19,7 +19,9 @@ export class AugmentManager {
       player,
       run,
       power: (def: AugmentDef): number => {
-        let p = 1;
+        // Item star ranks raise powerMult, so forged items hit harder through
+        // their hooks too — not just through their flat stat mods.
+        let p = def.powerMult ?? 1;
         if (def.tier === 'silber' && run.flags.silverHalved) p *= 0.5;
         return p;
       },

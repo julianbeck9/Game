@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config';
-import { run, addItem, sellItem } from '../core/run';
+import { run, addItem, sellItem, upgradeItem } from '../core/run';
 import { ItemDef, rollShop, MAX_ITEMS } from '../items/registry';
 import { drawItemIcon } from '../items/icons';
+import { starLabel, starUpgradeCost, starsOf, MAX_STARS } from '../items/stars';
 import { sfx } from '../core/sfx';
 import { STR } from '../core/strings';
 
@@ -12,15 +13,15 @@ export class ShopScene extends Phaser.Scene {
   private slotText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private ownedRow!: Phaser.GameObjects.Container;
-  /** First tap on an owned item arms the sell; second tap confirms. */
-  private armedSell: string | null = null;
+  /** Tapping an owned item opens this panel (forge / sell); null when closed. */
+  private actionPanel: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super('shop');
   }
 
   create(): void {
-    this.armedSell = null;
+    this.actionPanel = null;
     this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.94);
     this.add
       .text(GAME_W / 2, 80, STR.shopTitle, {
@@ -93,7 +94,7 @@ export class ShopScene extends Phaser.Scene {
     this.slotText.setText(`Items: ${run.items.length} / ${MAX_ITEMS}`);
   }
 
-  /** Owned-item row: tap once to arm, tap again to SELL (70% refund). */
+  /** Owned-item row: tap an item to open its forge/sell panel. */
   private rebuildOwnedRow(): void {
     this.ownedRow.removeAll(true);
     if (run.items.length === 0) {
@@ -105,24 +106,37 @@ export class ShopScene extends Phaser.Scene {
     const total = run.items.length * size + (run.items.length - 1) * gap;
     const x0 = (GAME_W - total) / 2 + size / 2;
     const y = GAME_H - 230;
-    this.hintText.setText('Your items — tap once to arm, tap again to sell (70% refund)');
+    this.hintText.setText('Your items — tap one to forge it up a star or sell it');
 
     const g = this.add.graphics();
     this.ownedRow.add(g);
     run.items.forEach((it, i) => {
       const x = x0 + i * (size + gap);
-      const armed = this.armedSell === it.id;
-      g.fillStyle(armed ? 0x552222 : 0x14141f, 1);
+      const stars = starsOf(it);
+      g.fillStyle(0x14141f, 1);
       g.fillRoundedRect(x - size / 2, y - size / 2, size, size, 12);
-      g.lineStyle(3, armed ? 0xff6a5e : it.color, 1);
+      // A forged item wears a golden frame — readable at a glance in the row.
+      g.lineStyle(stars > 1 ? 4 : 3, stars > 1 ? 0xffd24a : it.color, 1);
       g.strokeRoundedRect(x - size / 2, y - size / 2, size, size, 12);
       drawItemIcon(g, it.icon ?? 'orb', x, y - 6, 52, it.color);
+      if (stars > 1) {
+        this.ownedRow.add(
+          this.add
+            .text(x, y - size / 2 + 12, starLabel(stars), {
+              fontFamily: 'sans-serif',
+              fontSize: '18px',
+              fontStyle: 'bold',
+              color: '#ffd24a',
+            })
+            .setOrigin(0.5),
+        );
+      }
       this.ownedRow.add(
         this.add
-          .text(x, y + 30, armed ? 'Sell?' : it.name, {
+          .text(x, y + 30, it.name, {
             fontFamily: 'sans-serif',
-            fontSize: armed ? '17px' : '13px',
-            color: armed ? '#ff9a8a' : '#8a94b0',
+            fontSize: '13px',
+            color: '#8a94b0',
             wordWrap: { width: size + 8 },
             align: 'center',
           })
@@ -131,20 +145,127 @@ export class ShopScene extends Phaser.Scene {
 
       const zone = this.add.zone(x, y, size, size).setOrigin(0.5).setInteractive({ useHandCursor: true });
       this.ownedRow.add(zone);
-      zone.on('pointerdown', () => {
-        if (this.armedSell === it.id) {
-          const refund = sellItem(it.id);
-          this.armedSell = null;
-          sfx.pick();
-          this.refreshLabels();
-          this.rebuildOwnedRow();
-          this.hintText.setText(`Sold ${it.name}: +${refund} Gold`);
-          return;
-        }
-        this.armedSell = it.id;
-        this.rebuildOwnedRow();
-      });
+      zone.on('pointerdown', () => this.openItemActions(it));
     });
+  }
+
+  /**
+   * Forge/sell panel for one owned item. Replaces the old tap-to-arm,
+   * tap-again-to-sell flow, which sold items by accident and left no room for
+   * a second action.
+   */
+  private openItemActions(it: ItemDef): void {
+    this.closeItemActions();
+    const panel = this.add.container(0, 0).setDepth(50);
+    this.actionPanel = panel;
+
+    // Dim backdrop; clicking it cancels.
+    const dim = this.add
+      .rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x000000, 0.72)
+      .setInteractive();
+    dim.on('pointerdown', () => this.closeItemActions());
+    panel.add(dim);
+
+    const w = 720;
+    const h = 400;
+    const cx = GAME_W / 2;
+    const cy = GAME_H / 2;
+    panel.add(
+      this.add.rectangle(cx, cy, w, h, 0x14141f, 1).setStrokeStyle(3, it.color, 1).setInteractive(),
+    );
+    const stars = starsOf(it);
+    panel.add(
+      this.add
+        .text(cx, cy - h / 2 + 44, `${it.name}  ${starLabel(stars)}`, {
+          fontFamily: 'sans-serif',
+          fontSize: '32px',
+          fontStyle: 'bold',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5),
+    );
+    panel.add(
+      this.add
+        .text(cx, cy - h / 2 + 104, it.description, {
+          fontFamily: 'sans-serif',
+          fontSize: '19px',
+          color: '#8a94b0',
+          wordWrap: { width: w - 70 },
+          align: 'center',
+        })
+        .setOrigin(0.5, 0),
+    );
+
+    const cost = starUpgradeCost(it);
+    const maxed = cost === null;
+    const affordable = cost !== null && run.gold >= cost;
+    const forgeLabel = maxed
+      ? `Already ${starLabel(MAX_STARS)} — fully forged`
+      : `★ Forge to ${starLabel(stars + 1)} — ${cost} Gold`;
+    this.panelButton(panel, cx, cy + 62, w - 90, forgeLabel, affordable, 0x3a2f10, 0xffd24a, () => {
+      if (!upgradeItem(it.id)) return;
+      sfx.pick();
+      this.refreshLabels();
+      this.rebuildOwnedRow();
+      this.closeItemActions();
+      this.hintText.setText(`Forged ${it.name} to ${starLabel(stars + 1)}`);
+    });
+
+    panel.add(
+      this.add
+        .text(cx, cy + h / 2 - 18, 'tap outside to cancel', {
+          fontFamily: 'sans-serif',
+          fontSize: '17px',
+          color: '#55596a',
+        })
+        .setOrigin(0.5),
+    );
+
+    const refund = Math.round(it.cost * 0.7);
+    this.panelButton(panel, cx, cy + 140, w - 90, `Sell — +${refund} Gold`, true, 0x3a1f1f, 0xff6a5e, () => {
+      const got = sellItem(it.id);
+      sfx.pick();
+      this.refreshLabels();
+      this.rebuildOwnedRow();
+      this.closeItemActions();
+      this.hintText.setText(`Sold ${it.name}: +${got} Gold`);
+    });
+  }
+
+  private panelButton(
+    panel: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    w: number,
+    label: string,
+    enabled: boolean,
+    fill: number,
+    stroke: number,
+    onTap: () => void,
+  ): void {
+    const bg = this.add
+      .rectangle(x, y, w, 62, enabled ? fill : 0x191922, 1)
+      .setStrokeStyle(2, enabled ? stroke : 0x33384a, 1);
+    panel.add(bg);
+    panel.add(
+      this.add
+        .text(x, y, label, {
+          fontFamily: 'sans-serif',
+          fontSize: '25px',
+          fontStyle: 'bold',
+          color: enabled ? '#ffffff' : '#55596a',
+        })
+        .setOrigin(0.5),
+    );
+    if (enabled) {
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerdown', onTap);
+    }
+  }
+
+  private closeItemActions(): void {
+    this.actionPanel?.destroy(true);
+    this.actionPanel = null;
   }
 
   private makeItemCard(it: ItemDef, x: number, y: number, w: number, h: number): void {

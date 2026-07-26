@@ -23,6 +23,10 @@ export interface ItemDef extends AugmentDef {
   icon?: ItemIconKind;
   /** Boots and other one-of-a-kind items: can only be owned once. */
   unique?: boolean;
+  /** Star rank 1..3 (see items/stars.ts). Absent means an unforged ★1 item. */
+  stars?: number;
+  /** Pristine ★1 snapshot, so each forge derives from the base, not a scaled copy. */
+  baseItem?: ItemDef;
 }
 
 function item(def: Omit<ItemDef, 'tier' | 'tags'>): ItemDef {
