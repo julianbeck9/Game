@@ -10,6 +10,8 @@ import { crown } from '../core/draw';
 import { ChampionDef } from '../champions/types';
 import { championById } from '../champions/registry';
 import { AnimatedChampion } from '../champions/AnimatedChampion';
+import { cfgFor, VfxSpec } from '../champions/championConfig';
+import { specForShape } from '../champions/abilityVfx';
 
 /** Foot-pivot sprites (origin.y = 60/64) sit this far below the unit centre. */
 const SPRITE_FOOT_OFFSET = (radius: number) => -4 + radius * 1.356;
@@ -212,7 +214,7 @@ export class Player extends Unit {
     this.lastQDir = { ...d };
     this.startCooldown('Q');
     this.combat.bus.emit('abilityCast', { ability: 'Q' });
-    this.sprite.cast();
+    this.sprite.cast(this.castVfx('q'));
     this.fireQ(d);
     return true;
   }
@@ -227,9 +229,18 @@ export class Player extends Unit {
     if (!this.isReady('E')) return false;
     this.startCooldown('E');
     this.combat.bus.emit('abilityCast', { ability: 'E' });
-    this.sprite.cast();
+    this.sprite.cast(this.castVfx('e'));
     this.champ.castE(this, dir && len(dir.x, dir.y) > 0.01 ? norm(dir.x, dir.y) : undefined);
     return true;
+  }
+
+  /**
+   * Cast VFX for one slot: the champion's configured effect, resized to the
+   * ability's declared reach so the visual stops where the ability stops.
+   */
+  private castVfx(slot: 'q' | 'e'): VfxSpec | undefined {
+    const cfg = cfgFor(this.champ.id);
+    return specForShape(cfg.castVfx, this.champ.spec?.[slot], cfg.attackVfx?.color);
   }
 
   /** Phasenschritt: short dash in current move direction (charge system). */

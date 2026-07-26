@@ -66,6 +66,8 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
   private baseState: BaseState = 'idle';
   private shot: Shot | null = null;
   private shotFired = false;
+  /** Per-cast VFX override (see cast()); cleared once the shot has emitted. */
+  private castVfxOnce: VfxSpec | undefined;
   private clock = 0;
   /**
    * Display size multiplier. The animator rewrites scale every frame, so a base
@@ -107,12 +109,20 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
     return this;
   }
   attack(): this { return this.startShot('attack', this.cc.attackDur ?? this.cfg.attackDur); }
-  cast(): this   { return this.startShot('cast',   this.cc.castDur   ?? this.cfg.castDur);   }
+  /**
+   * `vfx` overrides this cast's effect spec for one shot — callers pass the
+   * geometry derived from the ability's declared shape so the effect reaches
+   * exactly as far as the ability does (see abilityVfx.ts).
+   */
+  cast(vfx?: VfxSpec): this {
+    this.castVfxOnce = vfx;
+    return this.startShot('cast', this.cc.castDur ?? this.cfg.castDur);
+  }
   hurt(): this   { return this.startShot('hurt',   this.cfg.hurtDur); }
 
   /** Für Object-Pooling: Zustand vollständig zurücksetzen (statt destroy/new). */
   reset(x?: number, y?: number): this {
-    this.shot = null; this.shotFired = false; this.clock = 0;
+    this.shot = null; this.shotFired = false; this.clock = 0; this.castVfxOnce = undefined;
     this.baseState = 'idle';
     this.clearTint(); this.setScale(1).setRotation(0);
     if (x !== undefined && y !== undefined) { this.setHome(x, y); this.setPosition(x, y); }
@@ -163,12 +173,15 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
       x: this.x + dir * this.displayWidth * 0.45,
       y: this.y - this.displayHeight * 0.5,
       dir,
-      spec: shot.name === 'cast' ? this.cc.castVfx : shot.name === 'attack' ? this.cc.attackVfx : undefined,
+      spec: shot.name === 'cast'
+        ? this.castVfxOnce ?? this.cc.castVfx
+        : shot.name === 'attack' ? this.cc.attackVfx : undefined,
       champ: this,
     };
     const evt = shot.name === 'attack' ? ChampEvents.AttackHit
       : shot.name === 'cast' ? ChampEvents.CastRelease : ChampEvents.Hurt;
     this.emit(evt, payload);
+    if (shot.name === 'cast') this.castVfxOnce = undefined;
   }
 
   // ---- Base-Loops ----
