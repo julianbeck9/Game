@@ -50,4 +50,30 @@ export const RETIRED_AUGMENT_IDS: ReadonlySet<string> = new Set([
   'gigantwuchs',
   'prunkfaust',
   'adlerauge',
+
+  // ---- Second pass: augments that are not stat sticks but still make no
+  // decision. Same rule as above — if picking it never changes how you play,
+  // it is taking a slot away from something that would.
+
+  // "Instantly gain N random permanent stat bonuses": the stat-stick problem
+  // wearing a hat, and random on top, so you cannot even build around it.
+  'statistik1',
+  'statistik2',
+  'statistik3',
+
+  // Permanent stat growth on takedowns. The number goes up on its own; there is
+  // no moment where owning it changes a choice.
+  'zerlegung',
+  'panzerlok',
+  'grauensbringer',
+  'schrumpfwerk',
+
+  // Four near-identical timer turrets: "every N seconds, hit the nearest enemy".
+  // They play themselves and they play the same. The distinct ones are kept
+  // instead — laserblick (aims along your facing), schmortopf (an aura you
+  // position), lauffeuer (chains) and giftspur (a trail you lay).
+  'fuchsfeuer',
+  'glutkern',
+  'wurfholz',
+  'orbitalschlag',
 ]);
