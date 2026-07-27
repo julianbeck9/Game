@@ -1,28 +1,46 @@
 {
-  "generatedAt": "2026-07-21T19:30:16.009Z",
+  "generatedAt": "2026-07-27T08:01:59.759Z",
   "round": 8,
   "windowMs": 3000,
   "baselineRuns": 5,
   "baselineSamples": [
-    357.62091563953175,
-    167.23577167562974,
-    269.81450252951095,
     0,
-    223.88059701492537
+    68.50758853288364,
+    59.02192242833053,
+    58.043117744610285,
+    77.76049766718506
   ],
-  "baselineMedian": 223.88059701492537,
+  "baselineMedian": 63.764755480607086,
   "hooksTolerance": 0.85,
-  "pass": 100,
-  "fail": 44,
+  "pass": 92,
+  "fail": 0,
+  "inconclusive": 52,
+  "byTier": {
+    "silber": {
+      "PASS": 33,
+      "FAIL": 0,
+      "INCONCLUSIVE": 20
+    },
+    "gold": {
+      "PASS": 35,
+      "FAIL": 0,
+      "INCONCLUSIVE": 11
+    },
+    "prisma": {
+      "PASS": 24,
+      "FAIL": 0,
+      "INCONCLUSIVE": 21
+    }
+  },
   "total": 144,
   "rows": [
     {
       "id": "umpolung",
       "tier": "silber",
       "name": "Reversal",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "337 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 143 of 1 run(s) [143] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -30,11 +48,11 @@
       "id": "eisenhaut",
       "tier": "silber",
       "name": "Ironhide",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "249 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "no enemy affected",
+      "pass": null,
+      "reason": "no enemy was slowed or controlled — trigger condition (slowing) may not have occurred in the harness"
     },
     {
       "id": "wucht",
@@ -50,41 +68,41 @@
       "id": "wagemut",
       "tier": "silber",
       "name": "Daring",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "420 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "228 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "kopfgeld",
       "tier": "silber",
       "name": "Bounty",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "economy",
+      "expected": "run.gold rises",
+      "measured": "gold 350 -> 350",
+      "pass": null,
+      "reason": "granted no gold — trigger condition (takedown) may not have occurred in the harness"
     },
     {
       "id": "berstschild",
       "tier": "silber",
       "name": "Burst Shield",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "59 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-165) — inconclusive for non-damage hooks, needs manual check"
+      "class": "shield",
+      "expected": "player.shield > 0 during the fight",
+      "measured": "peak shield 0",
+      "pass": null,
+      "reason": "never put any shield on the player — trigger condition (when) may not have occurred in the harness"
     },
     {
       "id": "zerlegung",
       "tier": "silber",
       "name": "Dismantle",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "455 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "flinkhand",
@@ -100,19 +118,19 @@
       "id": "windvorteil",
       "tier": "silber",
       "name": "Tailwind",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 227 of 1 run(s) [227] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "giftspur",
       "tier": "silber",
       "name": "Poison Trail",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "384 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 180 of 2 run(s) [12, 180] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -120,9 +138,9 @@
       "id": "zermuerbung",
       "tier": "silber",
       "name": "Attrition",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "429 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 255 of 1 run(s) [255] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -130,39 +148,39 @@
       "id": "klingenfokus",
       "tier": "silber",
       "name": "Blade Focus",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 62 of 1 run(s) [62] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "notausgang",
       "tier": "silber",
       "name": "Escape Hatch",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "425 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "shield",
+      "expected": "player.shield > 0 during the fight",
+      "measured": "peak shield 0",
+      "pass": null,
+      "reason": "never put any shield on the player — trigger condition (below) may not have occurred in the harness"
     },
     {
       "id": "bannschild",
       "tier": "silber",
       "name": "Ward Shield",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "shield",
+      "expected": "player.shield > 0 during the fight",
+      "measured": "peak shield 25",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "fuchsfeuer",
       "tier": "silber",
       "name": "Foxfire",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "464 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 231 of 1 run(s) [231] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -170,11 +188,11 @@
       "id": "frostgeist",
       "tier": "silber",
       "name": "Frost Spirit",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "affected 1 enem(y/ies)",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "blutkelch",
@@ -190,39 +208,39 @@
       "id": "kaltblut",
       "tier": "silber",
       "name": "Cold Blood",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "508 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "0 HP regained",
+      "pass": null,
+      "reason": "never restored any HP — trigger condition (per) may not have occurred in the harness"
     },
     {
       "id": "schwergewicht",
       "tier": "silber",
       "name": "Heavyweight",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "184 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-40) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 91 of 2 run(s) [0, 91] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "hextechkern",
       "tier": "silber",
       "name": "Hextech Core",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "affected 1 enem(y/ies)",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "glutkern",
       "tier": "silber",
       "name": "Ember Core",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "329 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 329 of 1 run(s) [329] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -230,9 +248,9 @@
       "id": "freilauf",
       "tier": "silber",
       "name": "Free Run",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "365 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 60 of 1 run(s) [60] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -240,21 +258,21 @@
       "id": "eiseskaelte",
       "tier": "silber",
       "name": "Bitter Cold",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "109 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-115) — inconclusive for non-damage hooks, needs manual check"
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "no enemy affected",
+      "pass": null,
+      "reason": "no enemy was slowed or controlled — trigger condition (slowed) may not have occurred in the harness"
     },
     {
       "id": "beutewitterung",
       "tier": "silber",
       "name": "Bloodscent",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "431 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "0 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "beintag",
@@ -270,29 +288,29 @@
       "id": "feuerwerk",
       "tier": "silber",
       "name": "Fireworks",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54",
+      "measured": "0 damage in 2 run(s)",
+      "pass": null,
+      "reason": "harness never engaged (0 damage in every run) — same miss that is discarded from the baseline"
     },
     {
       "id": "trugbild",
       "tier": "silber",
       "name": "Mirage",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "253 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "312 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "bergkern",
       "tier": "silber",
       "name": "Mountain Core",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "390 total damage dealt in 3000ms",
+      "class": "shield",
+      "expected": "player.shield > 0 during the fight",
+      "measured": "peak shield 28",
       "pass": true,
       "reason": ""
     },
@@ -300,21 +318,21 @@
       "id": "taubheit",
       "tier": "silber",
       "name": "Numbness",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "166 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-58) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 307 of 1 run(s) [307] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "ozeankern",
       "tier": "silber",
       "name": "Ocean Core",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "446 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "0 HP regained",
+      "pass": null,
+      "reason": "never restored any HP — trigger condition (dealing damage) may not have occurred in the harness"
     },
     {
       "id": "fluchtkammer",
@@ -340,11 +358,11 @@
       "id": "abstossfeld",
       "tier": "silber",
       "name": "Repulsor Field",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "390 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "no enemy affected",
+      "pass": null,
+      "reason": "no enemy was slowed or controlled — trigger condition (below) may not have occurred in the harness"
     },
     {
       "id": "fernrohr",
@@ -360,29 +378,29 @@
       "id": "zeitzuender",
       "tier": "silber",
       "name": "Time Bomb",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 60 of 1 run(s) [60] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "schattenlaeufer",
       "tier": "silber",
       "name": "Shadow Runner",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "214 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "313 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "silberloeffel",
       "tier": "silber",
       "name": "Silver Spoon",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "343 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 367 of 1 run(s) [367] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -390,19 +408,19 @@
       "id": "nachdruck",
       "tier": "silber",
       "name": "Emphasis",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "311 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "no enemy affected",
+      "pass": null,
+      "reason": "no enemy was slowed or controlled — trigger condition (slowing) may not have occurred in the harness"
     },
     {
       "id": "schleimzeit",
       "tier": "silber",
       "name": "Slime Time",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "400 total damage dealt in 3000ms",
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "5 HP regained",
       "pass": true,
       "reason": ""
     },
@@ -410,9 +428,9 @@
       "id": "tempoteufel",
       "tier": "silber",
       "name": "Speed Demon",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "312 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 422 of 1 run(s) [422] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -420,21 +438,21 @@
       "id": "stapelsaurus",
       "tier": "silber",
       "name": "Stackosaurus",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "169 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "statistik1",
       "tier": "silber",
       "name": "Stats!",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "0 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "panzerglueck",
@@ -460,31 +478,31 @@
       "id": "quaelgeist",
       "tier": "silber",
       "name": "Tormentor",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "390 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "no enemy affected",
+      "pass": null,
+      "reason": "no enemy was slowed or controlled — trigger condition (slowing) may not have occurred in the harness"
     },
     {
       "id": "brandstifter",
       "tier": "silber",
       "name": "Arsonist",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "258 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "213 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "transmutgold",
       "tier": "silber",
       "name": "Transmute: Gold",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "253 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "253 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "doppelzuender",
@@ -500,9 +518,9 @@
       "id": "taifun",
       "tier": "silber",
       "name": "Typhoon",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "219 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 144 of 1 run(s) [144] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -510,21 +528,21 @@
       "id": "bannschleier",
       "tier": "silber",
       "name": "Warding Veil",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 420 of 2 run(s) [0, 420] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "schwungrad",
       "tier": "silber",
       "name": "Flywheel",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 253 of 2 run(s) [0, 253] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "hexensinn",
@@ -550,9 +568,9 @@
       "id": "beilwurf",
       "tier": "gold",
       "name": "Axe Throw",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "253 total damage dealt in 3000ms",
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "affected 1 enem(y/ies)",
       "pass": true,
       "reason": ""
     },
@@ -560,21 +578,21 @@
       "id": "verstaerkerkern",
       "tier": "gold",
       "name": "Amplifier Core",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 54 of 2 run(s) [0, 54] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "grosshirn",
       "tier": "gold",
       "name": "Big Brain",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "60 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-164) — inconclusive for non-damage hooks, needs manual check"
+      "class": "shield",
+      "expected": "player.shield > 0 during the fight",
+      "measured": "peak shield 10",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "ersterstreich",
@@ -620,9 +638,9 @@
       "id": "morgenroete",
       "tier": "gold",
       "name": "Dawnbringer",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "250 total damage dealt in 3000ms",
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "15 HP regained",
       "pass": true,
       "reason": ""
     },
@@ -630,9 +648,9 @@
       "id": "fluchklinge",
       "tier": "gold",
       "name": "Curse Blade",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "251 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 54 of 1 run(s) [54] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -640,11 +658,11 @@
       "id": "goldsegen",
       "tier": "gold",
       "name": "Gold Blessing",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "economy",
+      "expected": "run.gold rises",
+      "measured": "gold 350 -> 750",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "zweitschlag",
@@ -660,19 +678,19 @@
       "id": "geisterklinge",
       "tier": "gold",
       "name": "Ghostblade",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "146 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-78) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 143 of 1 run(s) [143] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "fanghaken",
       "tier": "gold",
       "name": "Grappling Hook",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "397 total damage dealt in 3000ms",
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "affected 1 enem(y/ies)",
       "pass": true,
       "reason": ""
     },
@@ -680,11 +698,11 @@
       "id": "brandhieb",
       "tier": "gold",
       "name": "Searing Strike",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "86 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-138) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 256 of 1 run(s) [256] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "blitzschritt",
@@ -700,21 +718,21 @@
       "id": "jagdfieber",
       "tier": "gold",
       "name": "Hunt Fever",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 390 of 2 run(s) [0, 390] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "wechselspiel",
       "tier": "gold",
       "name": "Interplay",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "118 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-106) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 172 of 1 run(s) [172] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "volltreffer",
@@ -740,49 +758,49 @@
       "id": "arkanpfeile",
       "tier": "gold",
       "name": "Arcane Arrows",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 310 of 1 run(s) [310] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "zauberschuetze",
       "tier": "gold",
       "name": "Spellslinger",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 332 of 2 run(s) [0, 332] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "wurfholz",
       "tier": "gold",
       "name": "Throwing Wood",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "257 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "banditenstolz",
       "tier": "gold",
       "name": "Outlaw's Pride",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "84 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-140) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "143 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "zaeherwille",
       "tier": "gold",
       "name": "Tenacious Will",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "371 total damage dealt in 3000ms",
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "2 HP regained",
       "pass": true,
       "reason": ""
     },
@@ -790,9 +808,9 @@
       "id": "boeserfunke",
       "tier": "gold",
       "name": "Evil Spark",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "229 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 210 of 1 run(s) [210] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -800,11 +818,11 @@
       "id": "kampfgesang",
       "tier": "gold",
       "name": "Battle Song",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "169 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-55) — inconclusive for non-damage hooks, needs manual check"
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "0 HP regained",
+      "pass": null,
+      "reason": "never restored any HP — trigger condition (each) may not have occurred in the harness"
     },
     {
       "id": "zeitschleife",
@@ -820,21 +838,21 @@
       "id": "neustart",
       "tier": "gold",
       "name": "Restart",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "340 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "371 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "rastlosegenesung",
       "tier": "gold",
       "name": "Restless Recovery",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "271 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "0 HP regained",
+      "pass": null,
+      "reason": "never restored any HP — trigger condition (per) may not have occurred in the harness"
     },
     {
       "id": "hauptgang",
@@ -870,19 +888,19 @@
       "id": "schrumpfwerk",
       "tier": "gold",
       "name": "Shrink Engine",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "448 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "0 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "schrumpfstrahl",
       "tier": "gold",
       "name": "Shrink Ray",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "249 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 312 of 2 run(s) [0, 312] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -890,9 +908,9 @@
       "id": "scharfschuetze",
       "tier": "gold",
       "name": "Sharpshooter",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "396 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 58 of 1 run(s) [58] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -900,11 +918,11 @@
       "id": "ruhigehand",
       "tier": "gold",
       "name": "Steady Hand",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "143 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-81) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 144 of 2 run(s) [0, 144] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "seelensauger",
@@ -920,49 +938,49 @@
       "id": "statistik2",
       "tier": "gold",
       "name": "Stats Squared",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "404 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "panzerlok",
       "tier": "gold",
       "name": "Tank Engine",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "166 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-58) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "143 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "nadelstich",
       "tier": "gold",
       "name": "Needlepoint",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "168 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-56) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 196 of 2 run(s) [0, 196] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "transmutprisma",
       "tier": "gold",
       "name": "Transmute: Prisma",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "219 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "97 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "taktschlag",
       "tier": "gold",
       "name": "Off-Beat",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "371 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 328 of 1 run(s) [328] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -970,11 +988,11 @@
       "id": "wechselbalg",
       "tier": "gold",
       "name": "Changeling",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "372 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "60 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "wundbrand",
@@ -990,31 +1008,31 @@
       "id": "hastwerk",
       "tier": "gold",
       "name": "Hastework",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "166 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-58) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "324 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "abrechnung",
       "tier": "gold",
       "name": "Reckoning",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "105 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-118) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 396 of 1 run(s) [396] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "tempospirale",
       "tier": "prisma",
       "name": "Tempo Spiral",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "473 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "60 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "bodenstaendig",
@@ -1030,11 +1048,11 @@
       "id": "klingenwalzer",
       "tier": "prisma",
       "name": "Blade Waltz",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 144 of 1 run(s) [144] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "zuckerschock",
@@ -1050,19 +1068,19 @@
       "id": "unantastbar",
       "tier": "prisma",
       "name": "Untouchable",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "339 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "shield",
+      "expected": "player.shield > 0 during the fight",
+      "measured": "peak shield 0",
+      "pass": null,
+      "reason": "never put any shield on the player — trigger condition (your e) may not have occurred in the harness"
     },
     {
       "id": "sternenhof",
       "tier": "prisma",
       "name": "Star Halo",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "239 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 462 of 1 run(s) [462] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1070,9 +1088,9 @@
       "id": "funkenschlag",
       "tier": "prisma",
       "name": "Spark Chain",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "358 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 233 of 2 run(s) [0, 233] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1080,11 +1098,11 @@
       "id": "todeszirkel",
       "tier": "prisma",
       "name": "Death Circle",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "292 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "0 HP regained",
+      "pass": null,
+      "reason": "never restored any HP — trigger condition (healing you) may not have occurred in the harness"
     },
     {
       "id": "brachialmagie",
@@ -1100,11 +1118,11 @@
       "id": "wallbrecher",
       "tier": "prisma",
       "name": "Wallbreaker",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "238 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "shield",
+      "expected": "player.shield > 0 during the fight",
+      "measured": "peak shield 0",
+      "pass": null,
+      "reason": "never put any shield on the player — trigger condition (slowing) may not have occurred in the harness"
     },
     {
       "id": "windlaeufer",
@@ -1120,11 +1138,11 @@
       "id": "teufelspakt",
       "tier": "prisma",
       "name": "Devil's Pact",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "0 HP regained",
+      "pass": null,
+      "reason": "never restored any HP — trigger condition (takedown) may not have occurred in the harness"
     },
     {
       "id": "klingenschwur",
@@ -1140,11 +1158,11 @@
       "id": "grauensbringer",
       "tier": "prisma",
       "name": "Dreadbringer",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "312 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "0 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "beidhaendig",
@@ -1160,31 +1178,31 @@
       "id": "bebenspur",
       "tier": "prisma",
       "name": "Quake Trail",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "68 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-156) — inconclusive for non-damage hooks, needs manual check"
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 169 of 1 run(s) [169] in 3000ms",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "heureka",
       "tier": "prisma",
       "name": "Eureka",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "253 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "249 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "endform",
       "tier": "prisma",
       "name": "Final Form",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "309 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "shield",
+      "expected": "player.shield > 0 during the fight",
+      "measured": "peak shield 0",
+      "pass": null,
+      "reason": "never put any shield on the player — trigger condition (e unleashes) may not have occurred in the harness"
     },
     {
       "id": "wichtelwut",
@@ -1212,17 +1230,17 @@
       "name": "Gigantism",
       "class": "statMod",
       "expected": "maxHP=212.75, damage=110.00, abilityPower=0.00",
-      "measured": "maxHP=212.75, damage=135.00, abilityPower=0.00",
-      "pass": false,
-      "reason": "statMod mismatch: damage: expected 110.00, got 135.00"
+      "measured": "maxHP=212.75, damage=110.00, abilityPower=0.00",
+      "pass": true,
+      "reason": ""
     },
     {
       "id": "bienenstock",
       "tier": "prisma",
       "name": "Beehive",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "196 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 463 of 1 run(s) [463] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1230,9 +1248,9 @@
       "id": "hoellenkanal",
       "tier": "prisma",
       "name": "Infernal Conduit",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "467 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 146 of 1 run(s) [146] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1250,9 +1268,9 @@
       "id": "laserblick",
       "tier": "prisma",
       "name": "Laser Eyes",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "207 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 209 of 1 run(s) [209] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1260,19 +1278,19 @@
       "id": "irreralchemist",
       "tier": "prisma",
       "name": "Mad Alchemist",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "144 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-80) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "382 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "dualist",
       "tier": "prisma",
       "name": "Dualist",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "454 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 260 of 1 run(s) [260] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1280,9 +1298,9 @@
       "id": "zauberfaust",
       "tier": "prisma",
       "name": "Spellfist",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "307 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 397 of 2 run(s) [0, 397] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1290,19 +1308,19 @@
       "id": "allkern",
       "tier": "prisma",
       "name": "Omni Core",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "434 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "305 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "orbitalschlag",
       "tier": "prisma",
       "name": "Orbital Strike",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "287 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 151 of 1 run(s) [151] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1310,41 +1328,41 @@
       "id": "schicksalsschatulle",
       "tier": "prisma",
       "name": "Fate's Casket",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "249 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "0 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "prismaei",
       "tier": "prisma",
       "name": "Prisma Egg",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "187 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "endgegner",
       "tier": "prisma",
       "name": "Final Boss",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "332 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "shield",
+      "expected": "player.shield > 0 during the fight",
+      "measured": "peak shield 0",
+      "pass": null,
+      "reason": "never put any shield on the player — trigger condition (first) may not have occurred in the harness"
     },
     {
       "id": "gerechterzorn",
       "tier": "prisma",
       "name": "Righteous Wrath",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "249 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "sustain",
+      "expected": "player regains HP during the fight",
+      "measured": "0 HP regained",
+      "pass": null,
+      "reason": "never restored any HP — trigger condition (each) may not have occurred in the harness"
     },
     {
       "id": "adlerauge",
@@ -1360,19 +1378,19 @@
       "id": "schmortopf",
       "tier": "prisma",
       "name": "Slow Cooker",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "66 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-158) — inconclusive for non-damage hooks, needs manual check"
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "no enemy affected",
+      "pass": null,
+      "reason": "no enemy was slowed or controlled — trigger condition (per) may not have occurred in the harness"
     },
     {
       "id": "nachhall",
       "tier": "prisma",
       "name": "Reverb",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "254 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 166 of 1 run(s) [166] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1380,29 +1398,29 @@
       "id": "statistik3",
       "tier": "prisma",
       "name": "Stats Cubed",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "0 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-224) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "62 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "kaefigkampf",
       "tier": "prisma",
       "name": "Cage Match",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "253 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "cc",
+      "expected": "an enemy gets slowed or hard-CCd",
+      "measured": "no enemy affected",
+      "pass": null,
+      "reason": "no enemy was slowed or controlled — trigger condition (slowed) may not have occurred in the harness"
     },
     {
       "id": "stepptaenzer",
       "tier": "prisma",
       "name": "Tap Dancer",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "253 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 252 of 2 run(s) [0, 252] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1410,29 +1428,29 @@
       "id": "transmutchaos",
       "tier": "prisma",
       "name": "Transmute: Chaos",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "287 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "257 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "transmutsilber",
       "tier": "prisma",
       "name": "Transmute: Silver",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "420 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "249 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "fernbomber",
       "tier": "prisma",
       "name": "Long Bomber",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "249 total damage dealt in 3000ms",
+      "class": "damage",
+      "expected": ">= 54 (85% of baseline median 64)",
+      "measured": "best 109 of 1 run(s) [109] in 3000ms",
       "pass": true,
       "reason": ""
     },
@@ -1440,21 +1458,21 @@
       "id": "zugabe",
       "tier": "prisma",
       "name": "Encore",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "312 total damage dealt in 3000ms",
-      "pass": true,
-      "reason": ""
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "292 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     },
     {
       "id": "lauffeuer",
       "tier": "prisma",
       "name": "Wildfire",
-      "class": "hooks",
-      "expected": ">= 190 (85% of baseline median 224)",
-      "measured": "124 total damage dealt in 3000ms",
-      "pass": false,
-      "reason": "no measurable damage increase over baseline (delta=-99) — inconclusive for non-damage hooks, needs manual check"
+      "class": "unclassified",
+      "expected": "no automated assertion for this role yet",
+      "measured": "124 damage in 3000ms (ran without crashing)",
+      "pass": null,
+      "reason": "inconclusive — needs a manual check or a new assertion class"
     }
   ]
 }

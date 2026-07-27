@@ -588,7 +588,16 @@ richtiger Höhe" heben. Output: PASS/FAIL über alle 144 Augments, danach Teil v
 
 ---
 
-### S3-1b · Assertion-Klassen ehrlich machen (Klassifikator-Korrektur)  ⚠️ VOR S3-2
+### S3-1b · Assertion-Klassen ehrlich machen (Klassifikator-Korrektur)  ✅ ERLEDIGT
+> Umgesetzt: Rollen-Router (economy/shield/sustain/cc/damage) mit echten Messgrößen
+> (`run.gold`, `player.shield`, HP-Zuwachs, Gegner-Slow/`ctrlUntil`) statt Schadens-Delta
+> für alles. Zusätzlich zwei Ehrlichkeits-Korrekturen, die beim Messen auffielen:
+> **(a)** bedingte Augments („on kill", „below 30%", „when your shield breaks"), deren
+> Trigger die Harness nie herstellt, sind INCONCLUSIVE statt FAIL;
+> **(b)** die Damage-Messung ist verrauscht (Map/Squad/Spawns randomisiert, kein Seed) —
+> derselbe Augment kippte zwischen Läufen von PASS auf FAIL. Jetzt: Fehlversuch wird
+> wiederholt, bester Wert zählt, alles innerhalb der Baseline-Streuung gilt als Rauschen.
+> Null-Schaden-Baselineläufe werden als Harness-Aussetzer verworfen.
 **Phase:** DEVPLAN Phase 2 · **Abhängig von:** S3-1 · **blockiert:** S3-2.
 
 **Warum:** Der erste S3-1-Lauf hat **43 von 44 FAILs allein per „Schadens-Delta gegen

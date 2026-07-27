@@ -64,6 +64,7 @@ declare global {
         id: string;
         tier: string;
         name: string;
+        description: string;
         hooks: string[];
         onUpdate: boolean;
         onCombatInit: boolean;
@@ -97,6 +98,7 @@ window.__CC = {
       id: a.id,
       tier: a.tier,
       name: a.name,
+      description: a.description,
       hooks: a.hooks ? Object.keys(a.hooks) : [],
       onUpdate: !!a.onUpdate,
       onCombatInit: !!a.onCombatInit,
