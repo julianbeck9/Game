@@ -53,6 +53,7 @@ function champLine(o: LineOpts): EnemyAbilitySpec {
   const range = o.range ?? 760;
   const tel = o.telegraphMs ?? 560;
   return {
+    shape: { kind: 'line', range, width: (o.radius ?? 15) * 2, speed: o.speed },
     id: o.id, cd: o.cd ?? 5000,
     condition: (_e, d) => d >= 150 && d <= range,
     telegraphMs: tel,
@@ -83,6 +84,7 @@ function champDash(o: DashOpts): EnemyAbilitySpec {
   const range = o.range ?? 470;
   const radius = o.radius ?? 150;
   return {
+    shape: { kind: 'dash', range },
     id: o.id, cd: o.cd ?? 6000,
     condition: (_e, d) => d >= 120 && d <= range,
     telegraphMs: 420,
@@ -114,6 +116,7 @@ interface NovaOpts { id: string; color: number; dmg: number; cd?: number; radius
 function champNova(o: NovaOpts): EnemyAbilitySpec {
   const radius = o.radius ?? 175;
   return {
+    shape: { kind: 'circle', radius, at: 'self' },
     id: o.id, cd: o.cd ?? 6500,
     condition: (_e, d) => d <= radius + 50,
     telegraphMs: o.telegraphMs ?? 650,
@@ -137,6 +140,7 @@ interface HookOpts { id: string; color: number; dmg: number; cd?: number; range?
 function champHook(o: HookOpts): EnemyAbilitySpec {
   const range = o.range ?? 620;
   return {
+    shape: { kind: 'line', range, width: 26 },
     id: o.id, cd: o.cd ?? 7000,
     condition: (_e, d) => d >= 140 && d <= range,
     telegraphMs: 520,
@@ -165,6 +169,8 @@ function champHazard(o: HazardOpts): EnemyAbilitySpec {
   const range = o.range ?? 560;
   const radius = o.radius ?? 125;
   return {
+    // lands on the target's position, so it is a cursor-placed circle
+    shape: { kind: 'circle', radius, at: 'cursor', range },
     id: o.id, cd: o.cd ?? 7000,
     condition: (_e, d) => d <= range,
     telegraphMs: o.delayMs ?? 850,
@@ -188,6 +194,7 @@ interface BuffOpts { id: string; color: number; cd?: number; ms?: number; as?: n
 function champBuff(o: BuffOpts): EnemyAbilitySpec {
   const ms = o.ms ?? 4000;
   return {
+    shape: { kind: 'self' },
     id: o.id, cd: o.cd ?? 9000,
     condition: (e) => (e.memory.buffUntil ?? 0) <= e.combat.now,
     telegraphMs: 380,

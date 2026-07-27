@@ -6,6 +6,9 @@ import { norm, len, dist, Vec } from '../core/geometry';
 import { COLORS } from '../config';
 import { shadedDisc } from '../core/draw';
 import { AnimatedChampion } from '../champions/AnimatedChampion';
+import type { AbilityShape } from '../champions/types';
+import { cfgFor } from '../champions/championConfig';
+import { specForShape } from '../champions/abilityVfx';
 
 export interface EnemyAbilitySpec {
   id: string;
@@ -15,6 +18,12 @@ export interface EnemyAbilitySpec {
   telegraphMs: number;
   drawTelegraph: (e: Enemy, g: Phaser.GameObjects.Graphics, progress: number) => void;
   execute: (e: Enemy) => void;
+  /**
+   * Declared shape of the ability, same truth layer the playable kits use.
+   * Drives the cast VFX so a rival's effect matches what it actually hits —
+   * without it the champion sprite plays a wind-up and draws nothing.
+   */
+  shape?: AbilityShape;
 }
 
 export interface EnemyConfig {
@@ -331,8 +340,15 @@ export class Enemy extends Unit {
       this.telegraphUntil = time + a.telegraphMs;
       const t = this.target;
       this.telegraphAim = norm(t.x - this.x, t.y - this.y);
-      // wind-up/cast animation, aimed at the telegraphed direction
-      this.sprite?.cast(undefined, Math.atan2(this.telegraphAim.y, this.telegraphAim.x));
+      // wind-up/cast animation, aimed at the telegraphed direction, with an
+      // effect sized to what the ability actually hits (see abilityVfx.ts)
+      if (this.sprite) {
+        const cfg = cfgFor(this.sprite.champId);
+        this.sprite.cast(
+          specForShape(cfg.castVfx, a.shape, cfg.attackVfx?.color ?? this.cfg.color),
+          Math.atan2(this.telegraphAim.y, this.telegraphAim.x),
+        );
+      }
       return;
     }
   }
