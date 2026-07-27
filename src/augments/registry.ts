@@ -4,6 +4,7 @@ import { SILBER } from './silber';
 import { GOLD } from './gold';
 import { PRISMA } from './prisma';
 import { SIVIR_AUGMENTS } from './champions/sivir';
+import { RETIRED_AUGMENT_IDS } from './retired';
 
 /**
  * THE augment registry. Augments are data + hooks only: they subscribe to
@@ -19,7 +20,11 @@ import { SIVIR_AUGMENTS } from './champions/sivir';
 // out of every other champion's offers.
 export const CHAMPION_AUGMENTS: AugmentDef[] = [...SIVIR_AUGMENTS];
 
-export const AUGMENTS: AugmentDef[] = [...SILBER, ...GOLD, ...PRISMA, ...CHAMPION_AUGMENTS];
+// Pure stat sticks are retired from the pool (see retired.ts): raw numbers are
+// the item shop's job, augments are supposed to change how a run plays.
+export const AUGMENTS: AugmentDef[] = [...SILBER, ...GOLD, ...PRISMA, ...CHAMPION_AUGMENTS].filter(
+  (a) => !RETIRED_AUGMENT_IDS.has(a.id),
+);
 
 // Late-bind the full pool for Transmutations-style augments (avoids cycles).
 poolRef.all = AUGMENTS;
