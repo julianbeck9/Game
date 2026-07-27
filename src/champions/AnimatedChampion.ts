@@ -118,6 +118,7 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
   }
   /** `angle` (radians) aims this swing; omitted, it follows the facing. */
   attack(angle?: number): this {
+    this.flushPendingCast();
     this.shotAngle = angle;
     return this.startShot('attack', this.cc.attackDur ?? this.cfg.attackDur);
   }
@@ -128,6 +129,7 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
    * aims it; omitted, it follows the facing.
    */
   cast(vfx?: VfxSpec, angle?: number): this {
+    this.flushPendingCast();
     this.castVfxOnce = vfx;
     this.shotAngle = angle;
     return this.startShot('cast', this.cc.castDur ?? this.cfg.castDur);
@@ -153,7 +155,19 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
   }
 
   private startShot(name: ShotName, dur: number): this {
+    this.flushPendingCast();
     this.shot = { name, t: 0, dur }; this.shotFired = false; return this;
+  }
+
+  /**
+   * Attack und Cast lösen ihr VFX erst in der Mitte der Animation aus (50%/55%).
+   * Wird die Animation vorher ersetzt — im Kampf ständig, weil jeder Treffer die
+   * hurt-Animation startet — ging der Effekt komplett verloren: die Aktion wirkte
+   * im Code, war aber unsichtbar. Darum vor dem Wechsel nachholen.
+   */
+  private flushPendingCast(): void {
+    if (!this.shot || this.shotFired) return;
+    if (this.shot.name === 'cast' || this.shot.name === 'attack') this.maybeEmit(this.shot, true);
   }
 
   // ---- Loop ----
@@ -176,12 +190,12 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
     if (f.tint === 0xffffff) this.clearTint(); else this.setTint(f.tint);
   }
 
-  private maybeEmit(shot: Shot): void {
+  private maybeEmit(shot: Shot, force = false): void {
     if (this.shotFired) return;
     const at = shot.name === 'attack'
       ? (this.cc.attackStyle === 'recoil' ? 0.45 : 0.5)
       : shot.name === 'cast' ? 0.55 : 0.02;
-    if (shot.t / shot.dur < at) return;
+    if (!force && shot.t / shot.dur < at) return;
     this.shotFired = true;
     const dir = this.faceSign;
     const payload: ChampVfxEvent = {
