@@ -82,12 +82,15 @@ function champLine(o: LineOpts): EnemyAbilitySpec {
 interface DashOpts { id: string; color: number; dmg: number; cd?: number; range?: number; radius?: number; slowPct?: number; slowMs?: number; }
 function champDash(o: DashOpts): EnemyAbilitySpec {
   const range = o.range ?? 470;
-  const radius = o.radius ?? 150;
+  const radius = o.radius ?? 130;
   return {
     shape: { kind: 'dash', range },
     id: o.id, cd: o.cd ?? 6000,
     condition: (_e, d) => d >= 120 && d <= range,
-    telegraphMs: 420,
+    // 520ms against a 130 blast: a 300-speed champion covers 156px, so a clean
+    // sidestep beats it. It used to be 420ms against 150 — 126px of escape from
+    // a 150 blast, i.e. not dodgeable even with perfect play.
+    telegraphMs: 520,
     drawTelegraph: (e, g, prog) => {
       const a = e.telegraphAim; const w = 30;
       g.fillStyle(o.color, 0.14 + prog * 0.22);
@@ -95,11 +98,15 @@ function champDash(o: DashOpts): EnemyAbilitySpec {
       g.lineStyle(3, o.color, 0.7); g.strokeCircle(e.x, e.y, e.radius + 6);
     },
     execute: (e) => {
+      // Land on the LOCKED telegraph aim, not on wherever the target stands at
+      // impact. Re-reading the live position made this a guaranteed hit: the
+      // dash homed onto you no matter how you moved during the wind-up.
+      const a = e.telegraphAim;
       const t = e.target;
-      const dx = t.x - e.x, dy = t.y - e.y, d = Math.hypot(dx, dy) || 1;
+      const lockedD = Math.hypot(t.x - e.x, t.y - e.y) || 1;
       const gap = e.radius + t.radius + 6;
-      const dd = Math.max(0, d - gap);
-      const p = clampBlink(e.x + (dx / d) * dd, e.y + (dy / d) * dd, e.radius);
+      const dd = Math.max(0, Math.min(range, lockedD) - gap);
+      const p = clampBlink(e.x + a.x * dd, e.y + a.y * dd, e.radius);
       e.combat.flashLine(e.x, e.y, p.x, p.y, o.color);
       e.x = p.x; e.y = p.y;
       e.combat.ring(e.x, e.y, o.color, radius);

@@ -67,6 +67,8 @@ export const ABILITIES = {
   // Königsruf: golden nova (dmg + knockback) + empowered autos
   E: { cd: 8000, autos: 3, dmgBonus: 0.6, healPct: 0.2, novaDmg: 16, novaRange: 270, knockback: 95 },
   // Phasenschritt: dash that cuts everything it phases through
-  Dash: { cd: 5000, dist: 220, duration: 0.18, slashDmg: 18 },
+  // 3.2s, down from 5s: with telegraphs in the 500-850ms band a single dash
+  // has to be available for most of them, or some hits cannot be answered at all.
+  Dash: { cd: 3200, dist: 220, duration: 0.18, slashDmg: 18 },
 } as const;
 

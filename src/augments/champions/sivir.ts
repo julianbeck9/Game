@@ -15,6 +15,19 @@ import { COLORS } from '../../config';
  * They hook the existing combat events rather than rewriting kits.ts, so a
  * champion's kit stays one readable piece of code and the augment is the
  * add-on. Every one is gated to `champion: 'sivir'` and never offered elsewhere.
+ *
+ * BUILD LANES. The point is not ten good picks, it is picks that disagree with
+ * each other, so there is no single correct list to take every run:
+ *
+ *   Blade   — the Q carries the run (Fan Throw, Backhand, Twin Cast)
+ *   On-Hit  — autos carry it, the Q feeds them (Quickdraw, Whetstone)
+ *   Crit    — dead weight at 0% crit, best in the run (Keen Edge, Hot Streak)
+ *   Ward    — the Spell Shield becomes offence (Warding Wave)
+ *   Roam    — the dash is a weapon (Blade Storm, Ricochet Edge)
+ *
+ * Crit is deliberately the sharpest fork: Keen Edge and Hot Streak do literally
+ * nothing without crit chance bought from the shop, so taking them is a bet on
+ * a build rather than a free upgrade.
  */
 
 /** Blade damage shared by the Q riders: scales off AD like the base boomerang. */
@@ -208,11 +221,108 @@ const doppelwurf: AugmentDef = {
   },
 };
 
+// --- On-Hit lane -----------------------------------------------------------
+
+// Schnellzug — Q into instant auto; rewards attack speed rather than haste.
+const schnellzug: AugmentDef = {
+  id: 'siv_schnellzug',
+  name: 'Quickdraw',
+  tier: 'silber',
+  tags: ['Sturm'],
+  champion: 'sivir',
+  description: 'Casting Boomerang Blade resets your attack timer — the next auto fires at once.',
+  hooks: {
+    abilityCast: ({ ability }, ctx) => {
+      if (ability === 'Q') ctx.player.resetAutoAttack();
+    },
+  },
+};
+
+// Klingenschliff — every third auto throws a blade; wants attack speed, not AD.
+const klingenschliff: AugmentDef = {
+  id: 'siv_klingenschliff',
+  name: 'Whetstone',
+  tier: 'gold',
+  tags: ['Sturm'],
+  champion: 'sivir',
+  description: 'Every 3rd auto-attack flings a blade at your target for 40% damage.',
+  onCombatInit: (ctx) => {
+    ctx.run.memory.sivWhet = 0;
+  },
+  hooks: {
+    autoHit: ({ target }, ctx) => {
+      ctx.run.memory.sivWhet = (ctx.run.memory.sivWhet ?? 0) + 1;
+      if (ctx.run.memory.sivWhet < 3 || !target.alive) return;
+      ctx.run.memory.sivWhet = 0;
+      const p = ctx.player;
+      const d = Math.hypot(target.x - p.x, target.y - p.y) || 1;
+      throwBlade(
+        ctx,
+        { x: (target.x - p.x) / d, y: (target.y - p.y) / d },
+        bladeDamage(ctx, 0.4 * ctx.power(klingenschliff)),
+        { maxDist: d + 60 },
+      );
+    },
+  },
+};
+
+// --- Crit lane -------------------------------------------------------------
+// Both of these are worth nothing at 0% crit. That is the point: they are a bet
+// on buying crit in the shop, not a pick you take because it was offered.
+
+// Schneidkante — blades can crit at all, which they normally cannot.
+const schneidkante: AugmentDef = {
+  id: 'siv_schneidkante',
+  name: 'Keen Edge',
+  tier: 'gold',
+  tags: ['Bruch'],
+  champion: 'sivir',
+  description: 'Your Boomerang Blade can critically strike (it normally cannot) for +75% damage.',
+  // Rides `abilityHit`, which BOTH the champion's own Q and the augment blades
+  // emit. An earlier version rolled the crit inside the augment's own blade
+  // spawner, so it did nothing at all unless you also owned a blade augment —
+  // the base Q never went through that path.
+  hooks: {
+    abilityHit: ({ ability, target, dmg }, ctx) => {
+      if (ability !== 'Q' || !target.alive || dmg <= 0) return;
+      if (Math.random() >= ctx.player.stats.get('critChance')) return;
+      const bonus = dmg * 0.75 * ctx.power(schneidkante);
+      const dealt = ctx.combat.dealDamage(ctx.player, target, bonus, 'ability', 'physisch');
+      ctx.combat.ring(target.x, target.y, 0xffd24a, 34);
+      ctx.combat.bus.emit('critHit', { target, dmg: dealt });
+    },
+  },
+};
+
+// Glückssträhne — turns crit rate into Q uptime.
+const gluecksstraehne: AugmentDef = {
+  id: 'siv_gluecksstraehne',
+  name: 'Hot Streak',
+  tier: 'prisma',
+  tags: ['Bruch'],
+  champion: 'sivir',
+  description: 'Each critical strike refunds 0.6s of your Boomerang Blade cooldown.',
+  hooks: {
+    critHit: (_p, ctx) => {
+      ctx.player.reduceCooldown('Q', 600 * ctx.power(gluecksstraehne));
+    },
+  },
+};
+
 export const SIVIR_AUGMENTS: AugmentDef[] = [
+  // Blade
   faecherwurf,
   rueckhand,
-  prellklinge,
-  bannwelle,
-  klingenwirbel,
   doppelwurf,
+  // On-Hit
+  schnellzug,
+  klingenschliff,
+  // Crit
+  schneidkante,
+  gluecksstraehne,
+  // Ward
+  bannwelle,
+  // Roam
+  prellklinge,
+  klingenwirbel,
 ];

@@ -181,6 +181,11 @@ export class Player extends Unit {
     return this.combat.now >= this.readyAt[ability];
   }
 
+  /** Make the next auto-attack fire immediately (attack-reset augments). */
+  resetAutoAttack(): void {
+    this.nextAttackAt = 0;
+  }
+
   /** Flat cooldown reduction on ONE ability (champion augments that refund a slot). */
   reduceCooldown(ability: AbilityId, ms: number): void {
     this.readyAt[ability] = Math.max(this.combat.now, this.readyAt[ability] - ms);
@@ -317,6 +322,7 @@ export class Player extends Unit {
 
     const onHit = (t: Unit) => {
       const dealt = this.combat.dealDamage(this, t, dmg, 'auto', 'physisch');
+      if (crit) this.combat.bus.emit('critHit', { target: t, dmg: dealt });
       if (empowered) this.heal(dealt * ABILITIES.E.healPct);
       this.combat.bus.emit('autoHit', { target: t, dmg: dealt });
       this.champ.onAutoHit?.(this, t);

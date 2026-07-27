@@ -19,6 +19,8 @@ export interface EventMap {
   dashEnd: void;
   damageTaken: { source: Unit | null; dmg: number; melee: boolean };
   damageDealt: { target: Unit; dmg: number; type: DamageType };
+  /** A critical strike landed (auto-attack, or an ability that can crit). */
+  critHit: { target: Unit; dmg: number };
   enemyDeath: { enemy: Unit };
   playerHpThreshold: { pct: number };
   /** Fires for ANY enemy death including minions — the on-kill economy. */
