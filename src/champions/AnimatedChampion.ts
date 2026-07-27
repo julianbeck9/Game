@@ -76,6 +76,8 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
   private castVfxOnce: VfxSpec | undefined;
   /** Per-shot aim angle in radians; cleared once the shot has emitted. */
   private shotAngle: number | undefined;
+  /** Per-swing attack VFX override (see attack()); cleared once emitted. */
+  private attackVfxOnce: VfxSpec | undefined;
   private clock = 0;
   /**
    * Display size multiplier. The animator rewrites scale every frame, so a base
@@ -116,10 +118,14 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
     this.setFlipX(dir === 'left');
     return this;
   }
-  /** `angle` (radians) aims this swing; omitted, it follows the facing. */
-  attack(angle?: number): this {
+  /**
+   * `angle` (radians) aims this swing; omitted, it follows the facing.
+   * `vfx` overrides the configured attack effect for this one swing.
+   */
+  attack(angle?: number, vfx?: VfxSpec): this {
     this.flushPendingCast();
     this.shotAngle = angle;
+    this.attackVfxOnce = vfx;
     return this.startShot('attack', this.cc.attackDur ?? this.cfg.attackDur);
   }
   /**
@@ -139,7 +145,7 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
   /** Für Object-Pooling: Zustand vollständig zurücksetzen (statt destroy/new). */
   reset(x?: number, y?: number): this {
     this.shot = null; this.shotFired = false; this.clock = 0;
-    this.castVfxOnce = undefined; this.shotAngle = undefined;
+    this.castVfxOnce = undefined; this.attackVfxOnce = undefined; this.shotAngle = undefined;
     this.baseState = 'idle';
     this.clearTint(); this.setScale(1).setRotation(0);
     if (x !== undefined && y !== undefined) { this.setHome(x, y); this.setPosition(x, y); }
@@ -205,13 +211,14 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
       angle: this.shotAngle ?? (dir > 0 ? 0 : Math.PI),
       spec: shot.name === 'cast'
         ? this.castVfxOnce ?? this.cc.castVfx
-        : shot.name === 'attack' ? this.cc.attackVfx : undefined,
+        : shot.name === 'attack' ? this.attackVfxOnce ?? this.cc.attackVfx : undefined,
       champ: this,
     };
     const evt = shot.name === 'attack' ? ChampEvents.AttackHit
       : shot.name === 'cast' ? ChampEvents.CastRelease : ChampEvents.Hurt;
     this.emit(evt, payload);
     if (shot.name === 'cast') this.castVfxOnce = undefined;
+    if (shot.name === 'attack') this.attackVfxOnce = undefined;
     this.shotAngle = undefined;
   }
 

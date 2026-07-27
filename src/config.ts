@@ -3,6 +3,17 @@ export const GAME_W = 1920;
 export const GAME_H = 1080;
 
 // Field center (maps are fullscreen; obstacles live in core/maps.ts)
+/**
+ * Base radius of a champion-sized unit, and the global size multiplier applied
+ * to every unit. Shrinking the cast makes the arenas read as bigger without
+ * touching a single map: hitbox and sprite both scale from this, so what you
+ * see stays what you hit.
+ */
+export const BASE_UNIT_RADIUS = 26;
+export const UNIT_SCALE = 0.82;
+/** A champion-sized unit's actual radius. */
+export const UNIT_RADIUS = Math.round(BASE_UNIT_RADIUS * UNIT_SCALE);
+
 export const ARENA_X = GAME_W / 2;
 export const ARENA_Y = GAME_H / 2;
 

@@ -78,6 +78,12 @@ export interface AugmentDef {
    * Omit for stat-agnostic augments (utility, on-hit, tank, AD).
    */
   needs?: AugmentNeed[];
+  /**
+   * Champion id this augment belongs to. Champion augments rewrite what a
+   * specific kit *does* (extra blades on the Q, a burst on the E) instead of
+   * nudging a stat, and are only ever offered to that champion.
+   */
+  champion?: string;
   hooks?: AugmentHooks;
   /** Permanent stat mods, re-applied at each combat init through the pipeline. */
   statMods?: AugmentStatMod[];

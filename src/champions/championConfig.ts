@@ -17,6 +17,7 @@ export type VfxKind =
   | 'grab'       // ausfahrender Arm/Haken, zieht zurück
   | 'aoe'        // Ring am Boden (Stampf/Explosion)
   | 'cone'       // Kegel/Sektor in Zielrichtung (Fächer, Atem)
+  | 'muzzle'     // kurzes Mündungsfeuer an der Waffe (echtes Geschoss fliegt separat)
   | 'flash';     // kurzer Leucht-Blitz an der Figur
 
 export interface VfxSpec {

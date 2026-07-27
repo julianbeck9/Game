@@ -3,12 +3,12 @@ import { Unit } from './Unit';
 import { StatBlock, StatName } from '../core/stats';
 import { Combat } from '../core/combat';
 import { norm, len, dist, Vec } from '../core/geometry';
-import { COLORS } from '../config';
+import { COLORS, UNIT_SCALE } from '../config';
 import { shadedDisc } from '../core/draw';
 import { AnimatedChampion } from '../champions/AnimatedChampion';
 import type { AbilityShape } from '../champions/types';
 import { cfgFor } from '../champions/championConfig';
-import { specForShape } from '../champions/abilityVfx';
+import { attackVfxFor, specForShape } from '../champions/abilityVfx';
 
 export interface EnemyAbilitySpec {
   id: string;
@@ -107,7 +107,8 @@ export class Enemy extends Unit {
   ) {
     super(scene, x, y, 'enemy', new StatBlock({ ...cfg.stats }));
     this.cfg = cfg;
-    this.radius = cfg.radius;
+    // Same global shrink the player gets, so relative sizes stay intact.
+    this.radius = Math.round(cfg.radius * UNIT_SCALE);
     this.telegraphGfx = scene.add.graphics().setDepth(5);
     if (cfg.championSprite && scene.textures.exists(`champ:${cfg.championSprite}`)) {
       this.sprite = new AnimatedChampion(scene, x, y, `champ:${cfg.championSprite}`, cfg.championSprite);
@@ -364,7 +365,11 @@ export class Enemy extends Unit {
     if (this.cfg.rangedAuto && d <= this.cfg.rangedAuto.range && time >= this.nextSwingAt) {
       const r = this.cfg.rangedAuto;
       this.nextSwingAt = time + r.intervalMs;
-      this.sprite?.attack(Math.atan2(t.y - this.y, t.x - this.x));
+      this.sprite?.attack(
+        Math.atan2(t.y - this.y, t.x - this.x),
+        // Same as the player: the real bolt below is the travel visual.
+        this.sprite ? attackVfxFor(cfgFor(this.sprite.champId).attackVfx, true) : undefined,
+      );
       // Non-homing, lightly lead the target so it's a dodgeable straight shot
       const lead = Math.min(0.35, d / r.projSpeed / 2);
       const aimX = t.x + this.predVX(t) * lead;

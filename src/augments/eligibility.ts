@@ -8,6 +8,8 @@ import { championUsesAP } from '../champions/registry';
  * champion, so you never waste a pick on a dead stat.
  */
 export function augmentFitsChampion(def: AugmentDef, championId: string): boolean {
+  // Champion augments reshape one specific kit — never offer them elsewhere.
+  if (def.champion && def.champion !== championId) return false;
   if (def.needs?.includes('ap') && !championUsesAP(championId)) return false;
   return true;
 }

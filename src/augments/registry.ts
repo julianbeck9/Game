@@ -3,6 +3,7 @@ import { poolRef } from './helpers';
 import { SILBER } from './silber';
 import { GOLD } from './gold';
 import { PRISMA } from './prisma';
+import { SIVIR_AUGMENTS } from './champions/sivir';
 
 /**
  * THE augment registry. Augments are data + hooks only: they subscribe to
@@ -14,7 +15,11 @@ import { PRISMA } from './prisma';
  * roster: same tier split and balancing relationships (flat values rescaled
  * to our stat ranges), but every name, text and implementation is original.
  */
-export const AUGMENTS: AugmentDef[] = [...SILBER, ...GOLD, ...PRISMA];
+// Champion augments live alongside the generic pool; eligibility.ts keeps them
+// out of every other champion's offers.
+export const CHAMPION_AUGMENTS: AugmentDef[] = [...SIVIR_AUGMENTS];
+
+export const AUGMENTS: AugmentDef[] = [...SILBER, ...GOLD, ...PRISMA, ...CHAMPION_AUGMENTS];
 
 // Late-bind the full pool for Transmutations-style augments (avoids cycles).
 poolRef.all = AUGMENTS;

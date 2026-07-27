@@ -1,6 +1,6 @@
 import { AugmentDef } from './types';
 import type { Unit } from '../entities/Unit';
-import { COLORS } from '../config';
+import { COLORS, UNIT_RADIUS } from '../config';
 import { pp, ppDmg, msPct, procDamage, procActive, slowUnit, enemiesWithin, unitLockReady, statRolls, grantRandomAugment } from './helpers';
 import { SILBER } from './silber';
 import { removeAugment } from '../core/run';
@@ -464,7 +464,7 @@ const gigantwuchs: AugmentDef = {
     { stat: 'abilityPower', pct: 0.1 },
   ],
   onCombatInit: (ctx) => {
-    ctx.player.radius = Math.round(26 * 1.3);
+    ctx.player.radius = Math.round(UNIT_RADIUS * 1.3);
   },
 };
 
@@ -768,7 +768,7 @@ const endgegner: AugmentDef = {
       ctx.player.stats.set({ id: 'dyn:endgegner-ad', stat: 'damage', pct: 0.3 * p });
       ctx.player.stats.set({ id: 'dyn:endgegner-ap', stat: 'abilityPower', pct: 0.3 * p });
       ctx.player.stats.set({ id: 'dyn:endgegner-hp', stat: 'maxHP', pct: 0.3 * p });
-      ctx.player.radius = Math.round(26 * 1.35);
+      ctx.player.radius = Math.round(UNIT_RADIUS * 1.35);
       ctx.player.addShield(ctx.player.maxHP * 0.25 * p);
       ctx.combat.ring(ctx.player.x, ctx.player.y, 0xff4455, 400);
       for (const u of enemiesWithin(ctx, ctx.player.x, ctx.player.y, 400)) {

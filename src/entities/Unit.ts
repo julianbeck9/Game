@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { StatBlock } from '../core/stats';
-import { COLORS } from '../config';
+import { COLORS, UNIT_RADIUS } from '../config';
 import { clampToArena, resolvePillars, resolveTerrain, resolveWalls, resolvePaintMove } from '../core/geometry';
 
 export type Team = 'player' | 'enemy';
@@ -8,7 +8,7 @@ export type Team = 'player' | 'enemy';
 export abstract class Unit {
   x: number;
   y: number;
-  radius = 26;
+  radius = UNIT_RADIUS;
   team: Team;
   hp: number;
   shield = 0;

@@ -11,7 +11,7 @@ import { ChampionDef } from '../champions/types';
 import { championById } from '../champions/registry';
 import { AnimatedChampion } from '../champions/AnimatedChampion';
 import { cfgFor, VfxSpec } from '../champions/championConfig';
-import { specForShape } from '../champions/abilityVfx';
+import { attackVfxFor, specForShape } from '../champions/abilityVfx';
 
 /** Foot-pivot sprites (origin.y = 60/64) sit this far below the unit centre. */
 const SPRITE_FOOT_OFFSET = (radius: number) => -4 + radius * 1.356;
@@ -181,6 +181,11 @@ export class Player extends Unit {
     return this.combat.now >= this.readyAt[ability];
   }
 
+  /** Flat cooldown reduction on ONE ability (champion augments that refund a slot). */
+  reduceCooldown(ability: AbilityId, ms: number): void {
+    this.readyAt[ability] = Math.max(this.combat.now, this.readyAt[ability] - ms);
+  }
+
   /** Flat cooldown reduction on running cooldowns (Kühlung etc.). */
   reduceCooldowns(ms: number): void {
     for (const a of ['Q', 'E', 'Dash'] as AbilityId[]) {
@@ -294,7 +299,11 @@ export class Player extends Unit {
     const atkSpeed = Math.max(0.1, this.stats.get('attackSpeed'));
     this.nextAttackAt = time + 1000 / atkSpeed;
     this.facing = norm(target.x - this.x, target.y - this.y);
-    this.sprite.attack(Math.atan2(target.y - this.y, target.x - this.x));
+    this.sprite.attack(
+      Math.atan2(target.y - this.y, target.x - this.x),
+      // Ranged autos spawn a real projectile below; don't also draw a fake one.
+      attackVfxFor(cfgFor(this.champ.id).attackVfx, this.champ.ranged),
+    );
 
     let dmg = this.stats.get('damage');
     // Yasuo: crit chance counts double

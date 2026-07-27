@@ -42,6 +42,7 @@ export class ChampionVfx {
       case 'grab':       return this.grab(e, s);
       case 'aoe':        return this.aoe(e, s);
       case 'cone':       return this.cone(e, s);
+      case 'muzzle':     return this.muzzle(e, s);
       case 'flash':      return this.flash(e, s);
       default:           return this.puff(e, s);
     }
@@ -166,6 +167,16 @@ export class ChampionVfx {
   private aoeAt(x: number, y: number, color: number, radius: number): void {
     const ring = this.scene.add.circle(x, y, radius, color, 0).setStrokeStyle(4, color, 0.9).setDepth(DEPTH).setScale(0.3);
     this.scene.tweens.add({ targets: ring, scale: 1.4, alpha: 0, duration: 300, ease: 'Quad.out', onComplete: () => ring.destroy() });
+  }
+
+  /** Kurzes Mündungsfeuer am Abschusspunkt, leicht in Schussrichtung versetzt. */
+  private muzzle(e: ChampVfxEvent, s: VfxSpec): void {
+    const r = s.size ?? 10;
+    const x = e.x + Math.cos(e.angle) * r * 0.6;
+    const y = e.y + Math.sin(e.angle) * r * 0.6;
+    const fl = this.scene.add.ellipse(x, y, r * 2.2, r * 1.4, s.color, 0.9)
+      .setRotation(e.angle).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH);
+    this.scene.tweens.add({ targets: fl, scaleX: 0.3, scaleY: 0.3, alpha: 0, duration: 120, onComplete: () => fl.destroy() });
   }
 
   private flash(e: ChampVfxEvent, s: VfxSpec): void {

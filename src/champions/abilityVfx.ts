@@ -73,3 +73,17 @@ function synthesize(shape: AbilityShape, color: number): VfxSpec {
       return { kind: 'flash', color };
   }
 }
+
+/**
+ * Attack effect for one auto-attack.
+ *
+ * A ranged champion's auto already spawns a real, damaging projectile — the
+ * configured cosmetic `projectile`/`lob` effect then flew alongside it as a
+ * second, slower, harmless copy. So for those, the travel visual is the real
+ * projectile and all the sprite contributes is a muzzle flash.
+ */
+export function attackVfxFor(base: VfxSpec | undefined, ranged: boolean): VfxSpec | undefined {
+  if (!ranged || !base) return base;
+  if (base.kind !== 'projectile' && base.kind !== 'lob') return base;
+  return { kind: 'muzzle', color: base.color, size: Math.max(8, (base.size ?? 5) * 1.6), shake: base.shake };
+}
