@@ -331,7 +331,8 @@ export class Enemy extends Unit {
       this.telegraphUntil = time + a.telegraphMs;
       const t = this.target;
       this.telegraphAim = norm(t.x - this.x, t.y - this.y);
-      this.sprite?.cast(); // wind-up/cast animation on the champion sprite
+      // wind-up/cast animation, aimed at the telegraphed direction
+      this.sprite?.cast(undefined, Math.atan2(this.telegraphAim.y, this.telegraphAim.x));
       return;
     }
   }
@@ -342,12 +343,12 @@ export class Enemy extends Unit {
       this.nextSwingAt = time + this.cfg.melee.intervalMs;
       this.combat.dealDamage(this, t, this.cfg.melee.dmg * this.dmgScale(), 'auto');
       this.memory.swingAt = time; // for the monster-disc swing flash
-      this.sprite?.attack();
+      this.sprite?.attack(Math.atan2(t.y - this.y, t.x - this.x));
     }
     if (this.cfg.rangedAuto && d <= this.cfg.rangedAuto.range && time >= this.nextSwingAt) {
       const r = this.cfg.rangedAuto;
       this.nextSwingAt = time + r.intervalMs;
-      this.sprite?.attack();
+      this.sprite?.attack(Math.atan2(t.y - this.y, t.x - this.x));
       // Non-homing, lightly lead the target so it's a dodgeable straight shot
       const lead = Math.min(0.35, d / r.projSpeed / 2);
       const aimX = t.x + this.predVX(t) * lead;

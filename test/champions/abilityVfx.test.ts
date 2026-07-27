@@ -18,8 +18,15 @@ describe('vfxGeometry', () => {
     expect(geo?.dist).toBe(600);
   });
 
-  it('follows the cone and dash reach', () => {
-    expect(vfxGeometry({ kind: 'cone', range: 620, angle: 32 })?.dist).toBe(620);
+  it('draws a cone as a real sector with the ability spread', () => {
+    expect(vfxGeometry({ kind: 'cone', range: 620, angle: 32 })).toEqual({
+      kind: 'cone',
+      dist: 620,
+      spread: 32,
+    });
+  });
+
+  it('follows the dash reach', () => {
     expect(vfxGeometry({ kind: 'dash', range: 340 })?.dist).toBe(340);
   });
 
@@ -55,7 +62,7 @@ describe('specForShape', () => {
     expect(selfBlast).toMatchObject({ kind: 'aoe', dist: 200 });
 
     const cone = specForShape(undefined, { kind: 'cone', range: 620, angle: 32 }, 0x7cc144);
-    expect(cone).toMatchObject({ kind: 'puff', dist: 620 });
+    expect(cone).toMatchObject({ kind: 'cone', dist: 620, spread: 32 });
 
     expect(specForShape(undefined, { kind: 'self' }, 0x7cc144)).toMatchObject({ kind: 'flash' });
   });

@@ -26,7 +26,7 @@ export function vfxGeometry(shape: AbilityShape | undefined): Partial<VfxSpec> |
         ? { kind: 'aoe', dist: shape.radius }
         : { dist: shape.range ?? shape.radius, size: Math.max(4, shape.radius / 8) };
     case 'cone':
-      return { dist: shape.range, size: Math.max(6, shape.range / 12) };
+      return { kind: 'cone', dist: shape.range, spread: shape.angle };
     case 'dash':
       return { dist: shape.range };
     case 'self':
@@ -66,7 +66,7 @@ function synthesize(shape: AbilityShape, color: number): VfxSpec {
         ? { kind: 'aoe', color, dist: shape.radius }
         : { kind: 'lob', color, dist: shape.range ?? shape.radius, size: Math.max(4, shape.radius / 8) };
     case 'cone':
-      return { kind: 'puff', color, dist: shape.range, size: Math.max(6, shape.range / 12) };
+      return { kind: 'cone', color, dist: shape.range, spread: shape.angle };
     case 'dash':
       return { kind: 'flash', color };
     case 'self':

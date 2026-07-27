@@ -214,7 +214,7 @@ export class Player extends Unit {
     this.lastQDir = { ...d };
     this.startCooldown('Q');
     this.combat.bus.emit('abilityCast', { ability: 'Q' });
-    this.sprite.cast(this.castVfx('q'));
+    this.sprite.cast(this.castVfx('q'), Math.atan2(d.y, d.x));
     this.fireQ(d);
     return true;
   }
@@ -229,7 +229,7 @@ export class Player extends Unit {
     if (!this.isReady('E')) return false;
     this.startCooldown('E');
     this.combat.bus.emit('abilityCast', { ability: 'E' });
-    this.sprite.cast(this.castVfx('e'));
+    this.sprite.cast(this.castVfx('e'), Math.atan2(this.facing.y, this.facing.x));
     this.champ.castE(this, dir && len(dir.x, dir.y) > 0.01 ? norm(dir.x, dir.y) : undefined);
     return true;
   }
@@ -238,7 +238,7 @@ export class Player extends Unit {
    * Cast VFX for one slot: the champion's configured effect, resized to the
    * ability's declared reach so the visual stops where the ability stops.
    */
-  private castVfx(slot: 'q' | 'e'): VfxSpec | undefined {
+  private castVfx(slot: 'q' | 'e' | 'dash'): VfxSpec | undefined {
     const cfg = cfgFor(this.champ.id);
     return specForShape(cfg.castVfx, this.champ.spec?.[slot], cfg.attackVfx?.color);
   }
@@ -255,7 +255,7 @@ export class Player extends Unit {
     this.dashSlashed.clear();
     // Champion-specific dash (leap / hook / blink); may take over movement.
     this.dashCustom = this.champ.onDash?.(this, this.dashDir) === true;
-    this.sprite.cast();
+    this.sprite.cast(this.castVfx('dash'), Math.atan2(this.dashDir.y, this.dashDir.x));
     this.combat.bus.emit('dashStart', undefined);
     return true;
   }
@@ -294,7 +294,7 @@ export class Player extends Unit {
     const atkSpeed = Math.max(0.1, this.stats.get('attackSpeed'));
     this.nextAttackAt = time + 1000 / atkSpeed;
     this.facing = norm(target.x - this.x, target.y - this.y);
-    this.sprite.attack();
+    this.sprite.attack(Math.atan2(target.y - this.y, target.x - this.x));
 
     let dmg = this.stats.get('damage');
     // Yasuo: crit chance counts double

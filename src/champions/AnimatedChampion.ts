@@ -37,6 +37,12 @@ export interface ChampVfxEvent {
   x: number;            // Ursprung (Mündung/Fokus) in Weltkoordinaten
   y: number;
   dir: number;          // +1 rechts, -1 links
+  /**
+   * Weltwinkel der Aktion in Radiant (0 = rechts, PI/2 = unten). Effekte
+   * richten sich danach aus; ohne Angabe des Aufrufers steht er auf der
+   * Blickrichtung, damit alte Aufrufe unverändert weiterlaufen.
+   */
+  angle: number;
   spec?: VfxSpec;
   champ: AnimatedChampion;
 }
@@ -68,6 +74,8 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
   private shotFired = false;
   /** Per-cast VFX override (see cast()); cleared once the shot has emitted. */
   private castVfxOnce: VfxSpec | undefined;
+  /** Per-shot aim angle in radians; cleared once the shot has emitted. */
+  private shotAngle: number | undefined;
   private clock = 0;
   /**
    * Display size multiplier. The animator rewrites scale every frame, so a base
@@ -108,21 +116,28 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
     this.setFlipX(dir === 'left');
     return this;
   }
-  attack(): this { return this.startShot('attack', this.cc.attackDur ?? this.cfg.attackDur); }
+  /** `angle` (radians) aims this swing; omitted, it follows the facing. */
+  attack(angle?: number): this {
+    this.shotAngle = angle;
+    return this.startShot('attack', this.cc.attackDur ?? this.cfg.attackDur);
+  }
   /**
    * `vfx` overrides this cast's effect spec for one shot — callers pass the
    * geometry derived from the ability's declared shape so the effect reaches
-   * exactly as far as the ability does (see abilityVfx.ts).
+   * exactly as far as the ability does (see abilityVfx.ts). `angle` (radians)
+   * aims it; omitted, it follows the facing.
    */
-  cast(vfx?: VfxSpec): this {
+  cast(vfx?: VfxSpec, angle?: number): this {
     this.castVfxOnce = vfx;
+    this.shotAngle = angle;
     return this.startShot('cast', this.cc.castDur ?? this.cfg.castDur);
   }
   hurt(): this   { return this.startShot('hurt',   this.cfg.hurtDur); }
 
   /** Für Object-Pooling: Zustand vollständig zurücksetzen (statt destroy/new). */
   reset(x?: number, y?: number): this {
-    this.shot = null; this.shotFired = false; this.clock = 0; this.castVfxOnce = undefined;
+    this.shot = null; this.shotFired = false; this.clock = 0;
+    this.castVfxOnce = undefined; this.shotAngle = undefined;
     this.baseState = 'idle';
     this.clearTint(); this.setScale(1).setRotation(0);
     if (x !== undefined && y !== undefined) { this.setHome(x, y); this.setPosition(x, y); }
@@ -173,6 +188,7 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
       x: this.x + dir * this.displayWidth * 0.45,
       y: this.y - this.displayHeight * 0.5,
       dir,
+      angle: this.shotAngle ?? (dir > 0 ? 0 : Math.PI),
       spec: shot.name === 'cast'
         ? this.castVfxOnce ?? this.cc.castVfx
         : shot.name === 'attack' ? this.cc.attackVfx : undefined,
@@ -182,6 +198,7 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
       : shot.name === 'cast' ? ChampEvents.CastRelease : ChampEvents.Hurt;
     this.emit(evt, payload);
     if (shot.name === 'cast') this.castVfxOnce = undefined;
+    this.shotAngle = undefined;
   }
 
   // ---- Base-Loops ----

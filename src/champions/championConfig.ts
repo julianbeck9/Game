@@ -16,6 +16,7 @@ export type VfxKind =
   | 'beam'       // kurzer Strahl nach vorn
   | 'grab'       // ausfahrender Arm/Haken, zieht zurück
   | 'aoe'        // Ring am Boden (Stampf/Explosion)
+  | 'cone'       // Kegel/Sektor in Zielrichtung (Fächer, Atem)
   | 'flash';     // kurzer Leucht-Blitz an der Figur
 
 export interface VfxSpec {
@@ -24,6 +25,8 @@ export interface VfxSpec {
   speed?: number;   // px/s (projectile/lob)
   dist?: number;    // Reichweite px
   size?: number;    // Radius/Dicke px
+  /** Öffnungswinkel in Grad (nur 'cone'). */
+  spread?: number;
   shake?: number;   // Kamera-Shake-Intensität (0 = keiner)
 }
 
