@@ -1,229 +1,94 @@
 {
-  "generatedAt": "2026-07-30T18:44:44.427Z",
+  "generatedAt": "2026-07-30T19:23:24.160Z",
   "runs": 6,
   "kpis": {
     "runs": 6,
-    "poolSize": 123,
-    "pickDiversityPct": 5,
-    "autoPickRate": 1,
-    "buildSpreadPct": 93,
+    "poolSize": 132,
+    "pickDiversityPct": 13,
+    "autoPickRate": 2,
+    "buildSpreadPct": 100,
     "winrateSpreadPp": 0,
-    "roundSecondsMedian": 17,
-    "unusedAugments": 117,
+    "roundSecondsMedian": 18,
+    "unusedAugments": 115,
     "hangRounds": 2,
-    "totalRounds": 12,
+    "totalRounds": 24,
     "byChampion": {
-      "karthus": {
+      "blitzcrank": {
         "runs": 6,
         "wins": 0,
         "roundsReached": [
-          3,
-          3,
           2,
+          4,
+          5,
           1,
-          1,
-          2
+          9,
+          3
         ],
         "winPct": 0,
-        "medianRound": 2
+        "medianRound": 4
       }
     },
     "topPicks": [
+      [
+        "bannschild",
+        2
+      ],
+      [
+        "tempoteufel",
+        1
+      ],
+      [
+        "schwungrad",
+        1
+      ],
+      [
+        "hextechkern",
+        1
+      ],
+      [
+        "eisenhaut",
+        1
+      ],
       [
         "abstossfeld",
         1
       ],
       [
-        "kar_verbrannte_erde",
+        "schrumpfstrahl",
         1
       ],
       [
-        "zermuerbung",
+        "transmutgold",
         1
       ],
       [
-        "feuerwerk",
+        "klingenfokus",
         1
       ],
       [
-        "bannschild",
+        "freilauf",
         1
       ],
       [
-        "bergkern",
+        "zeitzuender",
+        1
+      ],
+      [
+        "taktschlag",
         1
       ]
     ]
   },
   "results": [
     {
-      "champion": "karthus",
-      "reachedRound": 3,
+      "champion": "blitzcrank",
+      "reachedRound": 2,
       "won": false,
       "rounds": [
         {
           "round": 1,
-          "gameMs": 20000,
-          "hpLeft": 30,
-          "survived": true,
-          "hang": false,
-          "untouched": false
-        },
-        {
-          "round": 2,
           "gameMs": 12500,
-          "hpLeft": 1,
-          "survived": true,
-          "hang": false,
-          "untouched": false
-        },
-        {
-          "round": 3,
-          "gameMs": 16500,
-          "hpLeft": 0,
-          "survived": false,
-          "hang": false,
-          "untouched": false
-        }
-      ],
-      "picks": [
-        "abstossfeld",
-        "kar_verbrannte_erde"
-      ],
-      "buys": [
-        "it_leerenstab"
-      ],
-      "augs": [
-        "abstossfeld",
-        "kar_verbrannte_erde"
-      ],
-      "items": [
-        "it_leerenstab"
-      ]
-    },
-    {
-      "champion": "karthus",
-      "reachedRound": 3,
-      "won": false,
-      "rounds": [
-        {
-          "round": 1,
-          "gameMs": 3500,
-          "hpLeft": 73,
-          "survived": true,
-          "hang": false,
-          "untouched": false
-        },
-        {
-          "round": 2,
-          "gameMs": 16500,
-          "hpLeft": 27,
-          "survived": true,
-          "hang": false,
-          "untouched": false
-        },
-        {
-          "round": 3,
-          "gameMs": 17000,
-          "hpLeft": 0,
-          "survived": false,
-          "hang": false,
-          "untouched": false
-        }
-      ],
-      "picks": [
-        "zermuerbung",
-        "feuerwerk"
-      ],
-      "buys": [
-        "it_dornenwall"
-      ],
-      "augs": [
-        "zermuerbung",
-        "feuerwerk"
-      ],
-      "items": [
-        "it_dornenwall"
-      ]
-    },
-    {
-      "champion": "karthus",
-      "reachedRound": 2,
-      "won": false,
-      "rounds": [
-        {
-          "round": 1,
-          "gameMs": 13500,
-          "hpLeft": 51,
-          "survived": true,
-          "hang": false,
-          "untouched": false
-        },
-        {
-          "round": 2,
-          "gameMs": 41000,
-          "hpLeft": 0,
-          "survived": false,
-          "hang": false,
-          "untouched": false
-        }
-      ],
-      "picks": [
-        "bannschild"
-      ],
-      "buys": [],
-      "augs": [
-        "bannschild"
-      ],
-      "items": []
-    },
-    {
-      "champion": "karthus",
-      "reachedRound": 1,
-      "won": false,
-      "rounds": [
-        {
-          "round": 1,
-          "gameMs": 25500,
-          "hpLeft": 0,
-          "survived": false,
-          "hang": false,
-          "untouched": false
-        }
-      ],
-      "picks": [],
-      "buys": [],
-      "augs": [],
-      "items": []
-    },
-    {
-      "champion": "karthus",
-      "reachedRound": 1,
-      "won": false,
-      "rounds": [
-        {
-          "round": 1,
-          "gameMs": 90500,
-          "hpLeft": 132,
-          "survived": true,
-          "hang": true,
-          "untouched": false
-        }
-      ],
-      "picks": [],
-      "buys": [],
-      "augs": [],
-      "items": []
-    },
-    {
-      "champion": "karthus",
-      "reachedRound": 2,
-      "won": false,
-      "rounds": [
-        {
-          "round": 1,
-          "gameMs": 8500,
-          "hpLeft": 1,
+          "hpLeft": 313,
           "survived": true,
           "hang": false,
           "untouched": false
@@ -231,20 +96,315 @@
         {
           "round": 2,
           "gameMs": 90000,
-          "hpLeft": 52,
+          "hpLeft": 191,
           "survived": true,
           "hang": true,
           "untouched": false
         }
       ],
       "picks": [
-        "bergkern"
+        "tempoteufel"
       ],
       "buys": [],
       "augs": [
-        "bergkern"
+        "tempoteufel"
       ],
       "items": []
+    },
+    {
+      "champion": "blitzcrank",
+      "reachedRound": 4,
+      "won": false,
+      "rounds": [
+        {
+          "round": 1,
+          "gameMs": 8000,
+          "hpLeft": 267,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 2,
+          "gameMs": 10000,
+          "hpLeft": 269,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 3,
+          "gameMs": 15000,
+          "hpLeft": 96,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 4,
+          "gameMs": 19000,
+          "hpLeft": 0,
+          "survived": false,
+          "hang": false,
+          "untouched": false
+        }
+      ],
+      "picks": [
+        "bannschild",
+        "schwungrad",
+        "hextechkern"
+      ],
+      "buys": [
+        "it_sporensohlen"
+      ],
+      "augs": [
+        "bannschild",
+        "schwungrad",
+        "hextechkern"
+      ],
+      "items": [
+        "it_sporensohlen"
+      ]
+    },
+    {
+      "champion": "blitzcrank",
+      "reachedRound": 5,
+      "won": false,
+      "rounds": [
+        {
+          "round": 1,
+          "gameMs": 14500,
+          "hpLeft": 287,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 2,
+          "gameMs": 42000,
+          "hpLeft": 96,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 3,
+          "gameMs": 42000,
+          "hpLeft": 88,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 4,
+          "gameMs": 20000,
+          "hpLeft": 233,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 5,
+          "gameMs": 35000,
+          "hpLeft": 0,
+          "survived": false,
+          "hang": false,
+          "untouched": false
+        }
+      ],
+      "picks": [
+        "bannschild",
+        "eisenhaut",
+        "abstossfeld",
+        "schrumpfstrahl"
+      ],
+      "buys": [
+        "it_lavamantel",
+        "it_kettenschuhe"
+      ],
+      "augs": [
+        "bannschild",
+        "eisenhaut",
+        "abstossfeld",
+        "schrumpfstrahl"
+      ],
+      "items": [
+        "it_lavamantel",
+        "it_kettenschuhe"
+      ]
+    },
+    {
+      "champion": "blitzcrank",
+      "reachedRound": 1,
+      "won": false,
+      "rounds": [
+        {
+          "round": 1,
+          "gameMs": 90000,
+          "hpLeft": 266,
+          "survived": true,
+          "hang": true,
+          "untouched": false
+        }
+      ],
+      "picks": [],
+      "buys": [],
+      "augs": [],
+      "items": []
+    },
+    {
+      "champion": "blitzcrank",
+      "reachedRound": 9,
+      "won": false,
+      "rounds": [
+        {
+          "round": 1,
+          "gameMs": 12500,
+          "hpLeft": 222,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 2,
+          "gameMs": 7000,
+          "hpLeft": 263,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 3,
+          "gameMs": 15500,
+          "hpLeft": 154,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 4,
+          "gameMs": 17500,
+          "hpLeft": 206,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 5,
+          "gameMs": 29000,
+          "hpLeft": 99,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 6,
+          "gameMs": 19000,
+          "hpLeft": 142,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 7,
+          "gameMs": 16000,
+          "hpLeft": 267,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 8,
+          "gameMs": 21500,
+          "hpLeft": 9,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 9,
+          "gameMs": 22000,
+          "hpLeft": 0,
+          "survived": false,
+          "hang": false,
+          "untouched": false
+        }
+      ],
+      "picks": [
+        "transmutgold",
+        "klingenfokus",
+        "freilauf",
+        "zeitzuender",
+        "taktschlag",
+        "zermuerbung",
+        "fanghaken",
+        "arkanpfeile"
+      ],
+      "buys": [
+        "it_dornenwall",
+        "it_panzerstiefel",
+        "it_runenbogen",
+        "it_kettenschuhe"
+      ],
+      "augs": [
+        "transmutgold",
+        "nadelstich",
+        "klingenfokus",
+        "freilauf",
+        "zeitzuender",
+        "taktschlag"
+      ],
+      "items": [
+        "it_dornenwall",
+        "it_panzerstiefel",
+        "it_runenbogen",
+        "it_kettenschuhe"
+      ]
+    },
+    {
+      "champion": "blitzcrank",
+      "reachedRound": 3,
+      "won": false,
+      "rounds": [
+        {
+          "round": 1,
+          "gameMs": 8000,
+          "hpLeft": 274,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 2,
+          "gameMs": 16000,
+          "hpLeft": 163,
+          "survived": true,
+          "hang": false,
+          "untouched": false
+        },
+        {
+          "round": 3,
+          "gameMs": 17500,
+          "hpLeft": 0,
+          "survived": false,
+          "hang": false,
+          "untouched": false
+        }
+      ],
+      "picks": [
+        "nachdruck",
+        "frostgeist"
+      ],
+      "buys": [
+        "it_geistermaske"
+      ],
+      "augs": [
+        "nachdruck",
+        "frostgeist"
+      ],
+      "items": [
+        "it_geistermaske"
+      ]
     }
   ],
   "errors": []

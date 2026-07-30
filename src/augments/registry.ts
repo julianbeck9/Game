@@ -5,6 +5,7 @@ import { GOLD } from './gold';
 import { PRISMA } from './prisma';
 import { SIVIR_AUGMENTS } from './champions/sivir';
 import { KARTHUS_AUGMENTS } from './champions/karthus';
+import { BLITZCRANK_AUGMENTS } from './champions/blitzcrank';
 import { RETIRED_AUGMENT_IDS } from './retired';
 
 /**
@@ -19,7 +20,7 @@ import { RETIRED_AUGMENT_IDS } from './retired';
  */
 // Champion augments live alongside the generic pool; eligibility.ts keeps them
 // out of every other champion's offers.
-export const CHAMPION_AUGMENTS: AugmentDef[] = [...SIVIR_AUGMENTS, ...KARTHUS_AUGMENTS];
+export const CHAMPION_AUGMENTS: AugmentDef[] = [...SIVIR_AUGMENTS, ...KARTHUS_AUGMENTS, ...BLITZCRANK_AUGMENTS];
 
 // Pure stat sticks are retired from the pool (see retired.ts): raw numbers are
 // the item shop's job, augments are supposed to change how a run plays.

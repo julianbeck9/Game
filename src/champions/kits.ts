@@ -1,5 +1,5 @@
 import { COLORS } from '../config';
-import { norm } from '../core/geometry';
+import { norm, type Vec } from '../core/geometry';
 import { run } from '../core/run';
 import type { StatName } from '../core/stats';
 import type { ChampionDef, AbilityInfo, AbilityShape } from './types';
@@ -46,6 +46,33 @@ export const KARTHUS_SOLO_MULT = 1.7;
 export const KARTHUS_DEFILE_R = 260;
 export const KARTHUS_DEFILE_DPS = 26;
 export const KARTHUS_DEFILE_SELF_DPS = 9;
+
+/** Blitzcrank's hook corridor — shared with his augments so a lane can widen it. */
+export const BLITZ_HOOK_RANGE = 700;
+export const BLITZ_HOOK_WIDTH = 70;
+
+/**
+ * First enemy whose body touches the corridor from `p` along `dir`, nearest
+ * first. The shared shape behind every "fire it where you aim" ability.
+ */
+export function firstInLine(p: Player, dir: Vec, range: number, width: number): Unit | null {
+  let best: Unit | null = null;
+  let bestT = Infinity;
+  for (const u of p.combat.units) {
+    if (!u.alive || u.team !== 'enemy') continue;
+    const rx = u.x - p.x;
+    const ry = u.y - p.y;
+    const along = rx * dir.x + ry * dir.y;
+    if (along < 0 || along > range) continue;
+    const perp = Math.abs(rx * -dir.y + ry * dir.x);
+    if (perp > width / 2 + u.radius) continue;
+    if (along < bestT) {
+      bestT = along;
+      best = u;
+    }
+  }
+  return best;
+}
 
 const AD = (p: Player) => p.stats.get('damage');
 const AP = (p: Player) => p.stats.get('abilityPower');
@@ -486,18 +513,39 @@ export const KITS: Record<string, Kit> = {
     base: { ...TANK, abilityPower: 16, attackRange: 170 },
     kitLine: 'Passive mana barrier · Q power fist · E static field · Dash rocket grab',
     // fireQ empowers the next auto-attack (memory flag), no immediate target/zone.
-    spec: { q: { kind: 'self' } },
+    // The hook is declared so the aim preview draws the real corridor — missing
+    // it is the whole point, and you cannot miss what you cannot see.
+    spec: { q: { kind: 'self' }, dash: { kind: 'line', range: 700, width: 70, speed: 1600 } },
     info: {
-      passive: AI('Mana Barrier', 'The first time you drop low, a shield absorbs the blow. [blue hex flash]'),
-      q: AI('Power Fist', 'Your next attack knocks the target up. [fist glows, target flips]'),
-      e: AI('Static Field', 'Periodic shocks damage nearby enemies. [spark ring pulses]'),
-      dash: AI('Rocket Grab', 'Fire a hook that drags an enemy to you. [chain retracts]'),
+      passive: AI('Mana Barrier', 'The first time you drop low, a shield absorbs the blow.'),
+      q: AI('Power Fist', 'Your next attack knocks the target up.'),
+      e: AI('Static Field', 'Shock every enemy around you, briefly stunning them.'),
+      dash: AI('Rocket Grab', 'Fire a hook where you aim. The first enemy it touches is dragged to you — miss and it is on cooldown.'),
     },
     passiveTick: (p) => { if (!p.memory.manaBar && p.hpPct < 0.3 && p.alive) { p.memory.manaBar = 1; p.addShield(p.maxHP * 0.15); p.combat.ring(p.x, p.y, 0x66aaff, 90); } },
     fireQ: (p) => { p.memory.blitzFist = 1; p.combat.ring(p.x, p.y, 0xffcc33, 60); },
     onAutoHit: (p, t) => { if (!p.memory.blitzFist || !t.alive) return; p.memory.blitzFist = 0; hit(p, t, (rs(...Q_SCALE.blitzcrank) + 0.5 * bAD(p)) * AMP(p), 'physisch', 'Q'); stun(t, 900, T(p)); },
     castE: (p) => { p.combat.ring(p.x, p.y, 0x66ccff, 220); for (const u of enemiesIn(p, p.x, p.y, 220)) { hit(p, u, (rs(30, 45, 60, 75) + 0.2 * AP(p)) * AMP(p), 'magisch', 'E'); stun(u, 500, T(p)); } },
-    onDash: (p) => { const t = near(p, 700); if (!t) return false; p.combat.flashLine(p.x, p.y, t.x, t.y, 0xffcc33); const a = norm(p.x - t.x, p.y - t.y), d = Math.hypot(t.x - p.x, t.y - p.y); t.moveBy(a.x * Math.max(0, d - 100), a.y * Math.max(0, d - 100)); stun(t, 600, T(p)); hit(p, t, (rs(40, 65, 90, 115) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Dash'); return true; },
+    onDash: (p, dir) => {
+      // A real skillshot, not a snap to the nearest body: the hook flies where
+      // you aimed and grabs the first thing in its corridor. Auto-targeting
+      // made the single most distinctive button in the roster impossible to
+      // play badly, which also made it impossible to play well.
+      const d = dir ?? p.facing;
+      const t = firstInLine(p, d, BLITZ_HOOK_RANGE, BLITZ_HOOK_WIDTH);
+      const endX = p.x + d.x * BLITZ_HOOK_RANGE;
+      const endY = p.y + d.y * BLITZ_HOOK_RANGE;
+      p.combat.flashLine(p.x, p.y, t ? t.x : endX, t ? t.y : endY, 0xffcc33);
+      if (!t) return true; // a miss still spends the cooldown — that is the risk
+      const a = norm(p.x - t.x, p.y - t.y);
+      const dd = Math.hypot(t.x - p.x, t.y - p.y);
+      t.moveBy(a.x * Math.max(0, dd - 100), a.y * Math.max(0, dd - 100));
+      stun(t, 600, T(p));
+      hit(p, t, (rs(40, 65, 90, 115) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Dash');
+      return true;
+    },
+    // The hook has to be aimed, so tell the scripted player to lead it.
+    autoplay: { qLeadMs: 120 },
   },
 
   // ---------------------------------------------------------------- Amumu

@@ -381,3 +381,34 @@ bleiben die zwei schwächsten Punkte des ganzen Dokuments.
 - **B9-Restfall geschlossen:** Ein Gegner, der alle sieben Ausweichrichtungen durchprobiert
   hat, ohne Boden gutzumachen, wird jetzt auf einen erreichbaren Platz versetzt. Sichtbarer
   Sprung, aber besser als ein toter Run.
+
+---
+
+## Messung 005 — 2026-07-30 (M4 Blitzcrank)
+
+**Kontext:** Zweiter Champion aus M4. Rocket Grab ist jetzt ein echter Skillshot statt
+einer Ziel-Automatik, dazu 9 Champion-Augments über 4 Lanes (Hook · Fist · Field · Grit).
+
+### Geänderte Kriterien
+
+| # | Kriterium | 004 | **005** | Begründung |
+|---|---|---|---|---|
+| A6 | Champions spielen sich grundverschieden | 3 | **4 ↑** | Blitzcrank ist der erste Champion, dessen stärkste Taste den Gegner **bewegt** statt ihm zu schaden — und der Haken kann jetzt danebengehen. Damit gibt es drei klar unterschiedliche Spielweisen (Marksman · Zonen-Caster · Haken-Zieher) statt „Q zielen + Autos" |
+| C4 | Können schlägt Glück | 2 | **3 ↑** | Zwei der acht Champions haben jetzt eine Taste, die man **verfehlen** kann und deren Treffer den Run trägt: Karthus' Zündverzögerung und Blitzcranks Haken. Vorher zielte man zwar, aber die wichtigsten Effekte trafen automatisch. Noch *unverifiziert* im Gefühl (26 fps), aber die Mechanik ist belegt: `onDash` sucht das erste Ziel im Korridor, ein Fehlschuss kostet trotzdem den Cooldown |
+
+### Gesamtscore
+
+```
+A: (3+3+2+0+2+4) = 14 × 3 = 42   (39 -> 42)
+B: (2+1+1+3+1+3) = 11 × 2 = 22   (=)
+C: (1+0+2+3+3)   =  9 × 2 = 18   (16 -> 18)
+D: (4+2+2+5)     = 13 × 1 = 13   (=)
+                          -------
+                      GESAMT 95 / 275   (35 %)     vorher 90 / 275 (33 %)
+```
+
+**Stand M4: 3 von 8 Champions** (Sivir, Karthus, Blitzcrank) haben Lanes; 5 fehlen
+(Fizz, Zac, Lux, Master Yi, Warwick). **A4 und C2 stehen weiterhin auf 0** — daran hat
+diese Session nichts geändert, und sie bleiben die zwei schwächsten Punkte des Dokuments.
+
+**Sim:** Blitzcrank kommt bis Runde 9 (Median 3,5), Rundendauer 18 s, 0 Konsolenfehler.
