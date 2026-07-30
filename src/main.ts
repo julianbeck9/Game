@@ -71,6 +71,7 @@ declare global {
         onCombatInit: boolean;
         statMods: boolean;
         ruleFlags: boolean;
+        champion: string | null;
         needs: string[];
         statModsList: { stat: string; flat?: number; pct?: number }[];
         ruleFlagsObj: Record<string, number | boolean>;
@@ -114,6 +115,7 @@ window.__CC = {
       onCombatInit: !!a.onCombatInit,
       statMods: !!a.statMods,
       ruleFlags: !!a.ruleFlags,
+      champion: a.champion ?? null,
       needs: a.needs ?? [],
       statModsList: a.statMods ?? [],
       ruleFlagsObj: a.ruleFlags ?? {},

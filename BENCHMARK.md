@@ -412,3 +412,74 @@ D: (4+2+2+5)     = 13 × 1 = 13   (=)
 diese Session nichts geändert, und sie bleiben die zwei schwächsten Punkte des Dokuments.
 
 **Sim:** Blitzcrank kommt bis Runde 9 (Median 3,5), Rundendauer 18 s, 0 Konsolenfehler.
+
+---
+
+## Messung 006 — 2026-07-30 (M4 abgeschlossen: alle 8 Champions)
+
+**Kontext:** Zac, Lux, Master Yi und Warwick bekommen ihre Lanes. Damit haben **alle 8
+Champions des aktiven Rosters** eigene Augments — M4 aus der Roadmap ist inhaltlich
+erledigt. Pool: 112 generische + 61 champion-spezifische = 173.
+
+### Geänderte Kriterien
+
+| # | Kriterium | 005 | **006** | Begründung |
+|---|---|---|---|---|
+| A1 | Pick verändert das Spielen | 3 | **4 ↑** | Gilt jetzt für **8 von 8** angebotenen Champions statt 3 von 8. Kein 5, weil der generische 112er-Pool daneben unverändert aus Procs besteht — S1 („Pool auf Identität trimmen") ist offen |
+| A2 | Picks, die ohne Build wertlos sind | 3 | **4 ↑** | Es sind jetzt viele, quer über die Champions: Unbroken Hymn und Black Lung ohne Defile, Blood in the Water über 35 % Gegner-HP, Deep Cut ohne aktives Wuju Style, Grit-Lane ohne Beinahe-Tod |
+| A3 | Zwei Runs fühlen sich verschieden an | 2 | **3 ↑** | Jeder Champion hat 4 Lanes, die sich widersprechen. Kein 4, weil die Sim zeigt, dass die meisten Runs zu früh enden, um überhaupt 6 Augments zu füllen |
+| A5 | Synergien erzeugen Kettenreaktionen | 2 | **3 ↑** | Mehrere echte Ketten statt Addition: Cold Read (markieren → nächster Q zündet), Riptide (unantastbar → Fenster für Schaden), Highlander (Kill verlängert Wuju → mehr Kills), Blood Frenzy (jede Heilung → Angriffstempo → mehr Heilung) |
+| D3 | Winrates im Zielkorridor | 2 | **3 ↑** | **Zum ersten Mal existieren echte Winrates**, weil zum ersten Mal Runs gewonnen werden. Die Zahl ist allerdings schlecht (siehe unten) — der Wert steigt für die Messbarkeit, nicht für die Balance |
+
+### Gesamtscore
+
+```
+A: (4+4+3+0+3+4) = 18 × 3 = 54   (42 -> 54)
+B: (2+1+1+3+1+3) = 11 × 2 = 22   (=)
+C: (1+0+2+3+3)   =  9 × 2 = 18   (=)
+D: (4+2+3+5)     = 14 × 1 = 14   (13 -> 14)
+                          -------
+                      GESAMT 108 / 275  (39 %)     vorher 95 / 275 (35 %)
+```
+
+Von 69 (Messung 002, erster ehrlicher Stand) auf 108. **Achse A hat sich von 24 auf 54
+mehr als verdoppelt** — das ist die Priorität 1 des Besitzers und der einzige Grund, warum
+sich der Score bewegt hat. **A4 und C2 stehen weiterhin auf 0.**
+
+### 🔴 Balance-Befund: Master Yi ist kaputt
+
+24 Läufe, 142 Runden, 0 Konsolenfehler, **die ersten gewonnenen Runs überhaupt** — und
+alle gehören demselben Champion:
+
+| Champion | Median Runde | Winrate |
+|---|---|---|
+| **Master Yi** | **20** | **67 %** |
+| Zac | 8 | 0 % |
+| Lux · Fizz · Blitzcrank | 5 | 0 % |
+| Sivir | 3 | 0 % |
+| Karthus · Warwick | 2 | 0 % |
+
+**Winrate-Spread 67 pp** gegen ein Ziel von < 20 pp. Master Yi gewinnt zwei von drei Runs,
+alle anderen sieben Champions null. Das ist kein Feintuning-Thema, sondern eine
+Größenordnung — und es ist genau die Art Befund, für die M2 gebaut wurde. **Gehört nach
+O1, nicht sofort:** erst wenn Spass und Optik stehen, sonst zementiert man das Falsche
+(HANDOVER §0.1).
+
+### Sim-KPIs — Messung 006
+
+| KPI | Ziel | 003 | **006** |
+|---|---|---|---|
+| Pick-Diversität | > 80 % | 65 % | **41 %** (71 von 173) |
+| Auto-Pick-Rate | < 3× | 4,5× | **5,0×** |
+| Winrate-Spread | < 20 pp | wertlos (0) | **67 pp** — jetzt echt, und weit daneben |
+| Rundendauer (Median) | 30–60 s | 17 s | **19 s** |
+| Ungenutzt-Quote | 0 | 39 | **102 von 173** |
+| Hänger-Runden | 0 % | 5,2 % | **2,1 %** (3 von 142) |
+
+> **Messfehler unterwegs, fürs Protokoll:** Pick-Diversität fiel nach M4 scheinbar von
+> 65 % auf 36 % — der Pool war aber nur um 61 *gegatete* Augments gewachsen, die ein
+> einzelner Run gar nicht sehen kann. Der Nenner war falsch, nicht die Vielfalt. `sim.mjs`
+> teilt jetzt durch das, was die gespielten Champions **erreichen können**. Auch mit
+> korrigiertem Nenner bleibt 41 % weit unter Ziel: die meisten Läufe enden zu früh, um
+> überhaupt sechs Augments zu wählen. **Diese KPI misst derzeit die Rundenzahl, nicht die
+> Vielfalt** — sie wird erst aussagekräftig, wenn Läufe regelmässig weit kommen.

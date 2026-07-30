@@ -401,8 +401,16 @@ async function main() {
     }
 
     const page = await newPage(browser, errors);
-    const poolSize = await page.evaluate(() => window.__CC.augIds().length);
     const champions = ONLY_CHAMPION ? [ONLY_CHAMPION] : CHAMPS;
+    // Pick diversity must divide by what these champions could *reach*, not by
+    // the whole registry. Champion augments are gated, so once M4 added eight
+    // sets the total pool stopped being a denominator any run could fill —
+    // measuring against it made diversity look like it collapsed (65% -> 36%)
+    // when in truth the pool had simply grown a section each run cannot see.
+    const poolSize = await page.evaluate((cs) => {
+      const all = window.__CC.augIds();
+      return all.filter((a) => !a.champion || cs.includes(a.champion)).length;
+    }, champions);
     const results = [];
     for (let i = 0; i < RUNS; i++) {
       const champion = champions[i % champions.length];
