@@ -836,7 +836,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       if (autopilotEnabled()) {
         // Enters through the same three controls a human has, so a sim run
         // cannot accidentally measure something the player could not do.
-        const intent = autopilotIntent(this.player, this.units);
+        const intent = autopilotIntent(this.player, this.units, this.hazards);
         mv = intent.move;
         if (intent.q) this.player.castQ(intent.aim);
         if (intent.e) this.player.castE(intent.aim);

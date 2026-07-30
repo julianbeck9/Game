@@ -234,6 +234,7 @@ Spielgefühl erlaubt (B2, C4 weiterhin *unverifiziert*).
 | C5 | Niederlagen fühlen sich fair an | 1 | **3 ↑** | Die erzwungene Niederlage ist weg. Gegner navigieren jetzt um Geometrie herum, statt sich festzufahren: 8/8 Verify-Läufe grün (vorher fielen 2/6 bzw. 2/5 durch), 0 Deadlocks in zwei unabhängigen 18er-Serien, und ein gescripteter Run kommt in Runde 3 zu einem Ergebnis statt 3,5 Minuten zu hängen. **Nicht 4 oder 5**, weil der andere Teil von M5 offen bleibt: die Vermeidbarkeits-Tabelle über alle Gegner-Fähigkeiten existiert nicht, und aus dem Stand sterben ist weiterhin schnell |
 | D1 | Beschreibung = Wirkung | 3 | **4 ↑** | B10 gefixt: 0 von 100 Fähigkeitstexten enthalten noch interne Klammern (Test über alle 26 Champions). B11 gefixt: der Shop bietet keine AP-only-Items mehr an rein-AD-Champions. Kein 5, weil Item- und Augment-Texte weiter handgetippt sind |
 | D2 | Jedes Augment nachweislich wirksam | 2 | **2** | unverändert — diese Session hat daran nichts gemessen |
+| D3 | Winrates im Zielkorridor | 1 | **2 ↑** | Erstmals **überhaupt** gemessen (`npm run sim`, 40 Läufe): echte Winrates gibt es noch nicht, weil kein Lauf gewonnen wird, aber der Proxy „Median erreichte Runde" streut von 2 (Lux) bis 13 (Master Yi) — Faktor 6,5. Kein 3, weil die Zahl vom Bot mitbestimmt wird und je Champion nur 5 Läufe dahinterstehen |
 | D4 | Keine Konsolenfehler, keine Leaks | 5 | **5** | gehalten, jetzt mit strengerem Gate: `verify` prüft zusätzlich, dass kein Gegner ausserhalb seiner Reichweite stehen bleibt |
 
 ### Gesamtscore
@@ -242,16 +243,16 @@ Spielgefühl erlaubt (B2, C4 weiterhin *unverifiziert*).
 A: (2+2+1+0+1+2) =  8 × 3 = 24   (=)
 B: (2+1+1+3+1+3) = 11 × 2 = 22   (=)
 C: (1+0+2+2+3)   =  8 × 2 = 16   (12 -> 16)
-D: (4+2+1+5)     = 12 × 1 = 12   (11 -> 12)
+D: (4+2+2+5)     = 13 × 1 = 13   (11 -> 13)
                           -------
-                      GESAMT 74 / 275   (27 %)     vorher 69 / 275 (25 %)
+                      GESAMT 75 / 275   (27 %)     vorher 69 / 275 (25 %)
 ```
 
-**Was sich verändert hat und warum:** +5 Punkte, ausschliesslich aus C5 und D1 — also aus
-Korrektheit, nicht aus Spieltiefe. **Achse A steht unverändert bei 8/30**, A4 und C2
-weiterhin auf 0. Das ist zu erwarten: dieser Block war Reparatur, kein Inhalt. Der Score
-ist damit wieder auf dem Niveau von Messung 001 (74) — aber jetzt ist es eine *gemessene*
-74 statt einer geschätzten, und die Systeme darunter halten.
+**Was sich verändert hat und warum:** +6 Punkte aus C5, D1 und D3 — also ausschliesslich
+aus Korrektheit und Messbarkeit, **nicht** aus Spieltiefe. **Achse A steht unverändert bei
+8/30**, A4 und C2 weiterhin auf 0. Das ist zu erwarten: dieser Block war Reparatur und
+Werkzeugbau, kein Inhalt. Der Score liegt damit knapp über Messung 001 (74) — aber es ist
+jetzt eine *gemessene* 75 statt einer geschätzten 74, und die Systeme darunter halten.
 
 **Für M2 wichtig:** Der Blocker ist weg. Ein Sim-Lauf hängt nicht mehr an Runde-3-artigen
 Deadlocks, die KPI-Messung kann also gebaut werden, ohne Hänger statt Balance zu messen.
@@ -264,22 +265,22 @@ Deadlocks, die KPI-Messung kann also gebaut werden, ohne Hänger statt Balance z
 ein Spieler nicht könnte. Tempo kommt von `__CC.stepMs`, das Phasers eigene
 Step-Funktion mit synthetischer Uhr treibt (~40× schneller als Echtzeit).
 
-**Basis: 40 Läufe, 8 Champions × 5, 142 Runden, 0 Konsolenfehler.**
+**Basis: 40 Läufe, 8 Champions × 5, 210 Runden, 0 Konsolenfehler.**
 
 | KPI | Ziel | **003** | Belastbar? |
 |---|---|---|---|
-| Pick-Diversität | > 80 % | **40 %** (45 von 112 Augments mind. 1× gewählt) | Teilweise — nach unten verzerrt, weil die Läufe früh enden und insgesamt nur ~100 Picks zusammenkommen |
-| Auto-Pick-Rate | < 3× | **3,0×** | ja, knapp am Ziel |
-| Build-Streuung | > 60 % | **96 %** | ⚠️ **wertlos** — Builds bestehen aus 2–4 Augments, da überlappt fast nichts. Der Wert wird erst aussagekräftig, wenn Läufe 6/6 Slots füllen |
+| Pick-Diversität | > 80 % | **65 %** (73 von 112 Augments mind. 1× gewählt) | Teilweise — weiterhin nach unten verzerrt, weil die Hälfte der Läufe vor Runde 4 endet |
+| Auto-Pick-Rate | < 3× | **4,5×** | ja — und **über Ziel**: das häufigste Augment wird 4,5× so oft genommen wie der Median |
+| Build-Streuung | > 60 % | **97 %** | ⚠️ **wertlos** — Builds bestehen aus 2–4 Augments, da überlappt fast nichts. Der Wert wird erst aussagekräftig, wenn Läufe 6/6 Slots füllen |
 | Winrate-Spread | < 20 pp | **0 pp** | ⚠️ **wertlos** — der Spread ist 0, weil **kein einziger Lauf gewonnen wurde**. Ein „erfülltes" Ziel ohne jede Aussage |
-| Rundendauer (Median) | 30–60 s | **13 s** | ja — und **klar unter Ziel**. Runden sind weniger als halb so lang wie gewollt |
+| Rundendauer (Median) | 30–60 s | **17 s** | ja — und **klar unter Ziel**, gut halb so lang wie gewollt |
 | Treffer-frei-Quote | 0 < x < 30 % | **nicht gemessen** | Vorrichtung fehlt noch (gehört zu M5) |
-| Ungenutzt-Quote | 0 | **67 von 112** | siehe Pick-Diversität |
+| Ungenutzt-Quote | 0 | **39 von 112** | siehe Pick-Diversität |
 | **Deadlock-Quote** | 0 % | **0 %** | ja (0/15 und 0/10 auswertbare Läufe, 8/8 Verify grün) |
-| *(neu)* **Hänger-Runden** | 0 % | **3,5 %** (5 von 142) | Runden, die der Bot in 90 s Spielzeit nicht räumen konnte — **nicht** B9, sondern Bot-Schwäche |
+| *(neu)* **Hänger-Runden** | 0 % | **5,2 %** (11 von 210) | Runden, die der Bot in 90 s Spielzeit nicht räumen konnte — **nicht** B9, sondern Bot-Schwäche |
 
-> ⚠️ **Die wichtigste Zahl steht nicht in der Tabelle: kein Lauf kam über Runde 9,
-> Median Runde 3.** Damit gilt genau die Warnung aus HANDOVER M2 — *„wenn er zu schlecht
+> ⚠️ **Die wichtigste Zahl steht nicht in der Tabelle: kein Lauf wurde gewonnen,
+> Median Runde 3, weitester Lauf Runde 19.** Damit gilt weiter die Warnung aus HANDOVER M2 — *„wenn er zu schlecht
 > spielt, misst du seine Inkompetenz statt deiner Balance."* Winrate-KPIs sind deshalb
 > vorerst nicht verwendbar, und Pick-Diversität ist nach unten verzerrt. Verwendbar sind
 > **Rundendauer**, **Auto-Pick-Rate** und die **Deadlock-/Hänger-Quoten**.
@@ -293,3 +294,29 @@ Step-Funktion mit synthetischer Uhr treibt (~40× schneller als Echtzeit).
 > **Nächster Schritt für M2 ist damit nicht mehr die Harness, sondern der Bot.** Erst wenn
 > der Autopilot Runde 20 überhaupt erreichen kann, tragen Winrate und Pick-Diversität eine
 > Aussage.
+>
+> **Was den Bot bisher gebessert hat** (jeweils gemessen): Der Harness kaufte anfangs
+> **gar nichts** ein — der Bot ging mit hunderten ungenutztem Gold und null Items in
+> Runde 5. Das war kein Balance-Befund, sondern ein Handicap, das kein Spieler hinnähme.
+> Mit Einkaufen stieg der Median von Runde 3 auf 5 und das Maximum von 9 auf 15; mit
+> zusätzlich besserem Zielen (schwächstes Ziel in Reichweite statt nächstem),
+> Hazard-Vermeidung und Rückzug bei wenig HP stieg das Maximum auf 19 und die
+> Pick-Diversität von 40 % auf 65 %.
+>
+> ### 🔴 Erster echter Balance-Befund: die Champion-Spreizung ist gewaltig
+>
+> Auch ohne Winrates ist „bis zu welcher Runde kommt dieser Champion" ein brauchbarer
+> Proxy — und der streut um mehr als das Sechsfache:
+>
+> | Champion | Median erreichte Runde |
+> |---|---|
+> | **Master Yi** | **13** |
+> | Warwick | 6 |
+> | Blitzcrank | 5 |
+> | Sivir · Fizz · Zac · Karthus | 3 |
+> | **Lux** | **2** |
+>
+> Master Yi kommt mit demselben Bot rund **6,5× so weit wie Lux**. Bei je 5 Läufen ist das
+> noch keine belastbare Winrate, aber die Größenordnung ist zu groß für Rauschen — und es
+> ist die erste Zahl, die zu D3 überhaupt etwas sagt. Für O1 (Balance) gehört das mit
+> deutlich mehr Läufen je Champion wiederholt.

@@ -15,6 +15,14 @@ export class ShopScene extends Phaser.Scene {
   private ownedRow!: Phaser.GameObjects.Container;
   /** Tapping an owned item opens this panel (forge / sell); null when closed. */
   private actionPanel: Phaser.GameObjects.Container | null = null;
+  /**
+   * This shop's offers paired with the exact callback the card's own tap runs.
+   * The sim harness (scripts/sim.mjs) buys through these, so a simulated
+   * purchase goes down the same path as a player's — including the gold, the
+   * unique-boots rule and the slot cap — instead of a parallel copy that could
+   * drift from what the shop actually does.
+   */
+  cards: { item: ItemDef; buy: () => void }[] = [];
 
   constructor() {
     super('shop');
@@ -63,6 +71,7 @@ export class ShopScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-TAB', openBuild);
 
     const offers = rollShop(run.round);
+    this.cards = [];
     const cardW = 285;
     const cardH = 420;
     const gap = 18;
@@ -333,5 +342,6 @@ export class ShopScene extends Phaser.Scene {
     bg.on('pointerover', () => !bought && bg.setFillStyle(0x1f1f30));
     bg.on('pointerout', () => !bought && bg.setFillStyle(0x14141f));
     bg.on('pointerdown', tryBuy);
+    this.cards.push({ item: it, buy: tryBuy });
   }
 }

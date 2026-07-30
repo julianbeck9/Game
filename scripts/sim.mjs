@@ -136,7 +136,8 @@ async function playRun(page, champion, advance) {
   await advance(600);
 
   const rounds = [];
-  let picks = [];
+  const picks = [];
+  const buys = [];
   let guard = 0;
 
   while (guard++ < MAX_ROUND * 8) {
@@ -176,7 +177,30 @@ async function playRun(page, champion, advance) {
     }
 
     if (s.scenes.includes('shop')) {
-      // Buy nothing: item choice is its own axis and would confound pick data.
+      // Spend the gold. The first version of this harness bought nothing, on
+      // the theory that item choice is a separate axis — but that put the bot
+      // into round 5 with no items and hundreds of unspent gold, so what it
+      // really measured was a handicap no player would accept.
+      // Greedy most-expensive-affordable, through the card's own buy callback.
+      const bought = await page.evaluate(() => {
+        const sc = window.__CC.arena().scene.manager.getScene('shop');
+        if (!sc || !sc.cards) return [];
+        const got = [];
+        for (;;) {
+          const affordable = sc.cards
+            .filter((c) => c.item.cost <= window.__CC.run.gold)
+            .sort((a, b) => b.item.cost - a.item.cost);
+          const before = window.__CC.run.items.length;
+          const beforeGold = window.__CC.run.gold;
+          if (affordable.length === 0) break;
+          affordable[0].buy();
+          // buy() refuses silently on duplicates/slot cap — stop when nothing moved.
+          if (window.__CC.run.items.length === before && window.__CC.run.gold === beforeGold) break;
+          got.push(affordable[0].item.id);
+        }
+        return got;
+      });
+      buys.push(...bought);
       await page.evaluate(() => {
         const sc = window.__CC.arena().scene.manager.getScene('shop');
         if (sc) sc.scene.start('arena');
@@ -237,13 +261,20 @@ async function playRun(page, champion, advance) {
   }
 
   const final = await probe(page);
+  const lastRound = rounds.length ? rounds[rounds.length - 1] : null;
+  // Surviving the final round IS the win; the loop stops there rather than
+  // walking into the end screen, so waiting for scene 'end' scored a completed
+  // 20-round run as a loss.
+  const survivedToTheEnd = !!lastRound && lastRound.survived && !lastRound.hang && lastRound.round >= MAX_ROUND;
   return {
     champion,
-    reachedRound: rounds.length ? rounds[rounds.length - 1].round : 0,
-    won: final.scenes.includes('end') && rounds.length > 0 && rounds[rounds.length - 1].survived,
+    reachedRound: lastRound ? lastRound.round : 0,
+    won: survivedToTheEnd || (final.scenes.includes('end') && !!lastRound && lastRound.survived),
     rounds,
     picks,
+    buys,
     augs: final.augs,
+    items: final.items,
   };
 }
 
