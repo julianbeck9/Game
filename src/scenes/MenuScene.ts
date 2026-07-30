@@ -4,7 +4,7 @@ import { STR } from '../core/strings';
 import { newRun, run } from '../core/run';
 import { initAudio } from '../core/sfx';
 import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/draw';
-import { CHAMPIONS, CHAMP_IMAGE_KEYS, ensureChampionTextures } from '../champions/registry';
+import { ACTIVE_CHAMPIONS, CHAMP_IMAGE_KEYS, ensureChampionTextures } from '../champions/registry';
 import { describeQ } from '../champions/describe';
 import { addFullscreenButton } from '../core/fullscreen';
 import { MAP_IMAGE_KEYS } from '../core/maps';
@@ -77,20 +77,23 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(10);
 
-    // Champion select: a compact portrait grid (roster is large now).
-    const perRow = 9;
-    const tileW = 190;
-    const tileH = 168;
-    const gapX = 12;
-    const gapY = 12;
+    // Champion select. With the roster cut to eight (see registry ACTIVE_IDS)
+    // the tiles can be twice the size — the old 190px grid existed only to fit
+    // 26 of them, and read as a spreadsheet rather than a choice.
+    const roster = ACTIVE_CHAMPIONS;
+    const perRow = 4;
+    const tileW = 300;
+    const tileH = 250;
+    const gapX = 24;
+    const gapY = 20;
     const total = perRow * tileW + (perRow - 1) * gapX;
     const x0 = (GAME_W - total) / 2 + tileW / 2;
     const y0 = 400 + tileH / 2;
-    CHAMPIONS.forEach((c, i) => {
+    roster.forEach((c, i) => {
       const col = i % perRow;
       const row = Math.floor(i / perRow);
       // centre the shorter last row
-      const inRow = Math.min(perRow, CHAMPIONS.length - row * perRow);
+      const inRow = Math.min(perRow, roster.length - row * perRow);
       const rowOff = ((perRow - inRow) * (tileW + gapX)) / 2;
       this.makeChampTile(i, x0 + col * (tileW + gapX) + rowOff, y0 + row * (tileH + gapY), tileW, tileH);
     });
@@ -125,12 +128,12 @@ export class MenuScene extends Phaser.Scene {
       this.scene.start('shop');
     };
     this.startFn = start;
-    this.input.keyboard?.once('keydown-ENTER', () => start(CHAMPIONS[0].id));
+    this.input.keyboard?.once('keydown-ENTER', () => start(ACTIVE_CHAMPIONS[0].id));
   }
 
   /** Detail overlay: full kit (passive + Q/E/Dash) with a Play button. */
   private showDetail(index: number): void {
-    const c = CHAMPIONS[index];
+    const c = ACTIVE_CHAMPIONS[index];
     const cx = GAME_W / 2;
     const layer = this.add.container(0, 0).setDepth(50);
     layer.add(this.add.rectangle(cx, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.9));
@@ -205,15 +208,17 @@ export class MenuScene extends Phaser.Scene {
   private startFn!: (id: string) => void;
 
   private makeChampTile(index: number, x: number, y: number, w: number, h: number): void {
-    const champ = CHAMPIONS[index];
+    const champ = ACTIVE_CHAMPIONS[index];
     const zone = this.add.container(x, y).setDepth(10);
     const roleColor = (champ.scales ?? ['ad']).includes('ap') ? 0xb07aff : COLORS.player;
 
     const bg = this.add.rectangle(0, 0, w, h, 0x14141f, 1).setStrokeStyle(3, roleColor, 0.7);
     zone.add(bg);
 
-    const sprite = this.add.image(0, -14, `champ:${champ.id}`);
-    if (sprite.height > 0) sprite.setScale(Math.min(2.4, 104 / sprite.height));
+    const sprite = this.add.image(0, -18, `champ:${champ.id}`);
+    // Sized to the tile, not to the old 26-champion grid — at the previous cap
+    // the portraits sat marooned in the middle of the larger cards.
+    if (sprite.height > 0) sprite.setScale(Math.min(3.6, (h - 96) / sprite.height));
     zone.add(sprite);
     this.tweens.add({ targets: sprite, y: sprite.y - 5, duration: 900 + index * 60, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 

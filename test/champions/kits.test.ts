@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { CHAMPIONS } from '../../src/champions/registry';
+import { ACTIVE_CHAMPIONS, CHAMPIONS, isActiveChampion } from '../../src/champions/registry';
 
 const VALID_KINDS = new Set(['line', 'circle', 'cone', 'dash', 'self']);
 
@@ -33,6 +33,37 @@ describe('AbilitySpec coverage (B3, S2-3)', () => {
  * symptom is 4 test files dying with "Timeout waiting for worker to respond",
  * which reads like a flaky machine rather than an import mistake.
  */
+/**
+ * M3: the roster shown on the select screen is cut to eight, and the other 18
+ * are **benched, not deleted**. The owner wants that art and those kits kept, so
+ * this pins down that benching stayed a filter on what is offered and never
+ * became a deletion — re-activating one must remain a single id in ACTIVE_IDS.
+ */
+describe('active roster (M3)', () => {
+  const ACTIVE = ['sivir', 'lux', 'fizz', 'zac', 'blitzcrank', 'karthus', 'warwick', 'masteryi'];
+
+  it('offers exactly the eight planned champions', () => {
+    expect(ACTIVE_CHAMPIONS.map((c) => c.id).sort()).toEqual([...ACTIVE].sort());
+    for (const id of ACTIVE) expect(isActiveChampion(id)).toBe(true);
+    expect(isActiveChampion('teemo')).toBe(false);
+  });
+
+  it('keeps all 26 champions in the code, fully intact', () => {
+    expect(CHAMPIONS.length).toBe(26);
+    const benched = CHAMPIONS.filter((c) => !isActiveChampion(c.id));
+    expect(benched.length).toBe(18);
+    for (const c of benched) {
+      // Everything a champion needs to be playable again, still present.
+      expect(typeof c.fireQ, c.id).toBe('function');
+      expect(typeof c.castE, c.id).toBe('function');
+      expect(c.spec?.q, c.id).toBeTruthy();
+      expect(c.sprite.length, c.id).toBeGreaterThan(0);
+      expect(Object.keys(c.base).length, c.id).toBeGreaterThan(0);
+      expect(c.info.q.name.length, c.id).toBeGreaterThan(0);
+    }
+  });
+});
+
 /**
  * B10: internal VFX direction notes were reaching the player. Every ability
  * description is authored with a bracketed note for the effect work

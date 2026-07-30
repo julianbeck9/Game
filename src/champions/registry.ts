@@ -88,6 +88,31 @@ function build(row: Row): ChampionDef {
 
 export const CHAMPIONS: ChampionDef[] = ROSTER.map(build);
 
+/**
+ * The champions actually offered on the select screen.
+ *
+ * The other 18 are **benched, not deleted** — kits, stats, specs and sprites all
+ * stay exactly as they are, they are simply not offered. They still appear as
+ * rival skins in the arena (entities/enemies.ts `dressAsRival`), so none of that
+ * art goes to waste. Bringing one back is one id in this list.
+ *
+ * Why cut at all: eight champions with deep, kit-changing augments beat 26 that
+ * all resolve to "aim Q, then auto-attack". This is the roster M4 builds
+ * champion augments for, one archetype each — marksman, burst mage, assassin,
+ * engage tank, utility hook, zone caster, sustain bruiser, on-hit DPS.
+ */
+const ACTIVE_IDS = ['sivir', 'lux', 'fizz', 'zac', 'blitzcrank', 'karthus', 'warwick', 'masteryi'];
+
+export const ACTIVE_CHAMPIONS: ChampionDef[] = ACTIVE_IDS.map((id) => {
+  const c = CHAMPIONS.find((x) => x.id === id);
+  if (!c) throw new Error(`ACTIVE_IDS names a champion that does not exist: ${id}`);
+  return c;
+});
+
+export function isActiveChampion(id: string): boolean {
+  return ACTIVE_IDS.includes(id);
+}
+
 /** Every champion's PNG key, for scene preload. */
 export const CHAMP_IMAGE_KEYS = CHAMPIONS.map((c) => c.id);
 
