@@ -320,3 +320,64 @@ Step-Funktion mit synthetischer Uhr treibt (~40× schneller als Echtzeit).
 > noch keine belastbare Winrate, aber die Größenordnung ist zu groß für Rauschen — und es
 > ist die erste Zahl, die zu D3 überhaupt etwas sagt. Für O1 (Balance) gehört das mit
 > deutlich mehr Läufen je Champion wiederholt.
+
+---
+
+## Messung 004 — 2026-07-30 (M3 Roster + M4 Karthus)
+
+**Kontext:** Erster Inhalts-Block dieser Session, nicht mehr Reparatur.
+**M3:** Roster auf 8 Champions eingedampft, die anderen 18 **ausgeblendet, nicht gelöscht**
+(Kits, Sprites, Specs unverändert; ein Test beweist es). Auswahlbildschirm neu gesetzt.
+**M4 (1 von 7):** Karthus vollständig auf das mit dem Besitzer abgestimmte Design gebaut
+und 11 Champion-Augments über 4 Lanes dazu.
+
+**Erhoben von:** Claude. Headless wie zuvor — die ⚠️-Einschränkung aus Messung 002 gilt
+unverändert (B2, C4 bleiben *unverifiziert*, dafür braucht es einen Playtest).
+
+### Geänderte Kriterien
+
+| # | Kriterium | 003 | **004** | Begründung |
+|---|---|---|---|---|
+| A1 | Pick verändert das Spielen | 2 | **3 ↑** | Karthus' Augments ändern, *was eine Fähigkeit tut*: Perfect Pitch macht Lay Waste bei genau einem Ziel stärker und bei mehreren schwächer, Cold Read verlangt zwei Casts auf dasselbe Ziel, Scorched Earth macht aus dem Dash ein Zonenwerkzeug. **Kein 4**, weil erst 2 der 8 Champions solche Picks haben — 6 bekommen weiterhin nur generische Procs |
+| A2 | Picks, die ohne Build wertlos sind | 2 | **3 ↑** | Unbroken Hymn und Black Lung tun **nichts**, solange Defile aus bleibt — dieselbe bewusste Wette wie Keen Edge bei Sivir, jetzt zum zweiten Mal und in einer anderen Achse (Stance statt Shop-Stat) |
+| A3 | Zwei Runs fühlen sich verschieden an | 1 | **2 ↑** | Für Karthus gibt es jetzt 4 Lanes, die sich widersprechen (Präzision will genau ein Ziel, Zone will viele). Nur +1, weil das für 6 Champions weiterhin nicht gilt |
+| A5 | Synergien erzeugen Kettenreaktionen | 1 | **2 ↑** | Cold Read markiert und der *nächste* Q auf dasselbe Ziel zündet; Encore verwandelt die 4 Sekunden nach dem Todesstoß in die stärkste Phase des Runs. Echte Ketten statt Addition, aber bisher nur bei einem Champion |
+| A6 | Champions spielen sich grundverschieden | 2 | **3 ↑** | Karthus spielt sich nachweislich anders: gezielte Kreise mit Zündverzögerung statt Auto-Ziel, eine Aura als Dauer-Entscheidung mit Selbstkosten, und ein Passiv, das den Todesstoß in eine 4-Sekunden-Zugabe verwandelt |
+| C5 | Niederlagen fühlen sich fair an | 3 | **3** | unverändert. B9 hat in dieser Session **einmal in 13 Läufen** noch zugeschlagen; dagegen steht jetzt eine Leine (siehe unten), aber die Vermeidbarkeits-Tabelle aus M5 fehlt weiter |
+
+### Gesamtscore
+
+```
+A: (3+3+2+0+2+3) = 13 × 3 = 39   (24 -> 39)
+B: (2+1+1+3+1+3) = 11 × 2 = 22   (=)
+C: (1+0+2+2+3)   =  8 × 2 = 16   (=)
+D: (4+2+2+5)     = 13 × 1 = 13   (=)
+                          -------
+                      GESAMT 90 / 275   (33 %)     vorher 75 / 275 (27 %)
+```
+
+**Was sich verändert hat und warum:** +15 Punkte, **alle aus Achse A** — zum ersten Mal in
+dieser Zeitreihe bewegt sich die Priorität 1 des Besitzers statt nur die Korrektheit.
+Ursache ist ausschliesslich Karthus: ein zweiter Champion mit widersprüchlichen Lanes
+hebt A1/A2/A3/A5/A6 je um einen Punkt.
+
+**Ehrlich zur Grenze dieser Wertung:** Das ist eine Aussage über das *System*, nicht über
+den Roster. 2 von 8 Champions haben Tiefe, 6 nicht. Wenn M4 für die restlichen 6 nicht
+kommt, ist diese 39 zu hoch angesetzt — dann fällt A wieder. **A4 steht weiter auf 0**
+(kein „Build geht online"-Moment) und **C2 auf 0** (kein Grund für den nächsten Run); das
+bleiben die zwei schwächsten Punkte des ganzen Dokuments.
+
+### Nachgemessen in diesem Block
+
+- **Death Defied funktioniert wie entworfen** (headless, mit Negativkontrolle): tödlicher
+  Treffer → 1 HP, am Leben, immun für 4 s; ein zweiter Treffer währenddessen tut nichts;
+  nach 4,5 s tot; im nächsten Run wieder verfügbar; innerhalb eines Runs nur einmal.
+  Sivir (ohne `onLethal`) stirbt beim ersten Treffer sofort.
+- **Karthus im Sim:** Rundendauer fiel von 34 s auf 17 s, nachdem der gescriptete Spieler
+  die Zündverzögerung vorhält und Defile als Stance behandelt. Er kommt trotzdem nur bis
+  Runde 1–3 — mit 190 max HP und einer Aura, die eigenes Leben kostet, ist er ein
+  Glaskanonen-Champion, den der Bot schlecht spielt. **Das ist Bot-Schwäche, keine
+  Balance-Aussage** — dieselbe Stelle, an der auch Lux (Median Runde 2) hängt.
+- **B9-Restfall geschlossen:** Ein Gegner, der alle sieben Ausweichrichtungen durchprobiert
+  hat, ohne Boden gutzumachen, wird jetzt auf einen erreichbaren Platz versetzt. Sichtbarer
+  Sprung, aber besser als ein toter Run.

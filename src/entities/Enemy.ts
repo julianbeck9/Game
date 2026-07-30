@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Unit } from './Unit';
 import { StatBlock, StatName } from '../core/stats';
 import { Combat } from '../core/combat';
-import { norm, len, dist, Vec } from '../core/geometry';
+import { findOpenSpawn, norm, len, dist, Vec } from '../core/geometry';
 import { flowDir } from '../core/flowfield';
 import { COLORS, UNIT_SCALE } from '../config';
 import { shadedDisc } from '../core/draw';
@@ -260,6 +260,23 @@ export class Enemy extends Unit {
     this.detourAngle = DETOUR_TURNS[this.detourIdx % DETOUR_TURNS.length];
     this.detourIdx++;
     this.detourUntil = time + 700 + Math.random() * 400;
+
+    // Leash. Having tried every heading in the table without covering ground,
+    // this body is somewhere no amount of steering leaves. Navigation, spawn
+    // validation and detours between them made that rare — about one round in
+    // thirteen — but rare is not fixed: a round ends only when every enemy is
+    // dead, so one stuck body still hangs the run. Relocating it to a spot with
+    // a real route is a visible pop, and strictly better than a dead run.
+    if (this.detourIdx > DETOUR_TURNS.length) {
+      const t = this.target;
+      const spot = findOpenSpawn(this.x, this.y, this.radius, { x: t.x, y: t.y });
+      if (spot.x !== this.x || spot.y !== this.y) {
+        this.x = spot.x;
+        this.y = spot.y;
+      }
+      this.detourIdx = 0;
+      this.detourUntil = 0;
+    }
   }
 
   private anchorX = 0;

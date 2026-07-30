@@ -43,6 +43,25 @@ export function autopilotEnabled(): boolean {
 
 const IDLE: AutopilotIntent = { move: { x: 0, y: 0 }, aim: { x: 0, y: 1 }, q: false, e: false, dash: false };
 
+/**
+ * Sampled velocity per unit, so the scripted player can lead a skillshot. A
+ * WeakMap because it must not keep dead units alive between rounds.
+ */
+const seen = new WeakMap<Unit, { x: number; y: number; t: number; vx: number; vy: number }>();
+
+function velocityOf(u: Unit, now: number): { vx: number; vy: number } {
+  const prev = seen.get(u);
+  if (prev && now > prev.t) {
+    const dts = (now - prev.t) / 1000;
+    const vx = (u.x - prev.x) / dts;
+    const vy = (u.y - prev.y) / dts;
+    seen.set(u, { x: u.x, y: u.y, t: now, vx, vy });
+    return { vx, vy };
+  }
+  seen.set(u, { x: u.x, y: u.y, t: now, vx: prev?.vx ?? 0, vy: prev?.vy ?? 0 });
+  return { vx: prev?.vx ?? 0, vy: prev?.vy ?? 0 };
+}
+
 /** Close enough that a windup is worth breaking position for. */
 const THREAT_RANGE = 300;
 /** Below this share of max HP, hold a wider berth. */
@@ -92,7 +111,19 @@ export function autopilotIntent(p: Player, units: Unit[], hazards: readonly Haza
       target = f;
     }
   }
-  const aim = norm(target.x - p.x, target.y - p.y);
+  // Lead a moving target when the champion says its Q needs it. Firing at where
+  // something currently stands is a miss against anything that walks, and the
+  // enemy AI already leads the player this way — the scripted player should not
+  // be held to a lower standard than the bots it is measuring.
+  const lead = p.champ.autoplay?.qLeadMs ?? 0;
+  let aimX = target.x;
+  let aimY = target.y;
+  if (lead > 0) {
+    const v = velocityOf(target, units.length ? p.combat.now : 0);
+    aimX += (v.vx * lead) / 1000;
+    aimY += (v.vy * lead) / 1000;
+  }
+  const aim = norm(aimX - p.x, aimY - p.y);
   const targetD = dist(p.x, p.y, target.x, target.y);
 
   const hurt = p.maxHP > 0 && p.hp / p.maxHP < HURT_PCT;
@@ -118,13 +149,27 @@ export function autopilotIntent(p: Player, units: Unit[], hazards: readonly Haza
   }
 
   const threatD = threat ? dist(p.x, p.y, threat.x, threat.y) : Infinity;
+
+  // A toggle E is a stance, not a cooldown: press it only when the state the
+  // champion wants differs from the state it is in, or the bot flickers it
+  // every frame and the stance is never actually running.
+  const tog = p.champ.autoplay;
+  let wantE: boolean;
+  if (tog?.toggleEWithin && tog.toggleEKey) {
+    const shouldBeOn = foes.some((f) => dist(p.x, p.y, f.x, f.y) <= tog.toggleEWithin!);
+    const isOn = !!p.memory[tog.toggleEKey];
+    wantE = shouldBeOn !== isOn && p.isReady('E');
+  } else {
+    // Otherwise E stays defensive: spending it on cooldown would flatter every
+    // augment that happens to trigger off a cast.
+    wantE = !!threat && threatD < 240 && p.isReady('E');
+  }
+
   return {
     move,
     aim,
     q: p.isReady('Q'),
-    // E stays defensive: spending it on cooldown would flatter every augment
-    // that happens to trigger off a cast.
-    e: !!threat && threatD < 240 && p.isReady('E'),
+    e: wantE,
     // Dash to break a close windup, or to escape a hazard that is chasing.
     dash: p.isReady('Dash') && ((!!threat && threatD < 200) || (!!hazard && hurt)),
   };

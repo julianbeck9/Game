@@ -80,6 +80,8 @@ function build(row: Row): ChampionDef {
     onAutoHit: k.onAutoHit,
     onCombatInit: k.onCombatInit,
     passiveTick: k.passiveTick,
+    onLethal: k.onLethal,
+    autoplay: k.autoplay,
     image: true,
     sprite: FALLBACK,
     palette: PAL,

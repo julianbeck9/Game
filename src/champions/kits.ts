@@ -31,9 +31,22 @@ export interface Kit {
   onAutoHit?: ChampionDef['onAutoHit'];
   onCombatInit?: ChampionDef['onCombatInit'];
   passiveTick?: ChampionDef['passiveTick'];
+  onLethal?: ChampionDef['onLethal'];
+  autoplay?: ChampionDef['autoplay'];
 }
 
 // ---- shared helpers ----
+/**
+ * Karthus tuning, named because his augments (augments/champions/karthus.ts)
+ * read the same numbers — a lane that doubles the precision bonus has to know
+ * what the base one is.
+ */
+export const KARTHUS_Q_RANGE = 700;
+export const KARTHUS_SOLO_MULT = 1.7;
+export const KARTHUS_DEFILE_R = 260;
+export const KARTHUS_DEFILE_DPS = 26;
+export const KARTHUS_DEFILE_SELF_DPS = 9;
+
 const AD = (p: Player) => p.stats.get('damage');
 const AP = (p: Player) => p.stats.get('abilityPower');
 const AMP = (p: Player) => p.stats.get('abilityDamage');
@@ -687,21 +700,77 @@ export const KITS: Record<string, Kit> = {
   },
 
   // ---------------------------------------------------------------- Karthus
+  /**
+   * Karthus — the zone caster, built to the design agreed with the owner.
+   *
+   * The whole kit is about *placing* damage rather than aiming at a body. Q is
+   * a short-fuse circle you drop where the enemy is going to be, and it pays
+   * far more when it catches exactly one target — so precision beats spraying
+   * into a crowd, and a low cooldown is a rhythm rather than spam. E is a
+   * standing choice: an aura that drains everything near you and costs you
+   * health to keep running. And the passive is the reason to pick him: the
+   * killing blow does not stop you, it starts a four-second clock.
+   */
   karthus: {
-    ranged: true, qRange: 650, cds: { Q: 3500, E: 16000, Dash: 6000 }, scales: ['ap'],
+    ranged: true, qRange: 700, cds: { Q: 1200, E: 900, Dash: 6000 }, scales: ['ap'],
     base: { ...CASTER, maxHP: 190 },
-    kitLine: 'Passive death defied · Q lay waste · E requiem global · Dash spectral slide',
-    // fireQ targets the nearest enemy within 700 (or facing dir *300 fallback), delayed AoE r=90.
+    kitLine: 'Passive death defied · Q lay waste · E defile aura · Dash spectral slide',
     spec: { q: { kind: 'circle', radius: 90, at: 'cursor', range: 700 } },
     info: {
-      passive: AI('Death Defied', 'A whisper of the grave clings to you. [ghostly grey tint]'),
-      q: AI('Lay Waste', 'A delayed blast at a point. [orb travels, jagged burst]'),
-      e: AI('Requiem', 'A long-cooldown nuke that hits every enemy. [beam from above on each]'),
-      dash: AI('Spectral Slide', 'A ghostly glide over terrain. [wispy trailing streak]'),
+      passive: AI('Death Defied', 'The blow that should kill you only starts a countdown: keep casting for 4s, then fall. Once per run.'),
+      q: AI('Lay Waste', 'Drop a delayed blast at a point. Catching exactly one enemy hits far harder than catching a crowd.'),
+      e: AI('Defile', 'Toggle an aura that drains nearby enemies — and steadily burns your own health while it runs.'),
+      dash: AI('Spectral Slide', 'Blink through terrain, leaving a burning trail behind you.'),
     },
-    fireQ: (p, dir) => { const t = near(p, 700); const d = dir ?? p.facing; const tx = t ? t.x : p.x + d.x * 300, ty = t ? t.y : p.y + d.y * 300; p.combat.ring(tx, ty, 0x8866cc, 90); p.combat.delay(300, () => { for (const u of enemiesIn(p, tx, ty, 90)) hit(p, u, (rs(...Q_SCALE.karthus) + 0.4 * AP(p)) * AMP(p), 'magisch', 'Q'); }); },
-    castE: (p) => { p.combat.announce('Requiem…', '#aa88ff'); const dmg = (rs(150, 150, 225, 300) + 0.7 * AP(p)) * AMP(p); p.combat.delay(700, () => { for (const u of p.combat.units) if (u.alive && u.team === 'enemy') { hit(p, u, dmg, 'magisch', 'E'); p.combat.ring(u.x, u.y, 0xaa88ff, 70); } }); },
-    onDash: (p, d) => { p.moveBy(d.x * 200, d.y * 200, true); p.stats.set({ id: 'buff:slide', stat: 'moveSpeed', pct: 0.25, expiresAt: T(p) + 1000 }); return true; },
+    fireQ: (p, dir) => {
+      // Cursor-aimed, not snap-to-nearest: the point of the ability is leading
+      // a moving target, which auto-targeting would do for you.
+      const d = dir ?? p.facing;
+      const tx = p.x + d.x * KARTHUS_Q_RANGE;
+      const ty = p.y + d.y * KARTHUS_Q_RANGE;
+      p.combat.ring(tx, ty, 0x8866cc, 90);
+      p.combat.delay(350, () => {
+        const hits = enemiesIn(p, tx, ty, 90);
+        // Precision bonus: one target only. Rewards reading the dodge instead
+        // of dropping it into the middle of a pile.
+        const solo = hits.length === 1 ? KARTHUS_SOLO_MULT : 1;
+        for (const u of hits) hit(p, u, (rs(...Q_SCALE.karthus) + 0.4 * AP(p)) * AMP(p) * solo, 'magisch', 'Q');
+        if (hits.length === 1) p.combat.ring(tx, ty, 0xffd24a, 110);
+      });
+    },
+    castE: (p) => {
+      // A toggle, so it reads as a stance rather than a cooldown. The short CD
+      // on E is only there to stop it being flickered on and off every frame.
+      p.memory.defile = p.memory.defile ? 0 : 1;
+      p.combat.announce(p.memory.defile ? 'Defile' : 'Defile off', '#aa88ff');
+    },
+    onDash: (p, d) => {
+      p.moveBy(d.x * 200, d.y * 200, true);
+      p.stats.set({ id: 'buff:slide', stat: 'moveSpeed', pct: 0.25, expiresAt: T(p) + 1000 });
+      p.combat.addHazard({
+        x: p.x, y: p.y, r: 90, until: T(p) + 2500,
+        dps: (12 + 0.25 * AP(p)) * AMP(p), team: 'player', color: 0x8866cc,
+      });
+      return true;
+    },
+    passiveTick: (p, dt) => {
+      if (!p.memory.defile) return;
+      // Drain everything close, and pay for it. The self-cost is what makes
+      // leaving it on a decision instead of a free aura.
+      const dmg = (KARTHUS_DEFILE_DPS + 0.18 * AP(p)) * AMP(p) * dt;
+      for (const u of enemiesIn(p, p.x, p.y, KARTHUS_DEFILE_R)) hit(p, u, dmg, 'magisch', 'E');
+      p.hp = Math.max(1, p.hp - KARTHUS_DEFILE_SELF_DPS * dt);
+    },
+    // The scripted player cannot infer either of these: Q is worthless without
+    // leading its 350ms fuse, and Defile is a stance, not a cooldown.
+    autoplay: { qLeadMs: 350, toggleEWithin: KARTHUS_DEFILE_R, toggleEKey: 'defile' },
+    onLethal: (p) => {
+      if (run.memory.karthusDefied) return false; // once per run
+      run.memory.karthusDefied = 1;
+      p.combat.announce('Death Defied', '#aa88ff');
+      p.combat.ring(p.x, p.y, 0xaa88ff, 160);
+      return true;
+    },
   },
 
   // ---------------------------------------------------------------- Lucian

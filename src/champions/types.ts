@@ -83,6 +83,30 @@ export interface ChampionDef {
   passiveTick?(p: Player, dt: number): void;
   /** Passive reaction to taking damage (Yasuo flow shield, etc.). */
   onDamageTaken?(p: Player, dmg: number, source: Unit | null): void;
+  /**
+   * Last word before dying. Called when a hit would otherwise be lethal; return
+   * true to refuse the death for now. The player keeps playing at 1 HP and is
+   * immune while it lasts, then dies when `p.undyingUntil` passes — so it buys
+   * a window to act, not a heal. Karthus's Death Defied is the reason this
+   * exists: casting on after the killing blow is the best moment in his kit.
+   */
+  onLethal?(p: Player): boolean;
+  /**
+   * Advice for the scripted player only (core/autopilot), never read in real
+   * play. A champion whose kit needs handling a generic bot cannot infer —
+   * leading a fused skillshot, holding a toggle — says so here, so that
+   * knowledge lives with the champion instead of accumulating as a pile of
+   * special cases inside the bot. Leaving it out just means the plain rules
+   * apply, which for most kits is correct.
+   */
+  autoplay?: {
+    /** Milliseconds of lead to aim ahead of a moving target with Q. */
+    qLeadMs?: number;
+    /** E toggles a stance; hold it on while an enemy is within this radius. */
+    toggleEWithin?: number;
+    /** Key in `player.memory` holding that toggle's current state. */
+    toggleEKey?: string;
+  };
   /** 16-bit sprite: rows of palette characters ('.' = transparent). */
   sprite: string[];
   palette: Record<string, number>;

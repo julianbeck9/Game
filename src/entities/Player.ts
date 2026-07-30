@@ -16,6 +16,9 @@ import { attackVfxFor, specForShape } from '../champions/abilityVfx';
 /** Foot-pivot sprites (origin.y = 60/64) sit this far below the unit centre. */
 const SPRITE_FOOT_OFFSET = (radius: number) => -4 + radius * 1.356;
 
+/** How long a refused death buys you (ChampionDef.onLethal). */
+const UNDYING_MS = 4000;
+
 /** Stats every champion shares unless their sheet overrides them. */
 const CHAMP_DEFAULTS: Partial<Record<StatName, number>> = {
   abilityPower: 0,
@@ -38,6 +41,12 @@ export class Player extends Unit {
   dashing = false;
   /** While now < invulnUntil the player takes no damage (Fizz/Yi/Fiddle dashes). */
   invulnUntil = 0;
+  /**
+   * Set by a champion's `onLethal`: the player refused a killing blow and is
+   * playing on borrowed time. Immune until it passes, dead the moment it does.
+   * 0 means no reprieve is running.
+   */
+  undyingUntil = 0;
   /** Champion Dash took over movement this dash — suppress the generic slide. */
   private dashCustom = false;
   /** Direction of the last Q cast (Echo re-fires along it). */
@@ -272,8 +281,34 @@ export class Player extends Unit {
 
   // ---- Frame ----
 
+  /**
+   * A killing blow can be refused by the champion's passive (see
+   * ChampionDef.onLethal). Survive at 1 HP, immune, until the window runs out —
+   * so the reprieve is time to act, never a heal, and stacking hits during it
+   * cannot shorten it.
+   */
+  applyDamage(amount: number): void {
+    if (!this.alive) return;
+    if (this.undyingUntil > this.combat.now) return;
+    const lethal = amount >= this.hp + this.shield;
+    if (lethal && this.champ.onLethal?.(this)) {
+      this.shield = 0;
+      this.hp = 1;
+      this.undyingUntil = this.combat.now + UNDYING_MS;
+      return;
+    }
+    super.applyDamage(amount);
+  }
+
   update(time: number, dt: number): void {
     if (!this.alive) return;
+    // Borrowed time is up: nothing survives its own reprieve.
+    if (this.undyingUntil > 0 && time >= this.undyingUntil) {
+      this.undyingUntil = 0;
+      this.hp = 0;
+      this.alive = false;
+      return;
+    }
     this.stats.update(time);
     this.champ.passiveTick?.(this, dt);
 
