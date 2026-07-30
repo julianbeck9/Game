@@ -101,6 +101,7 @@ const siebenfach: AugmentDef = {
   hooks: {
     enemyDeath: (_e, ctx) => {
       ctx.player.reduceCooldown('Dash', 99999);
+      ctx.combat.procAt(ctx.player.x, ctx.player.y - 50, 'SEVENFOLD', '#ff8866');
     },
     abilityHit: ({ ability, target }, ctx) => {
       if (ability !== 'Dash' || !target.alive) return;

@@ -113,6 +113,30 @@ export abstract class Unit {
     const g = this.gfx;
     g.clear();
     if (!this.alive) return;
+    // Ground shadow + team ring. The maps are high-detail painted art and the
+    // champions are ~28px on top of it, which made units genuinely hard to
+    // FIND during a fight — the first real playtest lost track of the player
+    // repeatedly (B3). A dark pool plus a team-coloured contact ring separates
+    // the cast from the background at any size, without touching UNIT_SCALE and
+    // therefore without changing a single hitbox.
+    const fy = this.y + this.radius * 0.72;
+    const fw = this.radius * 2.1;
+    const fh = this.radius * 0.9;
+    g.fillStyle(0x000000, 0.32);
+    g.fillEllipse(this.x, fy, fw, fh);
+    // Dark keyline under the team colour, because the maps span sand, snow and
+    // stone: a gold ring alone disappears on Shurima and a red one on the Blood
+    // Pit. The black underlay makes the marker read on any of them.
+    g.lineStyle(5, 0x000000, 0.55);
+    g.strokeEllipse(this.x, fy, fw, fh);
+    const isPlayer = this.team === 'player';
+    g.lineStyle(isPlayer ? 3 : 2, isPlayer ? 0xffffff : COLORS.enemy, isPlayer ? 0.95 : 0.8);
+    g.strokeEllipse(this.x, fy, fw, fh);
+    if (isPlayer) {
+      // Second, tighter gold ring: "that one is me" at a glance in a melee.
+      g.lineStyle(2, COLORS.player, 0.9);
+      g.strokeEllipse(this.x, fy, fw * 0.72, fh * 0.72);
+    }
     this.drawBody(g);
     if (this.scene.time.now < this.hitFlashUntil) {
       g.fillStyle(0xffffff, 0.55);

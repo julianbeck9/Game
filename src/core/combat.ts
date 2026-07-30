@@ -52,6 +52,12 @@ export interface Combat {
   delay(ms: number, fn: () => void): void;
   /** Short floating announcement text (augment procs etc.). */
   announce(text: string, color?: string): void;
+  /**
+   * Name a proc where it happened. An augment that only changes a number is
+   * invisible — the player has no way to connect the pick they made to what
+   * just occurred. Use for build-defining moments, not for every tick.
+   */
+  procAt(x: number, y: number, text: string, color?: string): void;
   /** Transient line flash (chain lightning etc.). */
   flashLine(x1: number, y1: number, x2: number, y2: number, color: number): void;
   /** Expanding ring effect (novas, kill bursts, lightning impacts). */

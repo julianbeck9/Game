@@ -48,6 +48,7 @@ const gezeitenreiter: AugmentDef = {
     enemyDeath: (_e, ctx) => {
       ctx.player.reduceCooldown('Q', 99999);
       ctx.combat.ring(ctx.player.x, ctx.player.y, 0x66ccff, 90);
+      ctx.combat.procAt(ctx.player.x, ctx.player.y - 50, 'TIDE RIDER', '#66ccff');
     },
   },
 };

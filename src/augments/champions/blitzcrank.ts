@@ -68,6 +68,7 @@ const bergungsklaue: AugmentDef = {
         u.moveBy((dx / d) * pull, (dy / d) * pull);
       }
       ctx.combat.ring(target.x, target.y, 0xffcc33, 220);
+      ctx.combat.procAt(target.x, target.y - 46, 'SALVAGE CLAW', '#ffcc33');
     },
   },
 };

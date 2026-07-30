@@ -86,6 +86,7 @@ const verschlingen: AugmentDef = {
       if (n % 4 !== 0) return;
       p.heal(p.maxHP * 0.06 * ctx.power(verschlingen));
       ctx.combat.ring(p.x, p.y, 0xcc2222, 55);
+      ctx.combat.procAt(p.x, p.y - 50, 'GORGE', '#ff7777');
     },
   },
 };

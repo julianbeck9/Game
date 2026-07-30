@@ -67,6 +67,7 @@ const reinerTon: AugmentDef = {
       const unit = (0.45 * p.stats.get('abilityPower') + 30) * amp;
       if (crowd <= 1) {
         ctx.combat.dealDamage(p, target, unit * 0.45 * ctx.power(reinerTon), 'ability', 'magisch');
+        ctx.combat.procAt(target.x, target.y - 42, 'PERFECT PITCH');
       } else {
         target.heal(unit * 0.2);
       }
@@ -114,6 +115,7 @@ const kaltgelesen: AugmentDef = {
         const dmg = (0.7 * (0.4 * p.stats.get('abilityPower') + 45)) * ctx.power(kaltgelesen) * p.stats.get('abilityDamage');
         ctx.combat.dealDamage(p, target, dmg, 'ability', 'magisch');
         ctx.combat.ring(target.x, target.y, 0xffd24a, 90);
+        ctx.combat.procAt(target.x, target.y - 42, 'COLD READ');
       } else {
         unitCounterAdd(target, 'karMark', now + 3000 - markedUntil);
       }

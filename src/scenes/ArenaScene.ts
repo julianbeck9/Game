@@ -17,6 +17,7 @@ import { rollOffers } from '../augments/offers';
 import { run, earnGold } from '../core/run';
 import { dist, findOpenSpawn, pointInPillar, Vec } from '../core/geometry';
 import { autopilotEnabled, autopilotIntent } from '../core/autopilot';
+import { drawBurst, hitStopMs, numberSize, procLabel, severityOf, shakeFor } from '../core/impact';
 import { ARENA_X, ARENA_Y, COLORS, GAME_W, GAME_H, UNIT_RADIUS } from '../config';
 import { MapDef, FIELD, setActiveMap, activeWalls, activeTerrain } from '../core/maps';
 import { drawItemIcon } from '../items/icons';
@@ -27,6 +28,12 @@ import { addFullscreenButton } from '../core/fullscreen';
 
 /** Feuerring geometry: the safe circle starts covering the whole screen. */
 const FIRE_MAX_R = Math.hypot(GAME_W / 2, GAME_H / 2) + 40;
+
+/**
+ * Hits smaller than this are pooled into one periodic number instead of each
+ * spawning their own. Roughly "a single tick of a damage-over-time aura".
+ */
+const TICK_NUMBER_THRESHOLD = 12;
 
 export class ArenaScene extends Phaser.Scene implements Combat {
   readonly bus = new EventBus();
@@ -75,6 +82,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
   private fightState: 'fighting' | 'won' | 'lost' = 'fighting';
   private goldHudText: Phaser.GameObjects.Text | null = null;
+  private buildChips: Phaser.GameObjects.Container | null = null;
+  private buildChipsTop = 250;
 
   /** Combat.now — scene clock in ms (Phaser's `time` is the clock plugin itself). */
   get now(): number {
@@ -374,6 +383,15 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.scene.pause('arena');
     };
     buildZone.on('pointerdown', openBuild);
+
+    // Your build, on screen, always. Until now the only way to see which
+    // augments a run had picked was to open an overlay that pauses the game —
+    // so during a fight the build was invisible, and picks that change how an
+    // ability behaves had no presence at all (B5). One chip per augment, tinted
+    // by tier, is enough to make the run feel like it is accumulating.
+    this.buildChips = this.add.container(0, 0).setDepth(100);
+    this.buildChipsTop = buildY + 44;
+    this.refreshBuildChips();
     buildTxt.setInteractive({ useHandCursor: true }).on('pointerdown', openBuild);
     this.input.keyboard?.addKey('TAB').on('down', openBuild);
 
@@ -568,14 +586,27 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         }
       }
     }
-    // ---- Juice: numbers, flashes, shake, slow-mo ----
-    target.hitFlashUntil = this.now + 90;
+    // ---- Juice: numbers, flashes, shake, hit-stop ----
+    // Everything scales off one severity so the effects agree with each other;
+    // see core/impact.ts for why a flat impact made every hit feel the same.
+    const sev = severityOf(dealt, target);
+    const opts = { onPlayer: target === this.player, killing: killedByThisCall, ability: type === 'ability' };
+    target.hitFlashUntil = this.now + (dealt > 0 ? 90 + Math.round(sev * 90) : 90);
     if (dealt > 0) target.notifyHurt();
-    this.spawnDamageNumber(target, dealt, type);
-    if (target === this.player && dealt > 0) {
-      this.cameras.main.shake(130, Math.min(0.012, 0.003 + dealt / 8000));
-    } else if (dealt >= 45) {
-      this.cameras.main.shake(90, 0.004);
+    this.spawnDamageNumber(target, dealt, type, sev);
+
+    if (dealt > 0) {
+      const [dur, amp] = shakeFor(sev, opts);
+      if (dur > 0) this.cameras.main.shake(dur, amp);
+      // Hit-stop is the single biggest weight gain available, and it was only
+      // ever applied on kills. Chip damage still gets none — a stutter on every
+      // tick would read as lag rather than force.
+      const stop = hitStopMs(sev, opts);
+      if (stop > 0) this.slowmoUntil = Math.max(this.slowmoUntil, this.now + stop);
+      if (sev >= 0.12 || type === 'ability') {
+        const col = target === this.player ? 0xff5555 : type === 'ability' ? 0xffd24a : 0xffffff;
+        drawBurst(this, target.x, target.y - target.radius * 0.3, sev, col);
+      }
     }
 
     if (killedByThisCall && target.team === 'enemy') {
@@ -633,8 +664,13 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   }
 
   /** Floating damage numbers; burn ticks aggregate per unit to avoid spam. */
-  private spawnDamageNumber(target: Unit, dealt: number, type: DamageType): void {
+  private spawnDamageNumber(target: Unit, dealt: number, type: DamageType, sev = 0): void {
     if (dealt <= 0) return;
+    // Aura-style damage (Karthus's Defile, hazards, any per-frame tick) arrives
+    // as a stream of tiny hits. One number per tick buries the screen in a
+    // column of 1s and 0s and hides the numbers that matter, so anything this
+    // small is pooled through the same accumulator burn already uses.
+    if (type !== 'burn' && dealt < TICK_NUMBER_THRESHOLD) type = 'burn';
     if (type === 'burn') {
       const acc = this.burnNumAcc.get(target) ?? { sum: 0, showAt: this.now + 450 };
       acc.sum += dealt;
@@ -656,17 +692,24 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     const t = this.add
       .text(target.x + (Math.random() - 0.5) * 30, target.y - target.radius - 26, `${Math.round(dealt)}`, {
         fontFamily: 'sans-serif',
-        fontSize: dealt >= 45 ? '40px' : '28px',
+        // Sized by how much of the bar it took, so a big hit is legible as big
+        // before it is read as a figure.
+        fontSize: `${numberSize(sev)}px`,
         fontStyle: 'bold',
         color,
         stroke: '#000000',
-        strokeThickness: 4,
+        strokeThickness: 4 + Math.round(sev * 3),
       })
       .setOrigin(0.5)
       .setDepth(140);
+    // Heavy hits punch out and settle instead of drifting up politely.
+    if (sev >= 0.3) {
+      t.setScale(0.5);
+      this.tweens.add({ targets: t, scale: 1, duration: 130, ease: 'Back.easeOut' });
+    }
     this.tweens.add({
       targets: t,
-      y: t.y - 55,
+      y: t.y - 55 - sev * 30,
       alpha: 0,
       duration: 750,
       ease: 'Cubic.easeOut',
@@ -726,6 +769,38 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   delay(ms: number, fn: () => void): void {
     this.time.delayedCall(ms, () => {
       if (this.fightState === 'fighting') fn();
+    });
+  }
+
+  procAt(x: number, y: number, text: string, color = '#ffd24a'): void {
+    procLabel(this, x, y, text, color);
+  }
+
+  /** One chip per owned augment, down the left edge under the Build button. */
+  private refreshBuildChips(): void {
+    const c = this.buildChips;
+    if (!c) return;
+    c.removeAll(true);
+    const tierColor: Record<string, number> = { silber: 0x9aa6bd, gold: 0xffc832, prisma: 0xcc7aff };
+    run.augments.forEach((a, i) => {
+      const y = this.buildChipsTop + i * 34;
+      const col = tierColor[a.tier] ?? 0x9aa6bd;
+      const g = this.add.graphics();
+      g.fillStyle(0x0a0a14, 0.72);
+      g.fillRoundedRect(18, y - 14, 200, 28, 8);
+      g.lineStyle(2, col, 0.9);
+      g.strokeRoundedRect(18, y - 14, 200, 28, 8);
+      c.add(g);
+      c.add(
+        this.add
+          .text(30, y, a.name, {
+            fontFamily: 'sans-serif',
+            fontSize: '17px',
+            fontStyle: 'bold',
+            color: '#' + col.toString(16).padStart(6, '0'),
+          })
+          .setOrigin(0, 0.5),
+      );
     });
   }
 

@@ -483,3 +483,55 @@ O1, nicht sofort:** erst wenn Spass und Optik stehen, sonst zementiert man das F
 > korrigiertem Nenner bleibt 41 % weit unter Ziel: die meisten Läufe enden zu früh, um
 > überhaupt sechs Augments zu wählen. **Diese KPI misst derzeit die Rundenzahl, nicht die
 > Vielfalt** — sie wird erst aussagekräftig, wenn Läufe regelmässig weit kommen.
+
+---
+
+## Messung 007 — 2026-07-30 (M6, erste Runde Impact)
+
+**Kontext:** Rückmeldung des Besitzers nach Messung 006: *„die änderungen sind noch nicht
+stark spürbar."* Das deckt sich exakt mit der eigenen Zeitreihe — Achse A war von 24 auf
+54 gestiegen, **B lag unverändert bei 22**. Die Builds wurden tiefer, aber man sah und
+spürte nichts davon. Dieser Block arbeitet ausschliesslich an B.
+
+**Was gebaut wurde:**
+1. `core/impact.ts` — **eine** Schweregrad-Zahl (Schaden ÷ Lebensbalken des Ziels) steuert
+   Hit-Stop, Shake, Trefferblitz, Burst-Grafik und Schriftgröße gemeinsam. Vorher hatte
+   **nur der Kill** Hit-Stop; jeder andere Treffer landete gewichtslos, egal ob er 3 % oder
+   60 % eines Balkens nahm.
+2. **Bodenmarkierung je Einheit** — Schatten + Team-Ring mit schwarzer Kontur. Die Karten
+   sind hochdetaillierte Malerei, die Champions ~28 px gross; im ersten echten Playtest
+   musste ich die eigene Figur wiederholt *suchen*. `UNIT_SCALE` bleibt unangetastet, also
+   ändert sich **keine einzige Hitbox**.
+3. **Build-Chips im HUD** — die gewählten Augments stehen dauerhaft links, nach Tier
+   gefärbt. Vorher war der Build im Kampf unsichtbar (nur im pausierenden Overlay).
+4. **`combat.procAt`** — Augments benennen sich selbst dort, wo sie auslöschen
+   („PERFECT PITCH", „COLD READ", „SEVENFOLD", „GORGE"). Ein Augment, das nur eine Zahl
+   ändert, war bisher nicht wahrnehmbar.
+
+### Geänderte Kriterien
+
+| # | Kriterium | 006 | **007** | Begründung |
+|---|---|---|---|---|
+| B2 | Treffer fühlen sich wuchtig an | 1 | **3 ↑** | Hit-Stop skaliert jetzt mit dem Anteil am Lebensbalken (35–110 ms), Shake ebenso, dazu ein Burst am Trefferpunkt und Schadenszahlen, deren **Größe** die Wucht trägt. ⚠️ Weiterhin bei 26 fps beurteilt — die Mechanik ist belegt, das *Gefühl* braucht den Playtest. Deshalb 3 und nicht 4 |
+| B3 | Man sieht sofort, was einen getroffen hat | 1 | **3 ↑** | Bodenring trennt die Figuren von der Karte (Screenshot-Vergleich vorher/nachher eindeutig), Spieler zusätzlich weiss+gold statt nur gold — auf Shurima war ein reiner Goldring unsichtbar. Treffer-Bursts zeigen den Ort des Einschlags |
+| B5 | HUD zeigt Build-Zustand | 1 | **3 ↑** | Die Augments stehen jetzt permanent im Bild, nach Tier gefärbt, und melden sich beim Auslösen. Kein 4, weil Restdauern aktiver Buffs und Item-Zustand weiter fehlen |
+
+### Gesamtscore
+
+```
+A: (4+4+3+0+3+4) = 18 × 3 = 54   (=)
+B: (2+3+3+3+3+3) = 17 × 2 = 34   (22 -> 34)
+C: (1+0+2+3+3)   =  9 × 2 = 18   (=)
+D: (4+2+3+5)     = 14 × 1 = 14   (=)
+                          -------
+                      GESAMT 120 / 275  (44 %)     vorher 108 / 275 (39 %)
+```
+
+**Zwei Fehler, die erst der Screenshot zeigte** — beide Argumente dafür, Optik nie „blind"
+zu bauen: Die Build-Chips lagen zunächst **über** dem Build-Button, und Karthus' Defile-Aura
+erzeugte **pro Frame eine eigene Schadenszahl**, sodass der Bildschirm in einer Säule aus
+Einsen und Nullen ertrank. Kleine Ticks laufen jetzt durch denselben Sammler wie Brandschaden.
+
+**Offen in B:** B1 (eigener Effekt je Fähigkeit) steht weiter auf 2 — 13 der 26 Champions
+hatten nie eine eigene `castVfx`, und die abgeleiteten sind Platzhalter. B4 und B6
+unverändert. **A4 und C2 stehen weiterhin auf 0.**
