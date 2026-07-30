@@ -91,6 +91,93 @@ async function checkRenderer(browser, renderer) {
   return { renderer, errors, start, end, leaked, pass: errors.length === 0 && !leaked };
 }
 
+/**
+ * B9 guard: no enemy may stall out of reach.
+ *
+ * Every enemy type's `preferredRange + rangeBand` tops out at 450 (see
+ * entities/enemies.ts), so a foe further away than STANDOFF_DIST is, by its own
+ * AI, obliged to close in. If it hasn't moved after the observation window it is
+ * wedged against geometry — and since a round only ends when every enemy is
+ * dead, that hangs the run forever. This used to happen in roughly half of all
+ * rounds while the player simply stood still.
+ *
+ * The player is deliberately left idle, which provokes nothing and keeps the
+ * only moving parts on the enemy side. Maps, squads and spawns are random per
+ * goto(), hence several rounds per pass and a verdict on the aggregate.
+ *
+ * The player's HP is topped up throughout, because Enemy.update bails out on
+ * `if (!t.alive) return` — a dead player freezes every enemy on the field, and
+ * all of them then look wedged. That produced a false FAIL before it was
+ * understood. Standing still against a live squad is otherwise fatal in most
+ * rounds, so without the top-up most rounds would simply be unjudgeable.
+ * Rounds that still end with a dead player are discarded rather than judged.
+ */
+const STANDOFF_DIST = 470;
+const STANDOFF_MOVE = 25;
+const STANDOFF_MS = 9000;
+const STANDOFF_ROUNDS = [2, 3, 4, 5, 6, 7];
+
+async function checkStandoff(browser) {
+  const page = await browser.newPage();
+  const stalled = [];
+  let judged = 0;
+  let skipped = 0;
+  await page.goto(`http://localhost:${PORT}/index.html?renderer=canvas`);
+  await page.waitForFunction(() => !!window.__CC, undefined, { timeout: 20000 });
+  await page.waitForTimeout(1000);
+
+  const snap = () =>
+    page.evaluate(() => {
+      const a = window.__CC.arena();
+      const p = a.player;
+      return {
+        alive: p.alive && p.hp > 0,
+        foes: (a.units ?? [])
+          .filter((u) => u.team !== p.team && u.alive)
+          .map((u) => ({ x: u.x, y: u.y, d: Math.hypot(u.x - p.x, u.y - p.y) })),
+      };
+    });
+
+  for (const round of STANDOFF_ROUNDS) {
+    await page.evaluate((r) => {
+      window.__CC.reset();
+      window.__CC.goto(r);
+    }, round);
+    await page.waitForTimeout(1500);
+    const before = await snap();
+    // Observe in slices, topping the player up so it stays a valid enemy target.
+    const topUp = () =>
+      page.evaluate(() => {
+        const p = window.__CC.arena().player;
+        if (p && p.alive) p.hp = Math.max(p.hp, 100000);
+      });
+    for (let waited = 0; waited < STANDOFF_MS; waited += 1000) {
+      await topUp();
+      await page.waitForTimeout(1000);
+    }
+    const after = await snap();
+
+    if (!before.alive || !after.alive) {
+      skipped++; // player died — every foe freezes, nothing to conclude
+      continue;
+    }
+    judged++;
+
+    for (const f of after.foes) {
+      if (f.d <= STANDOFF_DIST) continue;
+      // Nearest start position, so this survives foes being added or removed.
+      let moved = Infinity;
+      for (const g of before.foes) moved = Math.min(moved, Math.hypot(f.x - g.x, f.y - g.y));
+      if (moved < STANDOFF_MOVE) {
+        stalled.push(`round ${round}: foe ${Math.round(f.d)}px away moved ${Math.round(moved)}px in ${STANDOFF_MS / 1000}s`);
+      }
+    }
+  }
+  await page.close();
+  // No usable round means no evidence either way — don't call that a pass.
+  return { stalled, judged, skipped, pass: stalled.length === 0 && judged > 0 };
+}
+
 async function main() {
   const server = await startServer();
   const browser = await chromium.launch();
@@ -106,6 +193,15 @@ async function main() {
       }
       if (!result.pass) allPass = false;
     }
+
+    const so = await checkStandoff(browser);
+    console.log(
+      `[verify] enemy standoff (B9): ${so.pass ? 'PASS' : 'FAIL'} ` +
+        `(${so.judged} rounds judged, ${so.skipped} skipped: player died)`,
+    );
+    for (const s of so.stalled) console.log(`  [standoff] ${s}`);
+    if (!so.pass && so.judged === 0) console.log('  [standoff] no round was usable — cannot conclude');
+    if (!so.pass) allPass = false;
   } finally {
     await browser.close();
     server.close();

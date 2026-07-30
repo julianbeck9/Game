@@ -15,8 +15,8 @@ import { AbilityButton } from '../ui/AbilityButton';
 import { AugmentManager } from '../augments/AugmentManager';
 import { rollOffers } from '../augments/offers';
 import { run, earnGold } from '../core/run';
-import { dist, pointInPillar, Vec } from '../core/geometry';
-import { ARENA_X, ARENA_Y, COLORS, GAME_W, GAME_H } from '../config';
+import { dist, findOpenSpawn, pointInPillar, Vec } from '../core/geometry';
+import { ARENA_X, ARENA_Y, COLORS, GAME_W, GAME_H, UNIT_RADIUS } from '../config';
 import { MapDef, FIELD, setActiveMap, activeWalls, activeTerrain } from '../core/maps';
 import { drawItemIcon } from '../items/icons';
 import { STR } from '../core/strings';
@@ -115,11 +115,15 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.player = new Player(this, this, ARENA_X, GAME_H - 220);
     this.units.push(this.player);
 
-    // Enemies spread along the top of the field
+    // Enemies spread along the top of the field. The row is authored as fixed
+    // coordinates but collision is painted per map, so each slot is nudged to
+    // somewhere the enemy can actually walk out of — dropping one into a sealed
+    // pocket used to hang the round forever (B9).
     const n = spec.enemies.length;
     spec.enemies.forEach((cfg, i) => {
       const x = ARENA_X + (i - (n - 1) / 2) * Math.min(340, (GAME_W - 400) / Math.max(1, n - 1) || 0);
-      this.units.push(spawnEnemy(this, this, x, 210, cfg));
+      const at = findOpenSpawn(x, 210, UNIT_RADIUS, { x: this.player.x, y: this.player.y });
+      this.units.push(spawnEnemy(this, this, at.x, at.y, cfg));
     });
 
     this.projGfx = this.add.graphics().setDepth(9);
@@ -669,8 +673,15 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     });
   }
 
+  /**
+   * Mid-round enemy spawn (reinforcements, splits). Goes through the same
+   * walkability nudge as the opening row: a reinforcement dropped into sealed
+   * geometry can never reach the player, and the round cannot end while it
+   * lives (B9). This path is why the opening-row fix alone wasn't enough.
+   */
   spawnEnemyUnit(cfg: Parameters<typeof spawnEnemy>[4], x: number, y: number): Unit {
-    const e = spawnEnemy(this, this, x, y, cfg);
+    const at = findOpenSpawn(x, y, UNIT_RADIUS, { x: this.player.x, y: this.player.y });
+    const e = spawnEnemy(this, this, at.x, at.y, cfg);
     this.units.push(e);
     return e;
   }

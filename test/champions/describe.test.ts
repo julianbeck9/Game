@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
-//
-// jsdom, not node: champions/registry.ts imports Phaser, which dereferences
-// `window` at import time.
+// Plain `node` environment: this file no longer needs jsdom, because
+// champions/registry.ts imports Phaser type-only and so nothing in this chain
+// touches `window` any more. See the import-hygiene test in kits.test.ts.
 import { describe, expect, it } from 'vitest';
 import { CHAMPIONS, championById } from '../../src/champions/registry';
 import { Q_SCALE } from '../../src/champions/kits';

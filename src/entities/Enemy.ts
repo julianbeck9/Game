@@ -3,12 +3,34 @@ import { Unit } from './Unit';
 import { StatBlock, StatName } from '../core/stats';
 import { Combat } from '../core/combat';
 import { norm, len, dist, Vec } from '../core/geometry';
+import { flowDir } from '../core/flowfield';
 import { COLORS, UNIT_SCALE } from '../config';
 import { shadedDisc } from '../core/draw';
 import { AnimatedChampion } from '../champions/AnimatedChampion';
 import type { AbilityShape } from '../champions/types';
 import { cfgFor } from '../champions/championConfig';
 import { attackVfxFor, specForShape } from '../champions/abilityVfx';
+
+/** How long a stretch of movement is judged for net progress before detouring. */
+const PROGRESS_WINDOW_MS = 700;
+
+/**
+ * Last-resort headings when a bot makes no net progress (B9) — offsets to the
+ * direction of its target. Navigation is the flow field's job (core/flowfield);
+ * this only unsticks a body wedged in geometry the field cannot advise on.
+ * Sidesteps first, widening to a full turn-around, which is the only thing that
+ * leaves a dead end. Deliberately not symmetric-alternating: alternating two
+ * perpendiculars just rocks a bot in place — see Enemy.noteProgress.
+ */
+const DETOUR_TURNS = [
+  Math.PI / 2,
+  -Math.PI / 2,
+  (3 * Math.PI) / 4,
+  -(3 * Math.PI) / 4,
+  Math.PI,
+  Math.PI / 4,
+  -Math.PI / 4,
+];
 
 export interface EnemyAbilitySpec {
   id: string;
@@ -182,7 +204,10 @@ export class Enemy extends Unit {
 
     // 2) Movement decision
     const mv = this.decideMovement(time, d);
-    if (mv) this.moveBy(mv.x * dt, mv.y * dt);
+    if (mv) {
+      this.moveBy(mv.x * dt, mv.y * dt);
+      this.noteProgress(time, Math.hypot(mv.x * dt, mv.y * dt));
+    }
 
     // 3) Abilities (only when not mid-dodge)
     if (time >= this.dodgeUntil) this.tryAbilities(time, d);
@@ -193,9 +218,68 @@ export class Enemy extends Unit {
 
   // ---- Movement ----
 
+  /**
+   * Wedge detector (B9). Wall sliding fixes the common case, but a concave
+   * corner or a dead end still leaves a bot pushing into geometry forever —
+   * and since a round only ends when every enemy is dead, that hangs the run.
+   * There is no pathfinding here, so instead of solving the maze we notice that
+   * we are not getting anywhere and commit to a sideways detour for a moment;
+   * repeated wedges alternate the side, which walks the bot out of pockets that
+   * one direction alone cannot clear.
+   */
+  private noteProgress(time: number, wanted: number): void {
+    this.wantedInWindow += wanted;
+    if (this.anchorAt === 0) {
+      this.anchorX = this.x;
+      this.anchorY = this.y;
+      this.anchorAt = time;
+      return;
+    }
+    if (time - this.anchorAt < PROGRESS_WINDOW_MS) return;
+
+    // NET displacement over the window, not per-frame movement. A bot grinding
+    // along a wall corner slides a pixel back and forth every frame, so a
+    // per-frame test sees "movement" and never fires while the bot goes
+    // absolutely nowhere — that oscillation is what kept a foe 629px away for
+    // 20s straight after the first attempt at this detector.
+    const net = Math.hypot(this.x - this.anchorX, this.y - this.anchorY);
+    const wanted0 = this.wantedInWindow;
+    this.anchorX = this.x;
+    this.anchorY = this.y;
+    this.anchorAt = time;
+    this.wantedInWindow = 0;
+
+    if (wanted0 < 20) return; // barely tried to move; proves nothing
+    if (net >= wanted0 * 0.2) return; // real ground covered
+    if (time < this.detourUntil) return; // a detour is already running; let it play out
+
+    // Escalate through the turn table rather than just flipping sides: a foe in
+    // a concave pocket finds BOTH perpendiculars blocked too, and alternating
+    // between them just rocks it in place. Walking further round — up to and
+    // including straight back out — is what actually clears a dead end.
+    this.detourAngle = DETOUR_TURNS[this.detourIdx % DETOUR_TURNS.length];
+    this.detourIdx++;
+    this.detourUntil = time + 700 + Math.random() * 400;
+  }
+
+  private anchorX = 0;
+  private anchorY = 0;
+  private anchorAt = 0;
+  private wantedInWindow = 0;
+  private detourUntil = 0;
+  /** Offset (radians) applied to the heading toward the target while detouring. */
+  private detourAngle = 0;
+  private detourIdx = 0;
+
   private decideMovement(time: number, d: number): Vec | null {
     const speed = this.stats.get('moveSpeed');
     const t = this.target;
+
+    // Wedged against geometry: walk the detour heading before resuming the chase.
+    if (time < this.detourUntil) {
+      const a = Math.atan2(t.y - this.y, t.x - this.x) + this.detourAngle;
+      return this.withSeparation({ x: Math.cos(a) * speed, y: Math.sin(a) * speed });
+    }
 
     // Active dodge wins
     if (time < this.dodgeUntil) {
@@ -244,10 +328,21 @@ export class Enemy extends Unit {
         y: t.y + Math.sin(this.surroundAngle) * this.cfg.preferredRange,
       };
       const toSlot = norm(slot.x - this.x, slot.y - this.y);
-      return this.withSeparation({
-        x: (toSlot.x * 0.75 + toT.x * 0.25) * speed,
-        y: (toSlot.y * 0.75 + toT.y * 0.25) * speed,
-      });
+      const want = {
+        x: toSlot.x * 0.75 + toT.x * 0.25,
+        y: toSlot.y * 0.75 + toT.y * 0.25,
+      };
+      // Approaching from far away is the one phase where geometry actually has
+      // to be solved, so follow the navigation field instead of a straight line
+      // (B9). The flank bias is kept as a nudge so a squad still fans out, but
+      // the route wins — a wall between bot and player is otherwise never
+      // solved, and the round can then never end.
+      const flow = flowDir(this.x, this.y, t.x, t.y, this.radius);
+      if (flow) {
+        const mixed = norm(flow.x + want.x * 0.35, flow.y + want.y * 0.35);
+        return this.withSeparation({ x: mixed.x * speed, y: mixed.y * speed });
+      }
+      return this.withSeparation({ x: want.x * speed, y: want.y * speed });
     }
     // Near the band: the slot follows the live orbit position
     this.surroundAngle = Math.atan2(this.y - t.y, this.x - t.x);

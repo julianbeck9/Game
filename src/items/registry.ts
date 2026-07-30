@@ -4,6 +4,7 @@ import type { ItemIconKind } from './icons';
 // Laufzeit-sicher: core/run importiert von hier nur Typen (wird wegkompiliert)
 import { run } from '../core/run';
 import { isDeleted } from '../core/balance';
+import { augmentFitsChampion } from '../augments/eligibility';
 
 /**
  * Items: purchasable stat packages with optional passives. Technically they
@@ -95,6 +96,7 @@ const BUDGET: ItemDef[] = [
   item({
     id: 'it_seelendieb',
     icon: 'moon',
+    needs: ['ap'], // whole payload is AP scaling — dead weight for an AD kit (B11)
     name: 'Soulstealer',
     cost: 350,
     glyph: '✦',
@@ -187,6 +189,7 @@ const KERN: ItemDef[] = [
   item({
     id: 'it_rabenhut',
     icon: 'tome',
+    needs: ['ap'], // +22 AP and +30% of total AP — literally nothing without AP (B11)
     name: 'Deathcap',
     cost: 780,
     glyph: '♜',
@@ -200,6 +203,7 @@ const KERN: ItemDef[] = [
   item({
     id: 'it_leerenstab',
     icon: 'staff',
+    needs: ['ap'], // AP stat stick; its true-damage rider rides on that AP (B11)
     name: 'Void Staff',
     cost: 680,
     glyph: '∅',
@@ -572,6 +576,7 @@ const KERN: ItemDef[] = [
   item({
     id: 'it_schattenflamme',
     icon: 'flame',
+    needs: ['ap'], // AP plus a magic-damage execute bonus — both AP-only (B11)
     name: 'Shadowflame',
     cost: 700,
     glyph: '🔥',
@@ -899,11 +904,32 @@ export function itemById(id: string): ItemDef | undefined {
   return ITEMS.find((i) => i.id === id);
 }
 
-/** Shop offer: 6 distinct random items. Owned items (and already-owned boots) never appear. */
+/**
+ * Shop offer: 6 distinct random items. Owned items (and already-owned boots)
+ * never appear, and neither do items this champion cannot use.
+ *
+ * The champion gate closes B11: augment offers have always run through
+ * `augmentFitsChampion`, but the shop rolled the whole pool blind, so Sivir —
+ * pure AD — was offered Soulstealer for 350 of her 350 starting gold. Items are
+ * AugmentDefs, so they carry the same `needs` tag and reuse the same check
+ * rather than a parallel heuristic.
+ *
+ * Only items whose *entire* payload is AP scaling are tagged. Deliberately left
+ * offerable: Golden Hourglass (invulnerability), Frost Scepter (ability slow)
+ * and Lich Blade (move speed + haste) all carry value independent of AP, and
+ * gating them would remove real choices instead of dead ones. Move that line by
+ * adding or removing `needs: ['ap']` — nothing else needs touching.
+ */
 export function rollShop(round: number, count = 6): ItemDef[] {
   const owned = (id: string) => run.items.some((it) => it.id === id);
   // The pre-round-1 starter shop only stocks cheap gear (boots, basic pieces)
-  const pool = ITEMS.filter((i) => !owned(i.id) && !isDeleted(i.id) && (round <= 2 ? i.cost <= 400 : true));
+  const pool = ITEMS.filter(
+    (i) =>
+      !owned(i.id) &&
+      !isDeleted(i.id) &&
+      (round <= 2 ? i.cost <= 400 : true) &&
+      augmentFitsChampion(i, run.champion),
+  );
   const offers: ItemDef[] = [];
   const bag = [...pool];
   // From round 3 on: at least 2 budget offers so small gold is never wasted

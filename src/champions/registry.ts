@@ -1,4 +1,8 @@
-import Phaser from 'phaser';
+// Type-only: the sole use of Phaser here is the `Phaser.Scene` parameter of
+// ensureChampionTextures. A value import would drag the whole engine (and its
+// window dereference at import time) into every consumer — including the unit
+// tests, where it costs more than vitest's hard-coded 60s worker start budget.
+import type Phaser from 'phaser';
 import { ChampionDef } from './types';
 import { shade } from '../core/draw';
 import { KITS } from './kits';

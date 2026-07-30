@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { StatBlock } from '../core/stats';
 import { COLORS, UNIT_RADIUS } from '../config';
-import { clampToArena, resolvePillars, resolveTerrain, resolveWalls, resolvePaintMove } from '../core/geometry';
+import { clampToArena, walkStep } from '../core/geometry';
 
 export type Team = 'player' | 'enemy';
 
@@ -97,23 +97,11 @@ export abstract class Unit {
       this.y = p.y;
       return;
     }
-    // Substep so a fast move can't tunnel through a thin wall in one hop:
-    // each collision check advances at most ~8px.
-    const dlen = Math.sqrt(dx * dx + dy * dy);
-    const steps = dlen > 8 ? Math.ceil(dlen / 8) : 1;
-    const sx = dx / steps;
-    const sy = dy / steps;
-    for (let i = 0; i < steps; i++) {
-      const p1 = resolvePillars(this.x + sx, this.y + sy, r);
-      const p2 = resolveTerrain(p1.x, p1.y, r);
-      // Solid walls resolve LAST so they always win — hard cover blocks walking.
-      const pw = resolveWalls(p2.x, p2.y, r);
-      // Painted collision (walls/air/water/lava all block walking).
-      const pp = resolvePaintMove(pw.x, pw.y, r, false);
-      const p3 = clampToArena(pp.x, pp.y, r);
-      this.x = p3.x;
-      this.y = p3.y;
-    }
+    // Substepping, collider order and wall sliding all live in walkStep so they
+    // stay unit-testable without a Phaser scene (see test/core/geometry.test.ts).
+    const p = walkStep(this.x, this.y, r, dx, dy);
+    this.x = p.x;
+    this.y = p.y;
   }
 
   abstract update(time: number, dt: number): void;

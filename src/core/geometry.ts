@@ -218,3 +218,156 @@ export function pointInWall(x: number, y: number, r = 0): boolean {
   for (const w of activeWalls()) if (rectContains(x, y, r, w)) return true;
   return inCells(x, y, r, activePaint().wall);
 }
+
+/** One walking collision pass: pillars → terrain → walls → paint → bounds. */
+function resolveWalk(x: number, y: number, r: number): Vec {
+  const p1 = resolvePillars(x, y, r);
+  const p2 = resolveTerrain(p1.x, p1.y, r);
+  // Solid walls resolve LAST so they always win — hard cover blocks walking.
+  const pw = resolveWalls(p2.x, p2.y, r);
+  // Painted collision (walls/air/water/lava all block walking).
+  const pp = resolvePaintMove(pw.x, pw.y, r, false);
+  return clampToArena(pp.x, pp.y, r);
+}
+
+/**
+ * Walk a circle of radius r by (dx, dy) against every walking collider, and
+ * return where it ends up.
+ *
+ * Substeps so a fast move cannot tunnel through a thin wall in one hop, and —
+ * importantly — **slides**: when the combined step is blocked, the axes are
+ * retried separately so the mover glides along the surface. Plain push-out
+ * cancels a blocked step outright, and any bot that keeps steering into the
+ * same wall then recomputes the same blocked vector every frame and stands
+ * still forever (B9). Since a round only ends when every enemy is dead, that
+ * wedges the whole run, so sliding is a correctness fix here, not just polish.
+ */
+/**
+ * Is a paint-grid cell somewhere a unit of radius r could stand and walk?
+ *
+ * Solidity must match what actually blocks walking, which is the `walkSolid`
+ * set — wall ∪ **air** ∪ water ∪ lava (see maps.setActiveMap). The air layer is
+ * easy to forget because no other query needs it: `pointInWall` covers wall and
+ * `pointInTerrain` covers water/lava, so a check built from those two silently
+ * treats every painted chasm as walkable. That made both the reachability fill
+ * and the navigation field route bots straight across the gaps — which read as
+ * "the B9 fix doesn't hold" in about a third of verify runs.
+ */
+export function cellStandable(col: number, row: number, r: number): boolean {
+  const x = col * CELL + CELL / 2;
+  const y = row * CELL + CELL / 2;
+  if (x < FIELD.x1 + r || x > FIELD.x2 - r || y < FIELD.y1 + r || y > FIELD.y2 - r) return false;
+  if (pointInPillar(x, y, r)) return false;
+  for (const w of activeWalls()) if (rectContains(x, y, r, w)) return false;
+  for (const t of activeTerrain()) if (rectContains(x, y, r, t)) return false;
+  return !inCells(x, y, r, activePaint().walkSolid);
+}
+
+/**
+ * Can a unit of radius r actually walk from (ax, ay) to within reach of
+ * (bx, by)? A flood fill over the 24px paint grid — 80×45 cells, so a few
+ * thousand cheap checks, run only when something spawns.
+ *
+ * This replaced a "walk 12 steps and see if you got anywhere" probe, which was
+ * the wrong tool: it only proved the spot wasn't a one-cell hole, so any sealed
+ * pocket wider than ~144px passed it and the enemy inside still hung the round.
+ * Connectivity is not a local property, and nothing short of a fill decides it.
+ */
+export function canReach(ax: number, ay: number, bx: number, by: number, r: number): boolean {
+  const startC = Math.floor(ax / CELL);
+  const startR = Math.floor(ay / CELL);
+  if (startC < 0 || startC >= COLS || startR < 0 || startR >= ROWS) return false;
+
+  const seen = new Uint8Array(COLS * ROWS);
+  const queue: number[] = [startR * COLS + startC];
+  seen[startR * COLS + startC] = 1;
+  // Arriving near the target is enough: it may itself be standing tight to a
+  // wall, which would make its own cell impassable at this radius.
+  const NEAR = 120;
+
+  for (let head = 0; head < queue.length; head++) {
+    const idx = queue[head];
+    const c = idx % COLS;
+    const rr = (idx - c) / COLS;
+    const x = c * CELL + CELL / 2;
+    const y = rr * CELL + CELL / 2;
+    if (Math.hypot(x - bx, y - by) <= NEAR) return true;
+    for (const [dc, dr] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const nc = c + dc;
+      const nr = rr + dr;
+      if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
+      const ni = nr * COLS + nc;
+      if (seen[ni]) continue;
+      seen[ni] = 1;
+      if (cellStandable(nc, nr, r)) queue.push(ni);
+    }
+  }
+  return false;
+}
+
+/**
+ * Nearest spot to (x, y) that a unit of radius r can actually be dropped into
+ * and then leave, heading roughly `toward`.
+ *
+ * Spawn points are authored as fixed coordinates (see ArenaScene: enemies land
+ * on a row at y=210) while collision is painted per map, so a spawn can end up
+ * inside a sealed pocket of baked geometry. A unit there is not merely blocked
+ * in one direction — every heading is walled — so no amount of steering or
+ * detouring frees it, and a round that only ends when all enemies die can never
+ * end (B9). Being free at the point itself is not enough: the check walks a
+ * short way to confirm the spot is genuinely open and not a one-cell hole.
+ */
+export function findOpenSpawn(x: number, y: number, r: number, toward: Vec): Vec {
+  const usable = (px: number, py: number): boolean => {
+    if (pointInWall(px, py, r) || pointInTerrain(px, py, r) || pointInPillar(px, py, r)) return false;
+    return canReach(px, py, toward.x, toward.y, r);
+  };
+
+  if (usable(x, y)) return { x, y };
+  // Widening rings, rotated per ring so successive rings don't retest one line.
+  for (let ring = 1; ring <= 16; ring++) {
+    const rad = ring * 40;
+    for (let a = 0; a < 12; a++) {
+      const ang = (a / 12) * Math.PI * 2 + ring * 0.3;
+      const c = clampToArena(x + Math.cos(ang) * rad, y + Math.sin(ang) * rad, r);
+      if (usable(c.x, c.y)) return c;
+    }
+  }
+  return clampToArena(x, y, r); // nothing better anywhere — keep the original
+}
+
+export function walkStep(x: number, y: number, r: number, dx: number, dy: number): Vec {
+  const dlen = Math.sqrt(dx * dx + dy * dy);
+  const steps = dlen > 8 ? Math.ceil(dlen / 8) : 1;
+  const sx = dx / steps;
+  const sy = dy / steps;
+  const stepLen = Math.sqrt(sx * sx + sy * sy);
+  let cx = x;
+  let cy = y;
+  if (stepLen < 0.0001) return { x: cx, y: cy };
+  // Progress is measured ALONG the intended direction, not as raw displacement:
+  // a push-out that shoves the mover backwards also "moves" it, and picking by
+  // distance alone would happily choose that over standing still.
+  const progress = (p: Vec) => ((p.x - cx) * sx + (p.y - cy) * sy) / stepLen;
+  for (let i = 0; i < steps; i++) {
+    const full = resolveWalk(cx + sx, cy + sy, r);
+    if (progress(full) < stepLen * 0.5) {
+      const ax = resolveWalk(cx + sx, cy, r);
+      const ay = resolveWalk(cx, cy + sy, r);
+      const best = progress(ax) >= progress(ay) ? ax : ay;
+      if (progress(best) > progress(full)) {
+        cx = best.x;
+        cy = best.y;
+        continue;
+      }
+    }
+    cx = full.x;
+    cy = full.y;
+  }
+  return { x: cx, y: cy };
+}

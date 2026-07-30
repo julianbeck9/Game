@@ -85,7 +85,25 @@ const CASTER = { maxHP: 180, moveSpeed: 295, damage: 16, abilityPower: 26, attac
 const MELEE = { maxHP: 235, moveSpeed: 335, damage: 23, attackSpeed: 1.1, attackRange: 160, armor: 15, magicResist: 12, projSpeed: 900 };
 const TANK = { maxHP: 320, moveSpeed: 320, damage: 19, abilityPower: 20, attackSpeed: 0.95, attackRange: 165, armor: 22, magicResist: 18, projSpeed: 900 };
 
-const AI = (name: string, desc: string): AbilityInfo => ({ name, desc });
+/**
+ * Ability name + player-facing description.
+ *
+ * Bracketed segments in `desc` are VFX direction notes for whoever builds the
+ * effect — "[blue shield outline]", "[squash-and-stretch blur]" — and get
+ * stripped here, so they stay where they are useful (next to the ability they
+ * describe) without ever reaching a player. 97 of the 100 entries below carry
+ * one, and all 97 were shipping straight into the kit viewer (B10).
+ *
+ * Strip at this chokepoint rather than editing 97 strings: the notes keep
+ * earning their place while M6 (ability optics) is still open work.
+ */
+const AI = (name: string, desc: string): AbilityInfo => ({
+  name,
+  desc: desc
+    .replace(/\s*\[[^\]]*\]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim(),
+});
 
 /**
  * Q's primary round-scaled magnitude, keyed by champion id — the single
