@@ -9,6 +9,7 @@ import { BuildScene } from './scenes/BuildScene';
 import { EditorScene } from './scenes/EditorScene';
 import { AdminScene } from './scenes/AdminScene';
 import { applyBalance } from './core/balance';
+import { setAutopilot } from './core/autopilot';
 
 // Fold any admin balance overrides into the registries before the game starts.
 applyBalance();
@@ -77,6 +78,15 @@ declare global {
       champUsesAP: (id: string) => boolean;
       /** Test helper: wipe the run back to its fresh starting state (S3-1 effect-matrix). */
       reset: () => void;
+      /** Measurement: hand the controls to the scripted player (core/autopilot). */
+      autopilot: (on: boolean) => void;
+      /**
+       * Measurement: advance the game by `ms` of game time as fast as the CPU
+       * allows, instead of waiting for it in real time. Returns the game clock.
+       */
+      stepMs: (ms: number, dtMs?: number) => number;
+      /** Measurement: hand the RAF-driven clock back after stepMs. */
+      resumeClock: () => void;
     };
   }
 }
@@ -112,6 +122,31 @@ window.__CC = {
   champUsesAP: (id: string) => championUsesAP(id),
   // Test helper: wipe the run back to its fresh starting state (S3-1 effect-matrix)
   reset: () => { newRun(); },
+  autopilot: (on: boolean) => setAutopilot(on),
+  /**
+   * Drive Phaser's own step function with a synthetic clock so a sim can play
+   * hundreds of rounds without waiting for them. RAF is put to sleep first,
+   * otherwise the browser keeps stepping the same game in parallel and every
+   * measurement is taken from a world that advanced twice per frame.
+   *
+   * Not a substitute for real-time play when judging feel: this changes only
+   * how fast the clock is turned, but a fixed dt is steadier than a real frame
+   * budget, so numbers from here must be validated against a real-time run
+   * before they are believed.
+   */
+  stepMs: (ms: number, dtMs = 1000 / 60) => {
+    const loop = game.loop;
+    loop.sleep();
+    const steps = Math.max(1, Math.round(ms / dtMs));
+    let t = loop.time;
+    for (let i = 0; i < steps; i++) {
+      t += dtMs;
+      game.step(t, dtMs);
+    }
+    loop.time = t;
+    return t;
+  },
+  resumeClock: () => { game.loop.wake(); },
   // Test helper: grant an augment by id (takes effect on next goto/round)
   grant: (id: string) => {
     const def = augmentById(id);

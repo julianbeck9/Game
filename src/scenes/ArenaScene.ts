@@ -16,6 +16,7 @@ import { AugmentManager } from '../augments/AugmentManager';
 import { rollOffers } from '../augments/offers';
 import { run, earnGold } from '../core/run';
 import { dist, findOpenSpawn, pointInPillar, Vec } from '../core/geometry';
+import { autopilotEnabled, autopilotIntent } from '../core/autopilot';
 import { ARENA_X, ARENA_Y, COLORS, GAME_W, GAME_H, UNIT_RADIUS } from '../config';
 import { MapDef, FIELD, setActiveMap, activeWalls, activeTerrain } from '../core/maps';
 import { drawItemIcon } from '../items/icons';
@@ -830,9 +831,17 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     if (time < this.slowmoUntil) dt *= 0.15;
 
     if (this.fightState === 'fighting') {
-      // Movement input: joystick wins, else WASD
+      // Movement input: autopilot (measurement only) wins, then joystick, else WASD
       let mv = this.joystick.vec;
-      if (!this.joystick.active) {
+      if (autopilotEnabled()) {
+        // Enters through the same three controls a human has, so a sim run
+        // cannot accidentally measure something the player could not do.
+        const intent = autopilotIntent(this.player, this.units);
+        mv = intent.move;
+        if (intent.q) this.player.castQ(intent.aim);
+        if (intent.e) this.player.castE(intent.aim);
+        if (intent.dash) this.player.dash();
+      } else if (!this.joystick.active) {
         mv = {
           x: (this.keys.D.isDown ? 1 : 0) - (this.keys.A.isDown ? 1 : 0),
           y: (this.keys.S.isDown ? 1 : 0) - (this.keys.W.isDown ? 1 : 0),

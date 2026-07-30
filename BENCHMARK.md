@@ -109,14 +109,22 @@ Eingaben (WASD, Q/E/Space, Mausziel) und Screenshots an jedem Szenenwechsel.
 > ⚠️ **Belastbarkeit dieser Messung — bitte mitlesen.**
 > Der In-App-Browser war in dieser Session nicht sichtbar; ohne Kompositing feuert
 > `requestAnimationFrame` **gar nicht**, das Spiel steht still. Gespielt wurde daher in
-> **headless Chromium: 26 RAF-Ticks/s statt 60**. Das ist exakt die ⅓-Uhr, vor der
-> HANDOVER §0.3 warnt.
-> Folge: **Alles, was Timing, Wucht und Spielgefühl betrifft, ist hier NICHT ehrlich
-> bewertbar.** Diese Kriterien (B2, teilweise C4) stehen unverändert aus Messung 001 und
-> sind unten als *unverifiziert* markiert statt geraten. Optik, Lesbarkeit, Textinhalt,
-> HUD-Inhalt und Verhalten der Gegner-KI sind dagegen aus Standbildern und Zustandsdaten
-> sehr wohl beurteilbar — dort stehen die Änderungen.
-> **Ein Playtest durch den Besitzer ersetzt B2/C4 sofort durch etwas Belastbares.**
+> **headless Chromium mit 26 Frames/s statt 60**.
+> Folge: **Wucht und Spielgefühl sind hier nicht ehrlich bewertbar** — Hit-Stop, Shake und
+> Animationsfluss lassen sich bei 26 fps nicht beurteilen. Diese Kriterien (B2, teilweise
+> C4) stehen unverändert aus Messung 001 und sind unten als *unverifiziert* markiert statt
+> geraten. Optik, Lesbarkeit, Textinhalt, HUD-Inhalt und Verhalten der Gegner-KI sind
+> dagegen aus Standbildern und Zustandsdaten sehr wohl beurteilbar — dort stehen die
+> Änderungen. **Ein Playtest durch den Besitzer ersetzt B2/C4 sofort durch etwas
+> Belastbares.**
+>
+> **Korrektur (nachgemessen in Messung 003):** Hier stand ursprünglich, die Spieluhr laufe
+> headless auf ⅓ Echtzeit — das ist **falsch**, und die entsprechende Warnung in
+> HANDOVER §0.3 gilt so nicht. Direkt gemessen: die Arena-Uhr rückt in 12 000 ms Wandzeit
+> um genau 12 000 ms vor. Niedrig ist nur die *Framerate* (26 statt 60), und `dt` wird erst
+> ab 50 ms gekappt — bei 38 ms pro Frame greift die Deckelung nicht. **Zeitmessungen wie
+> Rundendauer sind damit gültig**, nur eben in gröberen Schritten simuliert. Betroffen ist
+> allein alles, was pro Frame wahrgenommen wird.
 
 ### A · Build-Vielfalt & Entscheidungen (×3)
 
@@ -248,9 +256,40 @@ ist damit wieder auf dem Niveau von Messung 001 (74) — aber jetzt ist es eine 
 **Für M2 wichtig:** Der Blocker ist weg. Ein Sim-Lauf hängt nicht mehr an Runde-3-artigen
 Deadlocks, die KPI-Messung kann also gebaut werden, ohne Hänger statt Balance zu messen.
 
-### Sim-KPIs — Messung 003
+### Sim-KPIs — Messung 003 (erstmals gemessen)
 
-| KPI | Ziel | 002 | **003** |
+`scripts/sim.mjs` existiert jetzt (`npm run sim`). Der gescriptete Spieler
+(`src/core/autopilot.ts`) spielt über dieselben drei Bedienelemente wie ein Mensch
+(Bewegungsvektor, `castQ`/`castE` mit Zielrichtung, `dash`) — er kann also nichts, was
+ein Spieler nicht könnte. Tempo kommt von `__CC.stepMs`, das Phasers eigene
+Step-Funktion mit synthetischer Uhr treibt (~40× schneller als Echtzeit).
+
+**Basis: 40 Läufe, 8 Champions × 5, 142 Runden, 0 Konsolenfehler.**
+
+| KPI | Ziel | **003** | Belastbar? |
 |---|---|---|---|
-| Pick-Diversität · Auto-Pick-Rate · Build-Streuung · Winrate-Spread · Rundendauer · Treffer-frei-Quote · Ungenutzt-Quote | — | nicht gemessen | **unverändert nicht gemessen** — `scripts/sim.mjs` ist der nächste Schritt (M2) |
-| **Deadlock-Quote** | 0 % | 17 % | **0 %** (0/15 und 0/10 auswertbare Läufe; 8/8 Verify-Läufe grün) |
+| Pick-Diversität | > 80 % | **40 %** (45 von 112 Augments mind. 1× gewählt) | Teilweise — nach unten verzerrt, weil die Läufe früh enden und insgesamt nur ~100 Picks zusammenkommen |
+| Auto-Pick-Rate | < 3× | **3,0×** | ja, knapp am Ziel |
+| Build-Streuung | > 60 % | **96 %** | ⚠️ **wertlos** — Builds bestehen aus 2–4 Augments, da überlappt fast nichts. Der Wert wird erst aussagekräftig, wenn Läufe 6/6 Slots füllen |
+| Winrate-Spread | < 20 pp | **0 pp** | ⚠️ **wertlos** — der Spread ist 0, weil **kein einziger Lauf gewonnen wurde**. Ein „erfülltes" Ziel ohne jede Aussage |
+| Rundendauer (Median) | 30–60 s | **13 s** | ja — und **klar unter Ziel**. Runden sind weniger als halb so lang wie gewollt |
+| Treffer-frei-Quote | 0 < x < 30 % | **nicht gemessen** | Vorrichtung fehlt noch (gehört zu M5) |
+| Ungenutzt-Quote | 0 | **67 von 112** | siehe Pick-Diversität |
+| **Deadlock-Quote** | 0 % | **0 %** | ja (0/15 und 0/10 auswertbare Läufe, 8/8 Verify grün) |
+| *(neu)* **Hänger-Runden** | 0 % | **3,5 %** (5 von 142) | Runden, die der Bot in 90 s Spielzeit nicht räumen konnte — **nicht** B9, sondern Bot-Schwäche |
+
+> ⚠️ **Die wichtigste Zahl steht nicht in der Tabelle: kein Lauf kam über Runde 9,
+> Median Runde 3.** Damit gilt genau die Warnung aus HANDOVER M2 — *„wenn er zu schlecht
+> spielt, misst du seine Inkompetenz statt deiner Balance."* Winrate-KPIs sind deshalb
+> vorerst nicht verwendbar, und Pick-Diversität ist nach unten verzerrt. Verwendbar sind
+> **Rundendauer**, **Auto-Pick-Rate** und die **Deadlock-/Hänger-Quoten**.
+>
+> **Stepper gegen Echtzeit geprüft** (`npm run sim -- --validate`, 4 Läufe je Modus):
+> Median-Rundendauer 7 000 ms gesteppt vs. 6 283 ms in Echtzeit → **10 % Drift**, identische
+> Median-Runde (3), Überlebensquote 85 % vs. 73 %. Für Rundendauer und Pick-Abdeckung
+> brauchbar; **für Balance-Entscheidungen ist die Stichprobe zu klein** — vor O1 gehört das
+> mit deutlich mehr Läufen wiederholt.
+>
+> **Nächster Schritt für M2 ist damit nicht mehr die Harness, sondern der Bot.** Erst wenn
+> der Autopilot Runde 20 überhaupt erreichen kann, tragen Winrate und Pick-Diversität eine
+> Aussage.
