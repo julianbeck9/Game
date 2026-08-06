@@ -10,7 +10,9 @@
     "test": "vitest run",
     "verify": "npm run build && npm run test && node scripts/verify.mjs",
     "matrix": "npm run build && node scripts/effect-matrix.mjs",
-    "sim": "npm run build && node scripts/sim.mjs"
+    "sim": "npm run build && node scripts/sim.mjs",
+    "shots": "node scripts/shots.mjs",
+    "report": "node scripts/report.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0"
