@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.log
 quality-report.html
+.claude/worktrees/
+shots/
