@@ -528,9 +528,15 @@ export class Enemy extends Unit {
 
   // ---- Rendering ----
 
-  /** Play the hurt reaction on the champion sprite (routed from combat). */
+  /**
+   * Play the hurt reaction — or the collapse, when that hit was the last one.
+   * Combat calls this after applyDamage, so `alive` already reflects the blow;
+   * routing both through here is what stops a killed enemy from simply
+   * blinking out of existence mid-swing.
+   */
   notifyHurt(): void {
     if (this.alive) this.sprite?.hurt();
+    else this.sprite?.die();
   }
 
   protected drawBody(g: Phaser.GameObjects.Graphics): void {

@@ -22,7 +22,7 @@ import Phaser from 'phaser';
 import { cfgFor, ChampCfg, VfxSpec } from './championConfig';
 
 type BaseState = 'idle' | 'walk';
-type ShotName = 'attack' | 'cast' | 'hurt';
+type ShotName = 'attack' | 'cast' | 'hurt' | 'death';
 interface Shot { name: ShotName; t: number; dur: number; }
 
 /** Events, auf die ChampionVfx (oder dein eigener VFX-Layer) hört. */
@@ -60,8 +60,8 @@ function tintLerp(target: number, amt: number): number {
   return (r << 16) | (g << 8) | b;
 }
 
-interface Frame { dx: number; dy: number; sx: number; sy: number; rot: number; tint: number; }
-const NEUTRAL = (): Frame => ({ dx: 0, dy: 0, sx: 1, sy: 1, rot: 0, tint: 0xffffff });
+interface Frame { dx: number; dy: number; sx: number; sy: number; rot: number; tint: number; alpha: number; }
+const NEUTRAL = (): Frame => ({ dx: 0, dy: 0, sx: 1, sy: 1, rot: 0, tint: 0xffffff, alpha: 1 });
 
 export class AnimatedChampion extends Phaser.GameObjects.Image {
   readonly champId: string;
@@ -79,6 +79,8 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
   /** Per-swing attack VFX override (see attack()); cleared once emitted. */
   private attackVfxOnce: VfxSpec | undefined;
   private clock = 0;
+  /** Once dead the collapse frame is held; nothing resets it but rebind/reset. */
+  private dying = false;
   /**
    * Display size multiplier. The animator rewrites scale every frame, so a base
    * size can't be set with a one-off setScale — this is folded into the frame
@@ -86,12 +88,25 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
    */
   private baseScale = 1;
 
+  /**
+   * Motion amplitudes.
+   *
+   * These were roughly a third of their current size, which is why the cast
+   * read as sliding rather than moving: at 3% squash a 64px sprite changes by
+   * two pixels and the eye simply does not register it as weight. Skul and
+   * Hades run their squash-and-stretch far harder than feels reasonable in a
+   * static mock-up — the exaggeration is what makes a small figure land.
+   *
+   * The ceiling is set by the art: these are single-view PNGs, so past roughly
+   * 25% stretch the sprite reads as a rubber sheet instead of a body leaning.
+   */
   private readonly cfg = {
-    idlePeriod: 1400, idleAmp: 0.035, idleBob: 1.5,
-    walkPeriod: 480,  walkBob: 3, walkLean: 0.05, walkSquash: 0.06,
-    attackDur: 300, lunge: 10,
+    idlePeriod: 1400, idleAmp: 0.06, idleBob: 2.5,
+    walkPeriod: 420,  walkBob: 5, walkLean: 0.09, walkSquash: 0.13,
+    attackDur: 300, lunge: 16,
     castDur: 520,
-    hurtDur: 260, knockback: 8,
+    hurtDur: 300, knockback: 14,
+    deathDur: 620,
   };
 
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string, id: string) {
@@ -141,13 +156,20 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
     return this.startShot('cast', this.cc.castDur ?? this.cfg.castDur);
   }
   hurt(): this   { return this.startShot('hurt',   this.cfg.hurtDur); }
+  /**
+   * Collapse and fade. Held on the final frame rather than snapping back to
+   * idle: a corpse that pops upright for one frame before the scene removes it
+   * is worse than no death animation at all.
+   */
+  die(): this    { this.dying = true; return this.startShot('death', this.cfg.deathDur); }
 
   /** Für Object-Pooling: Zustand vollständig zurücksetzen (statt destroy/new). */
   reset(x?: number, y?: number): this {
     this.shot = null; this.shotFired = false; this.clock = 0;
     this.castVfxOnce = undefined; this.attackVfxOnce = undefined; this.shotAngle = undefined;
     this.baseState = 'idle';
-    this.clearTint(); this.setScale(1).setRotation(0);
+    this.dying = false;
+    this.clearTint(); this.setScale(1).setRotation(0).setAlpha(1);
     if (x !== undefined && y !== undefined) { this.setHome(x, y); this.setPosition(x, y); }
     return this;
   }
@@ -188,12 +210,14 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
     const f = NEUTRAL();
     (this.baseState === 'walk' ? this.applyWalk : this.applyIdle).call(this, f);
     if (this.shot) this.applyShot(f, this.shot);
+    else if (this.dying) this.applyShot(f, { name: 'death', t: this.cfg.deathDur, dur: this.cfg.deathDur });
 
     const sign = this.faceSign;
     this.setPosition(this.homeX + f.dx * sign, this.homeY + f.dy);
     this.setScale(f.sx * this.baseScale, f.sy * this.baseScale);
     this.setRotation(f.rot * sign);
     if (f.tint === 0xffffff) this.clearTint(); else this.setTint(f.tint);
+    this.setAlpha(f.alpha);
   }
 
   private maybeEmit(shot: Shot, force = false): void {
@@ -258,11 +282,31 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
         } else {
           const lunge = this.cc.lunge ?? this.cfg.lunge;
           let dx: number;
-          if (p < 0.28)      dx = -lunge * 0.5 * smooth(p / 0.28);
-          else if (p < 0.5)  dx = lerp(-lunge * 0.5, lunge, smooth((p - 0.28) / 0.22));
-          else               dx = lunge * (1 - smooth((p - 0.5) / 0.5));
+          if (p < 0.28) {
+            // Anticipation: wind back, and COMPRESS. A body gathering itself
+            // gets shorter and wider; skipping that is what made the old swing
+            // read as the sprite sliding sideways.
+            const w = smooth(p / 0.28);
+            dx = -lunge * 0.5 * w;
+            f.sx *= lerp(1, 1.12, w);
+            f.sy *= lerp(1, 0.88, w);
+          } else if (p < 0.5) {
+            // Strike: snap through, stretching along the direction of travel.
+            const w = smooth((p - 0.28) / 0.22);
+            dx = lerp(-lunge * 0.5, lunge, w);
+            f.sx *= lerp(1.12, 0.86, w);
+            f.sy *= lerp(0.88, 1.18, w);
+          } else {
+            // Follow-through: overshoot past rest and settle back, rather than
+            // easing straight home. The overshoot is the whole reason the swing
+            // reads as having had force behind it.
+            const w = smooth((p - 0.5) / 0.5);
+            dx = lunge * (1 - w) - lunge * 0.22 * Math.sin(Math.PI * w);
+            const settle = Math.sin(Math.PI * w) * 0.1;
+            f.sx *= 1 + settle;
+            f.sy *= 1 - settle;
+          }
           f.dx += dx;
-          f.sx *= 1 + 0.10 * Math.sin(Math.PI * clamp01((p - 0.28) / 0.4));
         }
         break;
       case 'cast':
@@ -284,7 +328,24 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
         const e = 1 - easeOut(p);
         f.dx += -this.cfg.knockback * e;
         f.rot += 0.08 * e * Math.sin(p * 40);
+        // A hit compresses the body it lands on. Recoil alone reads as the
+        // sprite being nudged; recoil plus squash reads as being struck.
+        f.sx *= 1 + 0.18 * e;
+        f.sy *= 1 - 0.14 * e;
         f.tint = tintLerp(0xff4444, e);
+        break;
+      }
+      case 'death': {
+        // Collapse: buckle, flatten toward the floor, tip over and fade. The
+        // rotation is one-directional so it reads as falling rather than as the
+        // hurt shake, which the eye would otherwise confuse it with.
+        const w = smooth(p);
+        f.dy += lerp(0, 10, w);
+        f.sx *= lerp(1, 1.3, w);
+        f.sy *= lerp(1, 0.12, w);
+        f.rot += lerp(0, this.faceSign * 0.5, w);
+        f.tint = tintLerp(0x442222, 0.6 * w);
+        f.alpha = 1 - smooth(clamp01((p - 0.45) / 0.55));
         break;
       }
     }
