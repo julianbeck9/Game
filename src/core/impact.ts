@@ -60,45 +60,61 @@ export function numberSize(sev: number): number {
   return Math.round(26 + sev * 34);
 }
 
-/**
- * Draw the burst at the point of contact. Rings sized by severity, so a heavy
- * hit visibly displaces more of the screen than a light one.
- */
-export function drawBurst(
-  scene: Phaser.Scene,
-  x: number,
-  y: number,
-  sev: number,
-  color: number,
-  depth = 139,
-): void {
-  const g = scene.add.graphics().setDepth(depth);
-  const r0 = 16 + sev * 34;
-  g.lineStyle(Math.max(2, 2 + sev * 4), color, 0.95);
-  g.strokeCircle(x, y, r0);
-  // Spokes read as direction-less force and cost nothing; only heavy hits get
-  // them, which keeps light hits from turning the screen into confetti.
-  if (sev >= 0.3) {
-    const spokes = 4 + Math.round(sev * 4);
-    for (let i = 0; i < spokes; i++) {
-      const a = (i / spokes) * Math.PI * 2 + Math.random() * 0.3;
-      const inner = r0 * 0.7;
-      const outer = r0 * (1.35 + sev * 0.5);
-      g.lineBetween(x + Math.cos(a) * inner, y + Math.sin(a) * inner, x + Math.cos(a) * outer, y + Math.sin(a) * outer);
-    }
-  }
-  scene.tweens.add({
-    targets: g,
-    alpha: 0,
-    scaleX: 1.5 + sev,
-    scaleY: 1.5 + sev,
-    duration: 180 + sev * 160,
-    ease: 'Cubic.easeOut',
-    onComplete: () => g.destroy(),
-  });
-  // Tween scale around the burst's own centre rather than the world origin.
-  g.setPosition(0, 0);
+/** How much debris one hit throws. See `sprayFor`. */
+export interface Spray {
+  sparks: number;
+  debris: number;
+  smoke: number;
+  /** Cone half-width in radians for the main spray. */
+  spread: number;
+  /** Launch speed in px/s before per-particle jitter. */
+  speed: number;
+  /** Leave a mark on the floor. */
+  decal: boolean;
+  /** Peak alpha of the screen wash; 0 = none. */
+  flash: number;
 }
+
+/**
+ * Severity → how much matter a hit throws.
+ *
+ * This lives next to hit-stop and shake on purpose. Those two already agree
+ * with each other because they read the same severity; the particles have to
+ * read it from the same place or the game ends up with a hit that freezes hard
+ * and sprays nothing, which reads as a bug rather than as a heavy blow.
+ *
+ * The thresholds below are the *only* place a hit's class is decided:
+ *
+ * - under 0.28 — sparks only. A scratch should not throw rubble.
+ * - 0.28+      — solid debris and smoke appear: something broke.
+ * - 0.55+      — the floor keeps a mark, and the screen acknowledges it.
+ *
+ * Note the spread NARROWS as severity rises. That is counter-intuitive and
+ * deliberate: a weak hit glances and scatters, a heavy one drives through and
+ * throws its debris along the line of the blow, which is what makes the two
+ * read as different events rather than the same event at two sizes.
+ */
+export function sprayFor(sev: number): Spray {
+  const heavy = sev >= 0.55;
+  const solid = sev >= 0.28;
+  return {
+    sparks: Math.round(4 + sev * 14),
+    debris: solid ? Math.round(2 + sev * 7) : 0,
+    smoke: solid ? Math.round(1 + sev * 3) : 0,
+    spread: 1.5 - sev * 0.75,
+    speed: 150 + sev * 420,
+    decal: heavy,
+    flash: heavy ? 0.05 + sev * 0.09 : 0,
+  };
+}
+
+/*
+ * `drawBurst` used to live here: one `add.graphics()` plus one tween per hit,
+ * drawing a direction-less circle. It moved to `core/particles.ts` as
+ * `Particles.shock()`, which is pooled (no display object per blow, which the
+ * leak check in scripts/verify.mjs cares about) and stretches the ring along
+ * the damage vector so the burst says which way the hit came from.
+ */
 
 /**
  * A short-lived label for something the *build* did — an augment firing, a

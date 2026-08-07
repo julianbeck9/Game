@@ -45,7 +45,21 @@ export interface TerrainZone {
 }
 
 export type ObstacleStyle = 'baum' | 'obelisk' | 'stachel' | 'saeule' | 'fels';
-export type AmbientKind = 'petals' | 'sand' | 'embers' | 'motes';
+/**
+ * Region weather. Purely visual — nothing in gameplay reads this. The extra
+ * kinds exist so Freljord gets snow rather than the same generic "motes" three
+ * other maps use; identical ambience on every map is what made the arenas read
+ * as one reskinned room. Rendering lives in core/env/ambient.ts.
+ */
+export type AmbientKind =
+  | 'petals'
+  | 'sand'
+  | 'embers'
+  | 'motes'
+  | 'snow'
+  | 'spores'
+  | 'mist'
+  | 'rift';
 
 export interface MapDef {
   id: string;
@@ -171,7 +185,7 @@ export const MAPS: MapDef[] = [
     walls: leftCover(430),
     wallColor: 0x9aa6bc,
     terrain: [{ kind: 'water', x: 1420, y: 440, w: 320, h: 340 }, { kind: 'water', x: 600, y: 780, w: 300, h: 240 }],
-    ambient: 'motes',
+    ambient: 'snow',
     ambientColor: 0xbfe4ff,
     seed: 29,
     bgImage: 'freljord_dark',
@@ -189,7 +203,7 @@ export const MAPS: MapDef[] = [
     walls: leftCover(),
     wallColor: 0xb8c4d4,
     terrain: [{ kind: 'water', x: 1450, y: 460, w: 340, h: 460 }],
-    ambient: 'motes',
+    ambient: 'snow',
     ambientColor: 0xdff0ff,
     seed: 31,
     bgImage: 'freljord_snow',
@@ -243,7 +257,7 @@ export const MAPS: MapDef[] = [
     walls: leftCover(),
     wallColor: 0x4a5240,
     terrain: [{ kind: 'lava', x: 1280, y: 500, w: 260, h: 360 }],
-    ambient: 'embers',
+    ambient: 'spores',
     ambientColor: 0x8fe23a,
     seed: 71,
     bgImage: 'zaun',
@@ -261,7 +275,7 @@ export const MAPS: MapDef[] = [
     walls: [...leftCover(), ...rightCover()],
     wallColor: 0x2c4340,
     terrain: [],
-    ambient: 'motes',
+    ambient: 'mist',
     ambientColor: 0x5fe8d0,
     seed: 83,
     bgImage: 'shadow',
@@ -279,7 +293,7 @@ export const MAPS: MapDef[] = [
     walls: rightCover(500),
     wallColor: 0x281d3f,
     terrain: [{ kind: 'lava', x: 560, y: 720, w: 360, h: 220 }],
-    ambient: 'motes',
+    ambient: 'rift',
     ambientColor: 0xb87aff,
     seed: 97,
     bgImage: 'void',

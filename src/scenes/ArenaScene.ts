@@ -17,13 +17,15 @@ import { rollOffers } from '../augments/offers';
 import { run, earnGold } from '../core/run';
 import { dist, findOpenSpawn, pointInPillar, Vec } from '../core/geometry';
 import { autopilotEnabled, autopilotIntent } from '../core/autopilot';
-import { drawBurst, hitStopMs, numberSize, procLabel, severityOf, shakeFor } from '../core/impact';
+import { hitStopMs, numberSize, procLabel, severityOf, shakeFor } from '../core/impact';
+import { Particles } from '../core/particles'; // [vfx-agent]
 import { ARENA_X, ARENA_Y, COLORS, GAME_W, GAME_H, UNIT_RADIUS } from '../config';
 import { MapDef, FIELD, setActiveMap, activeWalls, activeTerrain } from '../core/maps';
 import { drawItemIcon } from '../items/icons';
 import { STR } from '../core/strings';
 import { initAudio, sfx } from '../core/sfx';
 import { crown, shade } from '../core/draw';
+import { EnvLayer } from '../core/env'; // [env-agent]
 import { addFullscreenButton } from '../core/fullscreen';
 
 /** Feuerring geometry: the safe circle starts covering the whole screen. */
@@ -41,6 +43,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   projectiles: Projectile[] = [];
   player!: Player;
   champVfx!: ChampionVfx;
+  /** [vfx-agent] Pooled combat particles — see core/particles.ts. */
+  particles!: Particles;
 
   private augments!: AugmentManager;
   private joystick!: Joystick;
@@ -56,10 +60,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private flashes: { x1: number; y1: number; x2: number; y2: number; color: number; until: number }[] = [];
 
   // Juice
-  private ambientGfx!: Phaser.GameObjects.Graphics;
-  private motes: { x: number; y: number; vx: number; vy: number; size: number; phase: number }[] = [];
+  // [env-agent] replaces the old ambientGfx + motes pair: terrain rendering,
+  // weather, vignette and reactive ground now live in core/env.
+  private env: EnvLayer | null = null;
   private map!: MapDef;
-  private terrainZones: MapDef['terrain'] = [];
   private slowmoUntil = 0;
   private dashTrail: { x: number; y: number; until: number }[] = [];
   private rings: { x: number; y: number; start: number; color: number; maxR: number }[] = [];
@@ -116,11 +120,20 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.map = spec.map;
     setActiveMap(spec.map);
     this.drawMap(spec.map);
+    // [env-agent] must come after setActiveMap — it reads the active paint grid.
+    this.env?.destroy();
+    this.env = new EnvLayer(this, spec.map);
     ensureChampionTextures(this);
 
     // Champion-sprite VFX layer — created before any Player/Enemy so their
     // constructors can bind their animated sprite to it.
-    this.champVfx = new ChampionVfx(this);
+    // [vfx-agent] Particle pool. Built before champVfx (which emits into it) and
+    // before any unit, and it allocates its whole pool up front — so its display
+    // objects are already counted when verify.mjs takes its baseline snapshot,
+    // and the count never moves again.
+    this.particles = new Particles(this);
+
+    this.champVfx = new ChampionVfx(this, this.particles);
 
     this.player = new Player(this, this, ARENA_X, GAME_H - 220);
     this.units.push(this.player);
@@ -139,7 +152,6 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.projGfx = this.add.graphics().setDepth(9);
     this.aimGfx = this.add.graphics().setDepth(8);
     this.hazardGfx = this.add.graphics().setDepth(3);
-    this.ambientGfx = this.add.graphics().setDepth(2);
     this.input.addPointer(3);
     this.joystick = new Joystick(this);
     this.createButtons();
@@ -148,7 +160,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     // Augments plug in before the round starts so roundStart hooks fire
     this.augments = new AugmentManager(this, this.player);
     this.augments.init();
-    this.events.once('shutdown', () => this.augments.destroy());
+    this.events.once('shutdown', () => {
+      this.augments.destroy();
+      this.env?.destroy(); // [env-agent]
+      this.env = null;
+    });
 
     this.initModifier(spec.modifier ?? null);
     this.createHud(spec.boss, spec.title, spec.bossAugments);
@@ -603,9 +619,25 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       // tick would read as lag rather than force.
       const stop = hitStopMs(sev, opts);
       if (stop > 0) this.slowmoUntil = Math.max(this.slowmoUntil, this.now + stop);
+      // [vfx-agent] Directional impact. The damage vector is source -> target;
+      // with no source (burns, hazards, environment) there is no direction to
+      // show, so the spray falls back to "up and out" rather than inventing a
+      // heading that would point at nothing.
       if (sev >= 0.12 || type === 'ability') {
         const col = target === this.player ? 0xff5555 : type === 'ability' ? 0xffd24a : 0xffffff;
-        drawBurst(this, target.x, target.y - target.radius * 0.3, sev, col);
+        const hx = target.x;
+        const hy = target.y - target.radius * 0.3;
+        let dx = 0;
+        let dy = -1;
+        if (source && source !== target) {
+          const l = Math.hypot(target.x - source.x, target.y - source.y);
+          if (l > 0.001) {
+            dx = (target.x - source.x) / l;
+            dy = (target.y - source.y) / l;
+          }
+        }
+        this.particles.shock(hx, hy, dx, dy, sev, col);
+        this.particles.impact(hx, hy, dx, dy, sev, col);
       }
     }
 
@@ -628,6 +660,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.goldHudText?.setText(`${run.gold}`);
       this.slowmoUntil = this.now + 110;
       this.ring(target.x, target.y, COLORS.enemy, 95);
+      // [vfx-agent] Enemies used to just stop existing behind that ring. Bosses
+      // come apart harder than trash — the radius is the only thing on a Unit
+      // that reliably tracks "how big a deal was this".
+      this.particles.death(target.x, target.y, COLORS.enemy, target.isBoss || target.radius > UNIT_RADIUS * 1.2);
       this.cameras.main.shake(120, 0.006);
       this.bus.emit('enemyDeath', { enemy: target });
       this.bus.emit('killWindow', { victim: target });
@@ -934,13 +970,25 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.flushHealNumbers();
 
       for (const p of this.projectiles) p.update(dt, this.units);
+      // [vfx-agent] Trails are emitted here rather than in render() so they only
+      // drop while the fight is actually running — a stationary projectile on a
+      // paused field would otherwise keep shedding motes on the spot.
+      for (const p of this.projectiles) {
+        this.particles.trail(p, p.x, p.y, p.dir.x, p.dir.y, p.color, p.radius);
+      }
       this.tickWalls();
       this.projectiles = this.projectiles.filter((p) => p.alive);
 
       this.checkFightEnd();
     }
 
-    this.drawAmbient(dt);
+    // [env-agent] weather, vignette and reactive ground. Given the unit list so
+    // the floor can react to feet; it never writes to any of it.
+    this.env?.update(dt, time, this.units, this.player.x, this.player.y);
+    // [vfx-agent] Ticked with the already-slowmo-scaled dt, so the spray freezes
+    // with the world during hit-stop instead of running on through it.
+    this.particles.update(time, dt);
+    this.champVfx.update(time);
     this.render();
   }
 
@@ -1104,18 +1152,49 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         this.projGfx.fillCircle(p.x, p.y, p.radius * 0.5);
         continue;
       }
-      // Motion streak + glow + bright core
-      this.projGfx.lineStyle(p.radius, p.color, 0.3);
+      // [vfx-agent] Bolt as a tapered dart, not a stack of circles. A circle has
+      // no heading, so a bolt coming at the player looked identical to one going
+      // away; the dart's point and its dark keyline give it both a direction and
+      // an edge that survives the painted maps underneath.
+      const dx = p.dir.x;
+      const dy = p.dir.y;
+      const nx = -dy;
+      const ny = dx;
+      const tip = p.radius * 2.6;
+      const tail = p.radius * 3.4;
+      const half = p.radius * 0.95;
+      const ax = p.x + dx * tip, ay = p.y + dy * tip; // nose
+      const bx = p.x + nx * half, by = p.y + ny * half; // shoulders
+      const cx = p.x - nx * half, cy = p.y - ny * half;
+      const ex = p.x - dx * tail, ey = p.y - dy * tail; // tail
+
+      // Soft glow first, so the keyline stays crisp on top of it.
+      this.projGfx.fillStyle(p.color, 0.2);
+      this.projGfx.fillCircle(p.x, p.y, p.radius * 2.1);
+      // Dark keyline underneath the body, offset nowhere — just a fatter hull.
+      this.projGfx.fillStyle(0x000000, 0.5);
       this.projGfx.beginPath();
-      this.projGfx.moveTo(p.x - p.dir.x * p.radius * 3.2, p.y - p.dir.y * p.radius * 3.2);
-      this.projGfx.lineTo(p.x, p.y);
-      this.projGfx.strokePath();
-      this.projGfx.fillStyle(p.color, 0.22);
-      this.projGfx.fillCircle(p.x, p.y, p.radius * 2);
+      this.projGfx.moveTo(ax + dx * 1.6, ay + dy * 1.6);
+      this.projGfx.lineTo(bx + nx * 1.6, by + ny * 1.6);
+      this.projGfx.lineTo(ex - dx * 1.6, ey - dy * 1.6);
+      this.projGfx.lineTo(cx - nx * 1.6, cy - ny * 1.6);
+      this.projGfx.closePath();
+      this.projGfx.fillPath();
+      // Body
       this.projGfx.fillStyle(p.color, 1);
-      this.projGfx.fillCircle(p.x, p.y, p.radius);
-      this.projGfx.fillStyle(0xffffff, 0.8);
-      this.projGfx.fillCircle(p.x - p.dir.x * 2, p.y - p.dir.y * 2, p.radius * 0.45);
+      this.projGfx.beginPath();
+      this.projGfx.moveTo(ax, ay);
+      this.projGfx.lineTo(bx, by);
+      this.projGfx.lineTo(ex, ey);
+      this.projGfx.lineTo(cx, cy);
+      this.projGfx.closePath();
+      this.projGfx.fillPath();
+      // Hot core down the spine
+      this.projGfx.lineStyle(Math.max(1, p.radius * 0.5), 0xffffff, 0.85);
+      this.projGfx.beginPath();
+      this.projGfx.moveTo(p.x + dx * tip * 0.5, p.y + dy * tip * 0.5);
+      this.projGfx.lineTo(p.x - dx * tail * 0.45, p.y - dy * tail * 0.45);
+      this.projGfx.strokePath();
     }
     this.flashes = this.flashes.filter((f) => f.until > this.now);
     for (const f of this.flashes) {
@@ -1273,10 +1352,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         this.load.start();
       }
       this.drawCollisionOverlay(m);
-      this.terrainZones = activeTerrain();
-      this.motes = [];
-      for (let i = 0; i < 26; i++) this.motes.push(this.spawnMote(true));
-      return;
+      return; // [env-agent] weather is seeded by EnvLayer, not here
     }
 
     const g = this.add.graphics().setDepth(0);
@@ -1364,7 +1440,6 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         tg.strokeRoundedRect(x, y, t.w, t.h, 22);
       }
     }
-    this.terrainZones = m.terrain;
 
     // Solid stone walls (hard cover): chunky blocks with a lit top face + seams
     const wg = this.add.graphics().setDepth(4);
@@ -1479,69 +1554,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         }
       }
     }
-
-    // Seed the ambient particle field
-    this.motes = [];
-    for (let i = 0; i < 26; i++) {
-      this.motes.push(this.spawnMote(true));
-    }
+    // [env-agent] weather is seeded by EnvLayer (core/env), not here.
   }
 
-  /** One ambient particle, styled per map (petals fall, sand drifts, embers rise). */
-  private spawnMote(anywhere = false): { x: number; y: number; vx: number; vy: number; size: number; phase: number } {
-    const k = this.map.ambient;
-    const x = anywhere ? Math.random() * GAME_W : k === 'sand' ? -10 : Math.random() * GAME_W;
-    const y = anywhere
-      ? Math.random() * GAME_H
-      : k === 'petals'
-        ? -10
-        : k === 'embers'
-          ? GAME_H + 10
-          : Math.random() * GAME_H;
-    return {
-      x,
-      y,
-      vx: k === 'sand' ? 60 + Math.random() * 60 : k === 'petals' ? -14 - Math.random() * 18 : (Math.random() - 0.5) * 8,
-      vy: k === 'petals' ? 26 + Math.random() * 22 : k === 'embers' ? -30 - Math.random() * 30 : (Math.random() - 0.5) * 8,
-      size: 2.5 + Math.random() * 3.5,
-      phase: Math.random() * Math.PI * 2,
-    };
-  }
-
-  /** Animated ambience: the map's particle weather (petals / sand / embers / motes). */
-  private drawAmbient(dt: number): void {
-    const g = this.ambientGfx;
-    g.clear();
-
-    // Terrain shimmer: lava glow pulse, water surface sparkle
-    for (const t of this.terrainZones) {
-      if (t.kind === 'lava') {
-        const pulse = 0.12 + 0.08 * Math.sin(this.now / 400 + t.x);
-        g.fillStyle(0xff6a1a, pulse);
-        g.fillRoundedRect(t.x - t.w / 2, t.y - t.h / 2, t.w, t.h, 22);
-      } else {
-        g.fillStyle(0xcfeaff, 0.5);
-        for (let i = 0; i < 5; i++) {
-          const sx = t.x - t.w / 2 + 30 + ((i * 97 + this.now / 12) % (t.w - 60));
-          const sy = t.y - t.h / 2 + 30 + ((i * 53) % (t.h - 60));
-          g.fillRect(sx, sy, 3, 3);
-        }
-      }
-    }
-
-    const k = this.map.ambient;
-    for (let i = 0; i < this.motes.length; i++) {
-      const p = this.motes[i];
-      p.x += (p.vx + Math.sin(this.now / 900 + p.phase) * 14) * dt;
-      p.y += p.vy * dt;
-      if (p.x < -20 || p.x > GAME_W + 20 || p.y < -20 || p.y > GAME_H + 20) {
-        this.motes[i] = this.spawnMote();
-        continue;
-      }
-      const alpha =
-        k === 'motes' ? 0.25 + 0.2 * Math.sin(this.now / 600 + p.phase) : k === 'embers' ? 0.7 : 0.55;
-      g.fillStyle(this.map.ambientColor, Math.max(0.1, alpha));
-      g.fillRect(p.x, p.y, p.size, p.size);
-    }
-  }
 }
