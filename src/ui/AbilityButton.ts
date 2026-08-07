@@ -38,6 +38,17 @@ export class AbilityButton {
   constructor(
     scene: Phaser.Scene,
     private opts: AbilityButtonOpts,
+    /**
+     * Fixed-to-screen UI layer, when the scene's camera moves.
+     *
+     * `setScrollFactor(0)` alone stopped being enough once the arena camera
+     * gained a zoom: a zoomed camera still scales screen-locked objects about
+     * its midpoint, so the button would drift away from the design coordinates
+     * that its own pointer hit-test below compares against — visible in one
+     * place, clickable in another. The layer carries the counter-transform;
+     * see `hudTransform` in core/camera.
+     */
+    layer?: Phaser.GameObjects.Container,
   ) {
     this.gfx = scene.add.graphics().setDepth(1000).setScrollFactor(0);
     this.text = scene.add
@@ -51,6 +62,7 @@ export class AbilityButton {
       .setDepth(1001)
       .setScrollFactor(0)
       .setAlpha(0.55);
+    layer?.add([this.gfx, this.text]);
 
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.pointerId !== -1) return;

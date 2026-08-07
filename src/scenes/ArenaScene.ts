@@ -27,6 +27,7 @@ import { initAudio, sfx } from '../core/sfx';
 import { crown, shade } from '../core/draw';
 import { EnvLayer } from '../core/env'; // [env-agent]
 import { addFullscreenButton } from '../core/fullscreen';
+import { CameraRig, hudTransform } from '../core/camera';
 
 /** Feuerring geometry: the safe circle starts covering the whole screen. */
 const FIRE_MAX_R = Math.hypot(GAME_W / 2, GAME_H / 2) + 40;
@@ -85,6 +86,19 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   }
 
   private fightState: 'fighting' | 'won' | 'lost' = 'fighting';
+
+  /**
+   * Everything pinned to the screen rather than to the world. The camera zooms
+   * and follows now, so anything that must stay at its authored pixel goes in
+   * here and the container carries the counter-transform (core/camera).
+   * Floating damage numbers deliberately do NOT: they belong to a unit and
+   * should ride the world.
+   */
+  private uiLayer!: Phaser.GameObjects.Container;
+  /** Null until create() finishes; augments can deal damage before that. */
+  private rig: CameraRig | null = null;
+  /** Edge chevrons for enemies the zoom pushed out of view. */
+  private offGfx: Phaser.GameObjects.Graphics | null = null;
   private goldHudText: Phaser.GameObjects.Text | null = null;
   private buildChips: Phaser.GameObjects.Container | null = null;
   private buildChipsTop = 250;
@@ -153,7 +167,13 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.aimGfx = this.add.graphics().setDepth(8);
     this.hazardGfx = this.add.graphics().setDepth(3);
     this.input.addPointer(3);
-    this.joystick = new Joystick(this);
+    // Screen-locked layer, created before anything that belongs in it. Depth
+    // sits above every world object; children keep their authored coordinates
+    // and are depth-sorted once the HUD is fully built.
+    this.uiLayer = this.add.container(0, 0).setDepth(2000).setScrollFactor(0);
+    this.offGfx = this.add.graphics().setDepth(1003);
+    this.uiLayer.add(this.offGfx);
+    this.joystick = new Joystick(this, this.uiLayer);
     this.createButtons();
     this.setupKeyboard();
 
@@ -168,6 +188,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     this.initModifier(spec.modifier ?? null);
     this.createHud(spec.boss, spec.title, spec.bossAugments);
+    // Containers render children in list order, not by depth, and the HUD was
+    // built after the ability buttons — so sort once, now that every child
+    // exists, or the panels would paint over the buttons.
+    this.uiLayer.sort('depth');
+    this.rig = new CameraRig(this, this.player.x, this.player.y);
 
     // Presentation-layer event subscribers (SFX)
     this.input.on('pointerdown', initAudio);
@@ -346,7 +371,12 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
   private createHud(boss: boolean, title: string, bossAugments?: string[]): void {
     const style = { fontFamily: 'sans-serif', fontSize: '32px', color: '#e8ecf8' };
-    const hud = this.add.graphics().setDepth(99);
+    /** Adopt into the screen-locked layer — every HUD element is pinned. */
+    const ui = <T extends Phaser.GameObjects.GameObject>(o: T): T => {
+      this.uiLayer.add(o);
+      return o;
+    };
+    const hud = ui(this.add.graphics().setDepth(99));
 
     // Left panel: round + gold + map (+ modifier)
     const leftW = 340;
@@ -357,25 +387,29 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     hud.strokeRoundedRect(18, 16, leftW, leftH, 14);
     const roundLabel =
       run.round > MAX_ROUND ? `Endless · Round ${run.round}` : `${STR.round} ${run.round} / ${MAX_ROUND}`;
-    this.add.text(38, 27, roundLabel, style).setDepth(100);
+    ui(this.add.text(38, 27, roundLabel, style).setDepth(100));
     hud.fillStyle(0xffd24a, 1);
     hud.fillCircle(50, 84, 11);
     hud.fillStyle(0xb8912a, 1);
     hud.fillCircle(50, 84, 6);
-    this.goldHudText = this.add
-      .text(70, 70, `${run.gold}`, { ...style, fontSize: '28px', color: '#ffd24a' })
-      .setDepth(100);
-    this.add
-      .text(38, 104, `${this.map.name} · ${this.map.region}`, {
-        ...style,
-        fontSize: '23px',
-        color: '#8a94b0',
-      })
-      .setDepth(100);
-    if (this.modifier) {
+    this.goldHudText = ui(
+      this.add.text(70, 70, `${run.gold}`, { ...style, fontSize: '28px', color: '#ffd24a' }).setDepth(100),
+    );
+    ui(
       this.add
-        .text(38, 136, `✦ ${MODIFIER_NAMES[this.modifier]}`, { ...style, fontSize: '26px', color: '#cba6ff' })
-        .setDepth(100);
+        .text(38, 104, `${this.map.name} · ${this.map.region}`, {
+          ...style,
+          fontSize: '23px',
+          color: '#8a94b0',
+        })
+        .setDepth(100),
+    );
+    if (this.modifier) {
+      ui(
+        this.add
+          .text(38, 136, `✦ ${MODIFIER_NAMES[this.modifier]}`, { ...style, fontSize: '26px', color: '#cba6ff' })
+          .setDepth(100),
+      );
     }
 
     // Build button: opens the stats/augments/items overlay (also TAB)
@@ -384,15 +418,19 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     hud.fillRoundedRect(18, buildY - 26, 200, 52, 12);
     hud.lineStyle(2, 0x3a3a55, 0.9);
     hud.strokeRoundedRect(18, buildY - 26, 200, 52, 12);
-    const buildTxt = this.add
-      .text(118, buildY, '☰ Build & Stats', { ...style, fontSize: '25px', color: '#a8d8ff' })
-      .setOrigin(0.5)
-      .setDepth(100);
-    const buildZone = this.add
-      .zone(118, buildY, 200, 52)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(101);
+    const buildTxt = ui(
+      this.add
+        .text(118, buildY, '☰ Build & Stats', { ...style, fontSize: '25px', color: '#a8d8ff' })
+        .setOrigin(0.5)
+        .setDepth(100),
+    );
+    const buildZone = ui(
+      this.add
+        .zone(118, buildY, 200, 52)
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(101),
+    );
     const openBuild = () => {
       if (this.scene.isPaused('arena')) return;
       this.scene.launch('build', { from: 'arena' });
@@ -405,14 +443,14 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     // so during a fight the build was invisible, and picks that change how an
     // ability behaves had no presence at all (B5). One chip per augment, tinted
     // by tier, is enough to make the run feel like it is accumulating.
-    this.buildChips = this.add.container(0, 0).setDepth(100);
+    this.buildChips = ui(this.add.container(0, 0).setDepth(100));
     this.buildChipsTop = buildY + 44;
     this.refreshBuildChips();
     buildTxt.setInteractive({ useHandCursor: true }).on('pointerdown', openBuild);
     this.input.keyboard?.addKey('TAB').on('down', openBuild);
 
     // Item icons under the panel (16-bit thematic tiles)
-    const itemG = this.add.graphics().setDepth(100);
+    const itemG = ui(this.add.graphics().setDepth(100));
     run.items.forEach((it, i) => {
       const ix = 38 + i * 44;
       const iy = 30 + leftH + 16;
@@ -424,22 +462,25 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     });
 
     // One life — no heart HUD needed; just the fullscreen button
-    addFullscreenButton(this, GAME_W - 56, 56);
+    addFullscreenButton(this, GAME_W - 56, 56, this.uiLayer);
 
     // "Know your enemy": the Usurpator's augments stay visible all round
     if (bossAugments?.length) {
-      this.add
-        .text(ARENA_X, 26, `Usurper: ${bossAugments.join(' · ')}`, {
-          fontFamily: 'sans-serif',
-          fontSize: '28px',
-          color: '#ff9a8a',
-        })
-        .setOrigin(0.5, 0)
-        .setDepth(100);
+      ui(
+        this.add
+          .text(ARENA_X, 26, `Usurper: ${bossAugments.join(' · ')}`, {
+            fontFamily: 'sans-serif',
+            fontSize: '28px',
+            color: '#ff9a8a',
+          })
+          .setOrigin(0.5, 0)
+          .setDepth(100),
+      );
     }
 
-    // Round intro banner
-    const banner = this.add
+    // Round intro banner. Screen-locked, not world-locked: it announces the
+    // round to the player, so it should not slide off as the camera follows.
+    const banner = ui(this.add
       .text(ARENA_X, ARENA_Y - 80, title, {
         fontFamily: 'sans-serif',
         fontSize: '84px',
@@ -450,9 +491,9 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       })
       .setOrigin(0.5)
       .setDepth(150)
-      .setAlpha(0);
+      .setAlpha(0));
     const sub = boss
-      ? this.add
+      ? ui(this.add
           .text(ARENA_X, ARENA_Y + 10, STR.usurpatorComes, {
             fontFamily: 'sans-serif',
             fontSize: '38px',
@@ -463,7 +504,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
           })
           .setOrigin(0.5)
           .setDepth(150)
-          .setAlpha(0)
+          .setAlpha(0))
       : null;
     this.tweens.add({
       targets: sub ? [banner, sub] : banner,
@@ -497,8 +538,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         },
         onCast: () => this.player.dash(),
         getCooldownPct: () => this.player.cooldownPct('Dash'),
-        getCharges: () => ({ avail: this.player.dashChargesAvail, max: this.player.maxDashCharges }),
-      }),
+          getCharges: () => ({ avail: this.player.dashChargesAvail, max: this.player.maxDashCharges }),
+        },
+        this.uiLayer,
+      ),
       // Q — aimable; thrown-blade icon
       new AbilityButton(this, {
         x: bx - 150,
@@ -515,8 +558,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         aimable: true,
         onCast: (dir) => this.player.castQ(dir ?? undefined),
         onAimPreview: (dir) => (this.aimPreview = dir),
-        getCooldownPct: () => this.player.cooldownPct('Q'),
-      }),
+          getCooldownPct: () => this.player.cooldownPct('Q'),
+        },
+        this.uiLayer,
+      ),
       // E — crown icon
       new AbilityButton(this, {
         x: bx + 40,
@@ -528,8 +573,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
           crown(g, x, y + r * 0.4, r * 1.3, 0xffffff, 0.95);
         },
         onCast: () => this.player.castE(),
-        getCooldownPct: () => this.player.cooldownPct('E'),
-      }),
+          getCooldownPct: () => this.player.cooldownPct('E'),
+        },
+        this.uiLayer,
+      ),
     );
   }
 
@@ -612,8 +659,23 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.spawnDamageNumber(target, dealt, type, sev);
 
     if (dealt > 0) {
+      // The damage vector, source -> target. Hoisted out of the particle block
+      // below because the camera kick needs the same heading: shake says only
+      // "something happened", a kick says the blow came *from there*, and the
+      // two must not disagree about which way that is.
+      let dx = 0;
+      let dy = -1;
+      if (source && source !== target) {
+        const l = Math.hypot(target.x - source.x, target.y - source.y);
+        if (l > 0.001) {
+          dx = (target.x - source.x) / l;
+          dy = (target.y - source.y) / l;
+        }
+      }
       const [dur, amp] = shakeFor(sev, opts);
       if (dur > 0) this.cameras.main.shake(dur, amp);
+      this.rig?.kick(dx, dy, sev);
+      if (sev >= 0.4) this.rig?.punch(0.03 + sev * 0.07);
       // Hit-stop is the single biggest weight gain available, and it was only
       // ever applied on kills. Chip damage still gets none — a stutter on every
       // tick would read as lag rather than force.
@@ -627,15 +689,6 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         const col = target === this.player ? 0xff5555 : type === 'ability' ? 0xffd24a : 0xffffff;
         const hx = target.x;
         const hy = target.y - target.radius * 0.3;
-        let dx = 0;
-        let dy = -1;
-        if (source && source !== target) {
-          const l = Math.hypot(target.x - source.x, target.y - source.y);
-          if (l > 0.001) {
-            dx = (target.x - source.x) / l;
-            dy = (target.y - source.y) / l;
-          }
-        }
         this.particles.shock(hx, hy, dx, dy, sev, col);
         this.particles.impact(hx, hy, dx, dy, sev, col);
       }
@@ -665,6 +718,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       // that reliably tracks "how big a deal was this".
       this.particles.death(target.x, target.y, COLORS.enemy, target.isBoss || target.radius > UNIT_RADIUS * 1.2);
       this.cameras.main.shake(120, 0.006);
+      this.rig?.punch(0.09);
       this.bus.emit('enemyDeath', { enemy: target });
       this.bus.emit('killWindow', { victim: target });
     }
@@ -933,6 +987,59 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.hazards = this.hazards.filter((h) => h.until > this.now);
   }
 
+  /**
+   * Chevrons at the screen edge for enemies the camera cut off.
+   *
+   * This is the bill for zooming in. The old view showed the whole arena at
+   * once, so "where is everyone" was free; at the current zoom roughly a third
+   * of the field is outside the frame and an archer plinking from an unseen
+   * corner would be a fairness regression, not a style choice. The marker is
+   * drawn into the screen-locked layer in design coordinates, so it sits on the
+   * border regardless of zoom or punch.
+   */
+  private drawOffscreenMarkers(): void {
+    const g = this.offGfx;
+    if (!g) return;
+    g.clear();
+    const cam = this.cameras.main;
+    const z = cam.zoom;
+    const inset = 44;
+    const cx = GAME_W / 2;
+    const cy = GAME_H / 2;
+    const hw = cx - inset;
+    const hh = cy - inset;
+
+    for (const u of this.units) {
+      if (!u.alive || u.team !== 'enemy') continue;
+      const sx = (u.x - cam.scrollX) * z;
+      const sy = (u.y - cam.scrollY) * z;
+      if (sx > inset && sx < GAME_W - inset && sy > inset && sy < GAME_H - inset) continue;
+
+      let dx = sx - cx;
+      let dy = sy - cy;
+      const l = Math.hypot(dx, dy);
+      if (l < 1) continue;
+      dx /= l;
+      dy /= l;
+      // Push out along the heading until it meets the inset border — the
+      // shorter of the two axis intersections is the one that hits an edge.
+      const t = Math.min(hw / Math.abs(dx || 1e-6), hh / Math.abs(dy || 1e-6));
+      const px = cx + dx * t;
+      const py = cy + dy * t;
+
+      const a = Math.atan2(dy, dx);
+      const boss = u.isBoss;
+      const size = boss ? 26 : 17;
+      g.fillStyle(boss ? 0xffd24a : 0xff5a5a, boss ? 0.95 : 0.8);
+      g.beginPath();
+      g.moveTo(px + Math.cos(a) * size, py + Math.sin(a) * size);
+      g.lineTo(px + Math.cos(a + 2.5) * size, py + Math.sin(a + 2.5) * size);
+      g.lineTo(px + Math.cos(a - 2.5) * size, py + Math.sin(a - 2.5) * size);
+      g.closePath();
+      g.fillPath();
+    }
+  }
+
   // ---- Frame loop ----
 
   update(time: number, deltaMs: number): void {
@@ -940,6 +1047,17 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     // Kill hit-stop: world crawls for ~110ms (absolute-time cooldowns are unaffected;
     // the discrepancy is imperceptible at this length)
     if (time < this.slowmoUntil) dt *= 0.15;
+
+    // Camera before anything draws, and on REAL time — during hit-stop the
+    // world holds still but the camera must finish its kick, otherwise the
+    // freeze swallows the very impact it exists to sell.
+    if (this.rig) {
+      const aim = this.input.activePointer;
+      this.rig.update(Math.min(deltaMs, 50), this.player.x, this.player.y, aim.worldX, aim.worldY);
+      const ht = hudTransform(this.rig.zoom);
+      this.uiLayer.setPosition(ht.x, ht.y).setScale(ht.scale);
+      this.drawOffscreenMarkers();
+    }
 
     if (this.fightState === 'fighting') {
       // Movement input: autopilot (measurement only) wins, then joystick, else WASD

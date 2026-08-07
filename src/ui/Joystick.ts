@@ -16,8 +16,10 @@ export class Joystick {
   private baseY = 0;
   private gfx: Phaser.GameObjects.Graphics;
 
-  constructor(scene: Phaser.Scene) {
+  /** `layer` is the counter-transformed UI container; see AbilityButton. */
+  constructor(scene: Phaser.Scene, layer?: Phaser.GameObjects.Container) {
     this.gfx = scene.add.graphics().setDepth(1000).setScrollFactor(0);
+    layer?.add(this.gfx);
 
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.active || p.x >= GAME_W / 2) return;

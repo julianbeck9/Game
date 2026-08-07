@@ -13,8 +13,19 @@ export function toggleFullscreen(scene: Phaser.Scene): void {
   }
 }
 
-/** Small ⛶ button in a corner. Returns a redraw-free static button. */
-export function addFullscreenButton(scene: Phaser.Scene, x: number, y: number): void {
+/**
+ * Small ⛶ button in a corner. Returns a redraw-free static button.
+ *
+ * `layer` is the counter-transformed UI container used by scenes whose camera
+ * zooms or scrolls (see `hudTransform` in core/camera); omit it in scenes with
+ * a static camera.
+ */
+export function addFullscreenButton(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  layer?: Phaser.GameObjects.Container,
+): void {
   const g = scene.add.graphics().setDepth(1002).setScrollFactor(0);
   const r = 34;
   g.fillStyle(0x0a0a14, 0.72);
@@ -36,6 +47,8 @@ export function addFullscreenButton(scene: Phaser.Scene, x: number, y: number): 
     .zone(x, y, r * 2, r * 2)
     .setOrigin(0.5)
     .setInteractive({ useHandCursor: true })
-    .setDepth(1002);
+    .setDepth(1002)
+    .setScrollFactor(0);
   zone.on('pointerdown', () => toggleFullscreen(scene));
+  layer?.add([g, zone]);
 }
