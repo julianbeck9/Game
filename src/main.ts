@@ -17,6 +17,7 @@ import { run, addAugment, newRun, upgradeItem } from './core/run';
 import { augmentById, AUGMENTS } from './augments/registry';
 import { championUsesAP } from './champions/registry';
 import { itemById } from './items/registry';
+import { forceMap } from './core/maps';
 
 const game = new Phaser.Game({
   // ?renderer=canvas — headless test environments render Canvas2D far faster
@@ -88,6 +89,8 @@ declare global {
       stepMs: (ms: number, dtMs?: number) => number;
       /** Measurement: hand the RAF-driven clock back after stepMs. */
       resumeClock: () => void;
+      /** Measurement: pin the arena map so screenshots compare like with like. */
+      forceMap: (id: string | null) => void;
     };
   }
 }
@@ -149,6 +152,7 @@ window.__CC = {
     return t;
   },
   resumeClock: () => { game.loop.wake(); },
+  forceMap: (id: string | null) => forceMap(id),
   // Test helper: grant an augment by id (takes effect on next goto/round)
   grant: (id: string) => {
     const def = augmentById(id);

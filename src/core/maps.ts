@@ -367,8 +367,30 @@ export function activeTerrain(): TerrainZone[] {
   return BAKED_PAINT[active.id] ? [] : active.terrain;
 }
 
+/**
+ * Measurement override: when set, `rollMap` always returns this map.
+ *
+ * Screenshot comparisons are worthless without it. The before/after sets for
+ * the quality pass were captured on *different randomly rolled maps*, so a
+ * "before" on Demacia was being compared against an "after" on Highland — and
+ * the difference read as a change in the lighting when it was a change of
+ * scenery. Pin the map and the comparison is about the code again.
+ */
+let forcedMapId: string | null = null;
+
+export function forceMap(id: string | null): void {
+  forcedMapId = id;
+}
+
 /** Pick a random map, never the same twice in a row. */
 export function rollMap(): MapDef {
+  if (forcedMapId) {
+    const forced = MAPS.find((m) => m.id === forcedMapId);
+    if (forced) {
+      lastId = forced.id;
+      return forced;
+    }
+  }
   const pool = MAPS.filter((m) => m.id !== lastId);
   const m = pool[Math.floor(Math.random() * pool.length)];
   lastId = m.id;

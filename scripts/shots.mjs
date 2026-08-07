@@ -53,20 +53,27 @@ await page.waitForTimeout(1800);
 await shot('01-menu');
 
 // 2-5. Combat on four visually different maps, mid-fight with a real squad.
+// The map is PINNED per scene. Without this `goto()` rolls a random map, so a
+// "before" captured on Demacia gets compared against an "after" on Highland and
+// the change of scenery reads as a change in the code. That mistake was made
+// once in this pass and cost a wrong conclusion about the lighting.
+// Four deliberately different palettes: dark teal, bright daylight, blood red,
+// blinding sand — the cases a visual change has to survive.
 const FIGHTS = [
-  ['02-fight-early', 'masteryi', 2],
-  ['03-fight-mid', 'karthus', 5],
-  ['04-fight-late', 'sivir', 9],
-  ['05-fight-crowd', 'zac', 12],
+  ['02-fight-early', 'masteryi', 2, 'shadow'],
+  ['03-fight-mid', 'karthus', 5, 'highland'],
+  ['04-fight-late', 'sivir', 9, 'noxus'],
+  ['05-fight-crowd', 'zac', 12, 'shurima'],
 ];
-for (const [name, champ, round] of FIGHTS) {
-  await page.evaluate(([c, r]) => {
+for (const [name, champ, round, mapId] of FIGHTS) {
+  await page.evaluate(([c, r, m]) => {
     window.__CC.autopilot(true);
+    window.__CC.forceMap(m);
     window.__CC.reset();
     window.__CC.run.champion = c;
     ['kar_reiner_ton', 'kar_choral', 'siv_rueckhand', 'yi_zermalmen'].forEach((id) => window.__CC.grant(id));
     window.__CC.goto(r);
-  }, [champ, round]);
+  }, [champ, round, mapId]);
   await page.waitForTimeout(2200);
   await keepAlive();
   await page.waitForTimeout(1600);

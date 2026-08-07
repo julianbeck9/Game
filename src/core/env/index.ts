@@ -47,8 +47,22 @@ export class EnvLayer {
     // The collision the player actually fights against — never a second copy.
     const fields = analyse(activePaint());
 
-    const ground = bakeGround(scene, map, fields);
-    if (ground) this.objects.push(ground);
+    // DISABLED — see BUGS.md B13. bakeGround traces the 24px baked COLLISION
+    // grid, but that grid only approximates the painted art, so its rims and
+    // ledges land beside the geometry they are meant to describe. On bright
+    // maps the result reads as translucent grey rectangles laid over the
+    // picture: it looks like broken rendering, not like ground.
+    //
+    // Verified by negative control: disabling this one call removes every
+    // artifact and changes nothing else. The idea is right — solid ground
+    // should be visible rather than learned by bumping into it — but the edges
+    // have to be derived from the ART, not from collision data, and that is a
+    // bigger job than turning an alpha down. Kept, not deleted, for that work.
+    const GROUND_BAKE_ENABLED = false;
+    if (GROUND_BAKE_ENABLED) {
+      const ground = bakeGround(scene, map, fields);
+      if (ground) this.objects.push(ground);
+    }
 
     this.fxGfx = scene.add.graphics().setDepth(0.8);
     this.bgGfx = scene.add.graphics().setDepth(2);
