@@ -196,15 +196,22 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     // Presentation-layer event subscribers (SFX)
     this.input.on('pointerdown', initAudio);
-    this.bus.on('autoHit', () => sfx.hit());
+    // WebAudio needs a user gesture, and a keyboard player can finish a whole
+    // round without ever clicking — in which case the game was silent and the
+    // sound design was moot.
+    this.input.keyboard?.on('keydown', initAudio);
+    // Severity is passed through so a scratch and a killing blow do not make
+    // the same noise; it is the same number the hit-stop, kick and spray read.
+    this.bus.on('autoHit', ({ target, dmg }) => sfx.hit(severityOf(dmg, target)));
     this.bus.on('abilityCast', () => sfx.cast());
     this.bus.on('dashStart', () => sfx.dash());
-    this.bus.on('damageTaken', () => sfx.hurt());
+    this.bus.on('damageTaken', ({ dmg }) => sfx.hurt(severityOf(dmg, this.player)));
     this.bus.on('enemyDeath', () => sfx.kill());
     // Ability hits throw a bright spark burst so spells read clearly
-    this.bus.on('abilityHit', ({ target, ability }) => {
+    this.bus.on('abilityHit', ({ target, ability, dmg }) => {
       const col = ability === 'E' ? 0xffe680 : ability === 'Q' ? 0xffd24a : 0xa8d8ff;
       this.sparks.push({ x: target.x, y: target.y, start: this.now, color: col, a: Math.random() * Math.PI });
+      sfx.abilityHit(severityOf(dmg, target));
     });
 
     this.bus.emit('roundStart', undefined);
