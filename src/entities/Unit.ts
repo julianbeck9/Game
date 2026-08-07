@@ -122,8 +122,18 @@ export abstract class Unit {
     const fy = this.y + this.radius * 0.72;
     const fw = this.radius * 2.1;
     const fh = this.radius * 0.9;
-    g.fillStyle(0x000000, 0.32);
-    g.fillEllipse(this.x, fy, fw, fh);
+    // Soft-edged: three nested pools rather than one flat disc. A hard rim was
+    // fine when the whole arena was fitted into the window and the shadow was
+    // a dozen pixels wide; magnified by the camera zoom it read as a sticker
+    // under the character instead of as contact with the ground.
+    for (const [k, a] of [
+      [1.34, 0.1],
+      [1.15, 0.15],
+      [1.0, 0.26],
+    ] as const) {
+      g.fillStyle(0x000000, a);
+      g.fillEllipse(this.x, fy, fw * k, fh * k);
+    }
     // Dark keyline under the team colour, because the maps span sand, snow and
     // stone: a gold ring alone disappears on Shurima and a red one on the Blood
     // Pit. The black underlay makes the marker read on any of them.

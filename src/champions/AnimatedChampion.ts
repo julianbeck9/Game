@@ -60,8 +60,8 @@ function tintLerp(target: number, amt: number): number {
   return (r << 16) | (g << 8) | b;
 }
 
-interface Frame { dx: number; dy: number; sx: number; sy: number; rot: number; tint: number; alpha: number; }
-const NEUTRAL = (): Frame => ({ dx: 0, dy: 0, sx: 1, sy: 1, rot: 0, tint: 0xffffff, alpha: 1 });
+interface Frame { dx: number; dy: number; sx: number; sy: number; rot: number; tint: number; alpha: number; flash: number; }
+const NEUTRAL = (): Frame => ({ dx: 0, dy: 0, sx: 1, sy: 1, rot: 0, tint: 0xffffff, alpha: 1, flash: 0 });
 
 export class AnimatedChampion extends Phaser.GameObjects.Image {
   readonly champId: string;
@@ -216,7 +216,9 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
     this.setPosition(this.homeX + f.dx * sign, this.homeY + f.dy);
     this.setScale(f.sx * this.baseScale, f.sy * this.baseScale);
     this.setRotation(f.rot * sign);
-    if (f.tint === 0xffffff) this.clearTint(); else this.setTint(f.tint);
+    if (f.flash > 0.01) this.setTintFill(0xffffff);
+    else if (f.tint === 0xffffff) this.clearTint();
+    else this.setTint(f.tint);
     this.setAlpha(f.alpha);
   }
 
@@ -333,6 +335,13 @@ export class AnimatedChampion extends Phaser.GameObjects.Image {
         f.sx *= 1 + 0.18 * e;
         f.sy *= 1 - 0.14 * e;
         f.tint = tintLerp(0xff4444, e);
+        // Solid-white silhouette for the first fifth of the reaction. A red
+        // multiply-tint darkens the sprite, which on the dark champions is
+        // nearly invisible; a fill-tint replaces every pixel, so the hit reads
+        // identically on Shurima sand and in the Blood Pit. The old white
+        // circle behind the sprite could not do this — being behind, it showed
+        // as a halo around the champion rather than as the champion flashing.
+        f.flash = p < 0.2 ? 1 : 0;
         break;
       }
       case 'death': {
