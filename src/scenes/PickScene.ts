@@ -4,14 +4,8 @@ import { addAugment, run, MAX_AUGMENTS, removeAugment } from '../core/run';
 import { rollOneOffer, nextOfferAfterReroll, Offer } from '../augments/offers';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { sfx } from '../core/sfx';
+import { backdrop, cardFrame, buttonPlate } from '../ui/panel';
 
-
-// Blend two colours; t=0 -> a, t=1 -> b.
-function mix(a: number, b: number, t: number): number {
-  const c = Phaser.Display.Color.Interpolate.ColorWithColor(
-    Phaser.Display.Color.ValueToColor(a), Phaser.Display.Color.ValueToColor(b), 100, t * 100);
-  return Phaser.Display.Color.GetColor(c.r, c.g, c.b);
-}
 
 const TIER_COLOR: Record<Tier, number> = {
   silber: COLORS.silver,
@@ -102,42 +96,9 @@ export class PickScene extends Phaser.Scene {
     }
   }
 
-  // Vertical gradient as stacked bands — Phaser Graphics has no gradient fill.
-  private gradient(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number,
-                   top: number, bottom: number, alpha = 1, steps = 24): void {
-    for (let i = 0; i < steps; i++) {
-      const t = i / (steps - 1);
-      const c = Phaser.Display.Color.Interpolate.ColorWithColor(
-        Phaser.Display.Color.ValueToColor(top), Phaser.Display.Color.ValueToColor(bottom), 100, t * 100);
-      g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), alpha);
-      g.fillRect(x, y + (h * i) / steps, w, h / steps + 1);
-    }
-  }
-
-  // Backdrop: gradient + a warm pool behind the cards + edge vignette.
-  // The screen used to be one flat near-black rectangle, which is why the whole
-  // decision surface read as a debug menu rather than as part of the game.
-  private backdrop(): void {
-    const g = this.add.graphics().setDepth(-10);
-    this.gradient(g, 0, 0, GAME_W, GAME_H, 0x141426, 0x07070e);
-    // soft glow centred on the card row
-    for (let i = 10; i > 0; i--) {
-      g.fillStyle(0x2a3a6a, 0.035);
-      g.fillEllipse(GAME_W / 2, GAME_H / 2 + 40, 300 + i * 190, 160 + i * 92);
-    }
-    // vignette
-    for (let i = 0; i < 7; i++) {
-      g.fillStyle(0x000000, 0.055);
-      g.fillRect(0, 0, GAME_W, 26 + i * 12);
-      g.fillRect(0, GAME_H - (26 + i * 12), GAME_W, 26 + i * 12);
-      g.fillRect(0, 0, 26 + i * 12, GAME_H);
-      g.fillRect(GAME_W - (26 + i * 12), 0, 26 + i * 12, GAME_H);
-    }
-  }
-
   private render(): void {
     this.children.removeAll(true);
-    this.backdrop();
+    backdrop(this, GAME_H / 2 + 40);
     if (this.mode === 'tradeRemove') return this.renderTradeRemove();
     if (this.mode === 'tradePick') return this.renderTradePick();
     this.renderSelect();
@@ -324,24 +285,9 @@ export class PickScene extends Phaser.Scene {
     const L = x - w / 2;
     const T = y - h / 2;
     const R = 22; // corner radius
-    const g = this.add.graphics();
-
-    // Outer glow, strength by tier — a prisma pick should be visible as special
-    // before the label is read. Previously all three tiers were the same grey
-    // card with a thin coloured line, so rarity carried no weight at a glance.
+    // Glow strength carries rarity before any label is read.
     const glow = def.tier === 'prisma' ? 9 : def.tier === 'gold' ? 6 : 3;
-    for (let i = glow; i > 0; i--) {
-      g.fillStyle(tierColor, 0.045);
-      g.fillRoundedRect(L - i * 3, T - i * 3, w + i * 6, h + i * 6, R + i * 2);
-    }
-    // Card body: a DARK base with the tier colour mixed in, not the tier colour
-    // darkened. Shading the tier colour directly left silver cards almost white
-    // and drowned their own label.
-    g.fillStyle(0x1b1b2b, 1);
-    g.fillRoundedRect(L, T, w, h, R);
-    this.gradient(g, L + 2, T + 2, w - 4, h - 4, mix(0x161622, tierColor, 0.22), 0x0b0b13, 1, 20);
-    g.lineStyle(3, tierColor, 0.95);
-    g.strokeRoundedRect(L, T, w, h, R);
+    const g = cardFrame(this, x, y, w, h, tierColor, glow, R);
 
     // Tier band across the top, clipped to the card's rounded corners.
     g.fillStyle(tierColor, def.tier === 'prisma' ? 0.3 : 0.2);
@@ -404,11 +350,7 @@ export class PickScene extends Phaser.Scene {
     const disabled = o.rerolled || o.exhausted;
     const label = o.exhausted ? 'no augments left' : o.rerolled ? 'reroll used' : '⟳  Reroll';
     // Rounded to match the card; flat rectangles were the cheapest-looking part.
-    const rg = this.add.graphics();
-    rg.fillStyle(disabled ? 0x191922 : 0x243050, 1);
-    rg.fillRoundedRect(x - (w - 40) / 2, ry - 26, w - 40, 52, 14);
-    rg.lineStyle(2, disabled ? 0x33384a : 0x6a9ad0, 1);
-    rg.strokeRoundedRect(x - (w - 40) / 2, ry - 26, w - 40, 52, 14);
+    buttonPlate(this, x, ry, w - 40, 52, disabled ? 0x191922 : 0x243050, disabled ? 0x33384a : 0x6a9ad0);
     const rBtn = this.add.rectangle(x, ry, w - 40, 52, 0xffffff, 0.001);
     this.add.text(x, ry, label, {
       fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'bold',

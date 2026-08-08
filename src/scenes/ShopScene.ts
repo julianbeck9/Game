@@ -6,6 +6,7 @@ import { drawItemIcon } from '../items/icons';
 import { starLabel, starUpgradeCost, starsOf, MAX_STARS } from '../items/stars';
 import { sfx } from '../core/sfx';
 import { STR } from '../core/strings';
+import { backdrop, cardFrame, buttonPlate } from '../ui/panel';
 
 /** Between rounds, after the augment pick: spend the round's gold. */
 export class ShopScene extends Phaser.Scene {
@@ -30,7 +31,7 @@ export class ShopScene extends Phaser.Scene {
 
   create(): void {
     this.actionPanel = null;
-    this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.94);
+    backdrop(this, GAME_H / 2 + 70, 0x3a2f6a);
     this.add
       .text(GAME_W / 2, 80, STR.shopTitle, {
         fontFamily: 'Georgia, serif',
@@ -80,9 +81,10 @@ export class ShopScene extends Phaser.Scene {
     const y = GAME_H / 2 + 70;
     offers.forEach((it, i) => this.makeItemCard(it, x0 + i * (cardW + gap), y, cardW, cardH));
 
+    // Rounded plate + invisible hit area, matching the pick screen's buttons.
+    buttonPlate(this, GAME_W / 2, GAME_H - 74, 420, 88, 0x2a2a40, COLORS.player, 18);
     const btn = this.add
-      .rectangle(GAME_W / 2, GAME_H - 74, 420, 88, 0x2a2a40, 1)
-      .setStrokeStyle(4, COLORS.player, 1)
+      .rectangle(GAME_W / 2, GAME_H - 74, 420, 88, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true });
     this.add
       .text(GAME_W / 2, GAME_H - 74, STR.shopContinue, {
@@ -278,8 +280,26 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private makeItemCard(it: ItemDef, x: number, y: number, w: number, h: number): void {
+    // Price class is the item's rarity here, so it drives the frame the way tier
+    // drives the pick card: budget items sit quiet, luxury items glow.
+    const priceColor = it.cost >= 1000 ? COLORS.prisma : it.cost >= 600 ? COLORS.gold : COLORS.silver;
+    const glow = it.cost >= 1000 ? 9 : it.cost >= 600 ? 6 : 3;
+    cardFrame(this, x, y, w, h, priceColor, glow, 18);
+    // Hover wash and sold overlay, both hidden until needed.
+    const hov = this.add.graphics().setVisible(false);
+    hov.fillStyle(0xffffff, 0.05);
+    hov.fillRoundedRect(x - w / 2, y - h / 2, w, h, 18);
+    hov.lineStyle(4, priceColor, 1);
+    hov.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 18);
+    const soldG = this.add.graphics().setVisible(false);
+    soldG.fillStyle(0x0d1a10, 0.62);
+    soldG.fillRoundedRect(x - w / 2, y - h / 2, w, h, 18);
+    soldG.lineStyle(3, 0x44dd66, 1);
+    soldG.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 18);
+
     const zone = this.add.container(x, y);
-    const bg = this.add.rectangle(0, 0, w, h, 0x14141f, 1).setStrokeStyle(3, 0x3a3a55, 1);
+    // Invisible hit area over the frame; the frame itself is Graphics.
+    const bg = this.add.rectangle(0, 0, w, h, 0xffffff, 0.001);
     zone.add(bg);
 
     // 16-bit icon tile
@@ -334,13 +354,15 @@ export class ShopScene extends Phaser.Scene {
       sfx.pick();
       this.refreshLabels();
       this.rebuildOwnedRow();
-      bg.setFillStyle(0x0d1a10);
-      bg.setStrokeStyle(3, 0x44dd66, 1);
+      // Bought state is drawn on its own layer now: the card body is Graphics,
+      // and the old bg rectangle only survives as an invisible hit area.
+      hov.setVisible(false);
+      soldG.setVisible(true);
       costText.setText(STR.shopBought).setColor('#7ee08a');
     };
     bg.setInteractive({ useHandCursor: true });
-    bg.on('pointerover', () => !bought && bg.setFillStyle(0x1f1f30));
-    bg.on('pointerout', () => !bought && bg.setFillStyle(0x14141f));
+    bg.on('pointerover', () => !bought && hov.setVisible(true));
+    bg.on('pointerout', () => hov.setVisible(false));
     bg.on('pointerdown', tryBuy);
     this.cards.push({ item: it, buy: tryBuy });
   }
