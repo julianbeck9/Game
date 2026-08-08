@@ -99,6 +99,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private rig: CameraRig | null = null;
   /** Edge chevrons for enemies the zoom pushed out of view. */
   private offGfx: Phaser.GameObjects.Graphics | null = null;
+  /** Throttle for the Brandspur dash trail (run.flags.dashFireTrail). */
+  private nextTrailFireAt = 0;
   private goldHudText: Phaser.GameObjects.Text | null = null;
   private buildChips: Phaser.GameObjects.Container | null = null;
   private buildChipsTop = 250;
@@ -202,7 +204,34 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.input.keyboard?.on('keydown', initAudio);
     // Severity is passed through so a scratch and a killing blow do not make
     // the same noise; it is the same number the hit-stop, kick and spray read.
-    this.bus.on('autoHit', ({ target, dmg }) => sfx.hit(severityOf(dmg, target)));
+    this.bus.on('autoHit', ({ target, dmg }) => {
+      sfx.hit(severityOf(dmg, target));
+      // Kettenschlag: the hit arcs onward. Changes who you stand next to —
+      // a crowd stops being a threat to kite and becomes the reason to wade
+      // in. Dealt as 'other' on purpose: routing it back through 'auto' would
+      // re-enter this handler and chain forever.
+      const links = run.flags.autoChain;
+      if (links <= 0 || dmg <= 0 || !target.alive) return;
+      const seen = new Set<Unit>([target]);
+      let from = target;
+      for (let i = 0; i < links; i++) {
+        let best: Unit | null = null;
+        let bestD = 300;
+        for (const u of this.units) {
+          if (u.team !== 'enemy' || !u.alive || seen.has(u)) continue;
+          const d = dist(from.x, from.y, u.x, u.y);
+          if (d < bestD) {
+            bestD = d;
+            best = u;
+          }
+        }
+        if (!best) break;
+        this.flashLine(from.x, from.y, best.x, best.y, 0xffe27a);
+        this.dealDamage(this.player, best, dmg * 0.55, 'other');
+        seen.add(best);
+        from = best;
+      }
+    });
     this.bus.on('abilityCast', () => sfx.cast());
     this.bus.on('dashStart', () => sfx.dash());
     this.bus.on('damageTaken', ({ dmg }) => sfx.hurt(severityOf(dmg, this.player)));
@@ -726,6 +755,9 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.particles.death(target.x, target.y, COLORS.enemy, target.isBoss || target.radius > UNIT_RADIUS * 1.2);
       this.rig?.shake(0.006);
       this.rig?.punch(0.09);
+      // Kronjagd: a takedown hands Q straight back. Read as a flag here rather
+      // than as an augment identity, like every other rule the core enforces.
+      if (run.flags.qResetOnKill) this.player.reduceCooldown('Q', 99999);
       this.bus.emit('enemyDeath', { enemy: target });
       this.bus.emit('killWindow', { victim: target });
     }
@@ -1086,6 +1118,21 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       this.player.move(dt, mv);
       if (this.player.dashing) {
         this.dashTrail.push({ x: this.player.x, y: this.player.y, until: time + 450 });
+        // Brandspur: the dash stops being purely an escape and becomes a way
+        // to draw a line across the arena that enemies have to path around.
+        // Throttled so a single dash lays a trail of pools, not one per frame.
+        if (run.flags.dashFireTrail > 0 && time >= this.nextTrailFireAt) {
+          this.nextTrailFireAt = time + 55;
+          this.addHazard({
+            x: this.player.x,
+            y: this.player.y,
+            r: 48,
+            until: time + 2600,
+            dps: run.flags.dashFireTrail,
+            team: 'player',
+            color: 0xff7a3a,
+          });
+        }
       }
 
       for (const u of this.units) u.update(time, dt);

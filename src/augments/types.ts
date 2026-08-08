@@ -22,6 +22,24 @@ export interface RuleFlags {
   qCdMult: number;
   eCdMult: number;
   dashCdMult: number;
+
+  /*
+   * Rule flags below change how a LOOP works rather than what a number is.
+   *
+   * A survey of the pool found 173 augments, 156 of them carrying hooks — but
+   * only 6 carrying a rule flag. Nearly everything was a variation on "when X
+   * happens, deal extra damage", which is why a playtest called them "schlecht
+   * und uncool": the pool was wide and the decisions inside it were all the
+   * same decision at different magnitudes. These three each retune a different
+   * verb — when you may attack, what movement is for, and who a hit lands on.
+   */
+
+  /** Takedowns reset Q. Turns the ability from a cooldown into a rhythm. */
+  qResetOnKill: boolean;
+  /** Damage per second of the burning ground a dash leaves behind; 0 = none. */
+  dashFireTrail: number;
+  /** Extra enemies an auto-attack arcs to. */
+  autoChain: number;
 }
 
 export const DEFAULT_FLAGS: RuleFlags = {
@@ -37,6 +55,9 @@ export const DEFAULT_FLAGS: RuleFlags = {
   qCdMult: 1,
   eCdMult: 1,
   dashCdMult: 1,
+  qResetOnKill: false,
+  dashFireTrail: 0,
+  autoChain: 0,
 };
 
 /** Everything an augment hook may touch. Handlers never reach into scene internals. */

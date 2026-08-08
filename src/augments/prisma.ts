@@ -1056,7 +1056,55 @@ const lauffeuer: AugmentDef = {
   },
 };
 
+/*
+ * Rule-breakers, added after a playtest called the pool "schlecht und uncool"
+ * and asked for augments "die das gameplay stark ändern".
+ *
+ * The survey behind that: 173 augments, 156 with hooks, but only 6 with a rule
+ * flag. Almost the whole pool was "when X happens, deal extra damage" — a wide
+ * catalogue in which every choice was the same choice at a different size. The
+ * three below each retune a different verb instead of a number, and each is
+ * meant to change what the player DOES, not how hard they hit.
+ */
+
+// Kronjagd — a takedown hands Q straight back, so the ability stops being a
+// cooldown to respect and becomes a rhythm to maintain. Whole fights turn into
+// a chain if the player picks the right target order.
+const kronjagd: AugmentDef = {
+  id: 'kronjagd',
+  name: 'Crown Hunt',
+  tier: 'prisma',
+  tags: ['Arkan'],
+  description: 'Takedowns reset your Q.',
+  ruleFlags: { qResetOnKill: true },
+};
+
+// Brandspur — the dash stops being an escape and becomes a way to draw a wall
+// of fire across the arena that enemies have to path around.
+const brandspur: AugmentDef = {
+  id: 'brandspur',
+  name: 'Ember Trail',
+  tier: 'prisma',
+  tags: ['Bruch'],
+  description: 'Your dash leaves burning ground for 2.6s (28 damage per second).',
+  ruleFlags: { dashFireTrail: 28 },
+};
+
+// Kettenschlag — hits arc onward, so a crowd stops being something to kite and
+// becomes the reason to stand in the middle of it.
+const kettenschlag: AugmentDef = {
+  id: 'kettenschlag',
+  name: 'Chain Strike',
+  tier: 'prisma',
+  tags: ['Sturm'],
+  description: 'Your attacks arc to 2 nearby enemies for 55% damage.',
+  ruleFlags: { autoChain: 2 },
+};
+
 export const PRISMA: AugmentDef[] = [
+  kronjagd,
+  brandspur,
+  kettenschlag,
   tempospirale,
   bodenstaendig,
   klingenwalzer,
