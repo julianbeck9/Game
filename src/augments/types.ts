@@ -46,6 +46,10 @@ export interface RuleFlags {
   dashDamage: number;
   /** Pixels a hit shoves its target away from the source; 0 = none. */
   knockbackOnHit: number;
+  // Dash also fires Q in the dash direction. Fuses movement and damage into one button.
+  dashCastsQ: boolean;
+  // Enemies left below this HP fraction by a hit die outright. 0 = off.
+  executeBelow: number;
 }
 
 export const DEFAULT_FLAGS: RuleFlags = {
@@ -67,6 +71,8 @@ export const DEFAULT_FLAGS: RuleFlags = {
   clutchSlowmo: false,
   dashDamage: 0,
   knockbackOnHit: 0,
+  dashCastsQ: false,
+  executeBelow: 0,
 };
 
 /** Everything an augment hook may touch. Handlers never reach into scene internals. */

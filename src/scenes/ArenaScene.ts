@@ -238,7 +238,12 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       }
     });
     this.bus.on('abilityCast', () => sfx.cast());
-    this.bus.on('dashStart', () => sfx.dash());
+    this.bus.on('dashStart', () => {
+      sfx.dash();
+      // Stormstep: dash also fires Q along the dash. Q's own cooldown still gates it,
+      // so this is a free extra cast only when Q happens to be up.
+      if (run.flags.dashCastsQ) this.player.castQ({ ...this.player.facing });
+    });
     this.bus.on('damageTaken', ({ dmg }) => sfx.hurt(severityOf(dmg, this.player)));
     this.bus.on('enemyDeath', () => sfx.kill());
     // Ability hits throw a bright spark burst so spells read clearly
@@ -663,6 +668,20 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       amount *= 100 / (100 + Math.max(0, target.stats.get('armor')));
     } else if (sch === 'magisch') {
       amount *= 100 / (100 + Math.max(0, target.stats.get('magicResist')));
+    }
+
+    // Execute: a hit that leaves an enemy under the threshold finishes it instead.
+    // Folded into `amount` before it lands so the kill runs the normal death path
+    // (gold, burst, enemyDeath) rather than a second re-entrant dealDamage call.
+    if (
+      run.flags.executeBelow > 0 &&
+      target.team === 'enemy' &&
+      target.alive &&
+      target.hp - amount > 0 &&
+      (target.hp - amount) / target.maxHP < run.flags.executeBelow
+    ) {
+      amount = target.hp + target.shield;
+      this.announce('Execute!', '#ff8a6a');
     }
 
     const prevPct = target.hpPct;

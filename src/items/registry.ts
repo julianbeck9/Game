@@ -883,7 +883,34 @@ let itTanzTicking = false;
 // LUXUS
 // ---------------------------------------------------------------------------
 
+// Rule-changing items. The catalogue was stat packages with damage riders; a
+// playtest wanted items to alter play the way the new prismatic augments do.
+// Both below change a decision (when to dash / who to hit) rather than a number.
 const LUXUS: ItemDef[] = [
+  item({
+    // Dash fires Q too — fuses the escape button and the damage button.
+    id: 'it_sturmschritt',
+    icon: 'boots',
+    name: 'Stormstep Greaves',
+    cost: 1100,
+    glyph: '»',
+    color: 0x7fd8ff,
+    description: '+12% move speed · your dash also casts Q in the dash direction',
+    statMods: [{ stat: 'moveSpeed', pct: 0.12 }],
+    ruleFlags: { dashCastsQ: true },
+  }),
+  item({
+    // Execute threshold — rewrites target priority: finish the wounded, not the nearest.
+    id: 'it_witwenmacher',
+    icon: 'sword',
+    name: 'Widowmaker',
+    cost: 1100,
+    glyph: '†',
+    color: 0xff6a8a,
+    description: '+18 AD · hits that leave an enemy below 15% health kill them outright',
+    statMods: [{ stat: 'damage', flat: 18 }],
+    ruleFlags: { executeBelow: 0.15 },
+  }),
   item({
     id: 'it_goldspatel',
     icon: 'star',
