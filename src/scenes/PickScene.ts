@@ -5,6 +5,14 @@ import { rollOneOffer, nextOfferAfterReroll, Offer } from '../augments/offers';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { sfx } from '../core/sfx';
 
+
+// Blend two colours; t=0 -> a, t=1 -> b.
+function mix(a: number, b: number, t: number): number {
+  const c = Phaser.Display.Color.Interpolate.ColorWithColor(
+    Phaser.Display.Color.ValueToColor(a), Phaser.Display.Color.ValueToColor(b), 100, t * 100);
+  return Phaser.Display.Color.GetColor(c.r, c.g, c.b);
+}
+
 const TIER_COLOR: Record<Tier, number> = {
   silber: COLORS.silver,
   gold: COLORS.gold,
@@ -94,9 +102,42 @@ export class PickScene extends Phaser.Scene {
     }
   }
 
+  // Vertical gradient as stacked bands — Phaser Graphics has no gradient fill.
+  private gradient(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number,
+                   top: number, bottom: number, alpha = 1, steps = 24): void {
+    for (let i = 0; i < steps; i++) {
+      const t = i / (steps - 1);
+      const c = Phaser.Display.Color.Interpolate.ColorWithColor(
+        Phaser.Display.Color.ValueToColor(top), Phaser.Display.Color.ValueToColor(bottom), 100, t * 100);
+      g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), alpha);
+      g.fillRect(x, y + (h * i) / steps, w, h / steps + 1);
+    }
+  }
+
+  // Backdrop: gradient + a warm pool behind the cards + edge vignette.
+  // The screen used to be one flat near-black rectangle, which is why the whole
+  // decision surface read as a debug menu rather than as part of the game.
+  private backdrop(): void {
+    const g = this.add.graphics().setDepth(-10);
+    this.gradient(g, 0, 0, GAME_W, GAME_H, 0x141426, 0x07070e);
+    // soft glow centred on the card row
+    for (let i = 10; i > 0; i--) {
+      g.fillStyle(0x2a3a6a, 0.035);
+      g.fillEllipse(GAME_W / 2, GAME_H / 2 + 40, 300 + i * 190, 160 + i * 92);
+    }
+    // vignette
+    for (let i = 0; i < 7; i++) {
+      g.fillStyle(0x000000, 0.055);
+      g.fillRect(0, 0, GAME_W, 26 + i * 12);
+      g.fillRect(0, GAME_H - (26 + i * 12), GAME_W, 26 + i * 12);
+      g.fillRect(0, 0, 26 + i * 12, GAME_H);
+      g.fillRect(GAME_W - (26 + i * 12), 0, 26 + i * 12, GAME_H);
+    }
+  }
+
   private render(): void {
     this.children.removeAll(true);
-    this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.94);
+    this.backdrop();
     if (this.mode === 'tradeRemove') return this.renderTradeRemove();
     if (this.mode === 'tradePick') return this.renderTradePick();
     this.renderSelect();
@@ -280,12 +321,55 @@ export class PickScene extends Phaser.Scene {
     const def = o.def;
     const tierColor = TIER_COLOR[def.tier];
 
-    const bg = this.add.rectangle(x, y, w, h, 0x14141f, 1).setStrokeStyle(4, tierColor, 1);
-    this.add.rectangle(x, y - h / 2 + 44, w - 8, 80, tierColor, def.tier === 'prisma' ? 0.16 : 0.1);
-    this.add.text(x - w / 2 + 30, y - h / 2 + 44, TIER_LABEL[def.tier], {
-      fontFamily: 'sans-serif', fontSize: '28px', fontStyle: 'bold',
+    const L = x - w / 2;
+    const T = y - h / 2;
+    const R = 22; // corner radius
+    const g = this.add.graphics();
+
+    // Outer glow, strength by tier — a prisma pick should be visible as special
+    // before the label is read. Previously all three tiers were the same grey
+    // card with a thin coloured line, so rarity carried no weight at a glance.
+    const glow = def.tier === 'prisma' ? 9 : def.tier === 'gold' ? 6 : 3;
+    for (let i = glow; i > 0; i--) {
+      g.fillStyle(tierColor, 0.045);
+      g.fillRoundedRect(L - i * 3, T - i * 3, w + i * 6, h + i * 6, R + i * 2);
+    }
+    // Card body: a DARK base with the tier colour mixed in, not the tier colour
+    // darkened. Shading the tier colour directly left silver cards almost white
+    // and drowned their own label.
+    g.fillStyle(0x1b1b2b, 1);
+    g.fillRoundedRect(L, T, w, h, R);
+    this.gradient(g, L + 2, T + 2, w - 4, h - 4, mix(0x161622, tierColor, 0.22), 0x0b0b13, 1, 20);
+    g.lineStyle(3, tierColor, 0.95);
+    g.strokeRoundedRect(L, T, w, h, R);
+
+    // Tier band across the top, clipped to the card's rounded corners.
+    g.fillStyle(tierColor, def.tier === 'prisma' ? 0.3 : 0.2);
+    g.fillRoundedRect(L + 3, T + 3, w - 6, 84, { tl: R - 3, tr: R - 3, bl: 0, br: 0 });
+    g.lineStyle(2, tierColor, 0.5);
+    g.lineBetween(L + 3, T + 87, L + w - 3, T + 87);
+
+    // Oversized tier initial as a watermark — fills the dead lower half the
+    // old card left empty and gives each rarity a silhouette of its own.
+    this.add.text(x, y + h / 2 - 118, TIER_LABEL[def.tier][0], {
+      fontFamily: 'Georgia, serif', fontSize: '210px', fontStyle: 'bold',
       color: '#' + tierColor.toString(16).padStart(6, '0'),
-    }).setOrigin(0, 0.5);
+    }).setOrigin(0.5).setAlpha(0.07);
+
+    this.add.text(L + 30, T + 44, TIER_LABEL[def.tier].toUpperCase(), {
+      fontFamily: 'sans-serif', fontSize: '26px', fontStyle: 'bold',
+      color: '#' + tierColor.toString(16).padStart(6, '0'),
+    }).setOrigin(0, 0.5).setLetterSpacing?.(3);
+
+    // Invisible hit area on top of the Graphics; Graphics itself is awkward to
+    // make interactive and needs an explicit hit polygon.
+    const bg = this.add.rectangle(x, y, w, h, 0xffffff, 0.001);
+    // Hover wash, hidden until pointerover.
+    const hov = this.add.graphics().setVisible(false);
+    hov.fillStyle(0xffffff, 0.05);
+    hov.fillRoundedRect(L, T, w, h, R);
+    hov.lineStyle(4, tierColor, 1);
+    hov.strokeRoundedRect(L, T, w, h, R);
 
     this.add.text(x, y - h / 2 + 150, def.name, {
       fontFamily: 'Georgia, serif', fontSize: '46px', fontStyle: 'bold', color: '#ffffff',
@@ -309,8 +393,8 @@ export class PickScene extends Phaser.Scene {
 
     // Pick — the whole card
     bg.setInteractive({ useHandCursor: true });
-    bg.on('pointerover', () => bg.setFillStyle(0x1f1f30));
-    bg.on('pointerout', () => bg.setFillStyle(0x14141f));
+    bg.on('pointerover', () => hov.setVisible(true));
+    bg.on('pointerout', () => hov.setVisible(false));
     bg.on('pointerdown', () => (trade ? this.pickTradeGold(index) : this.pickSlot(index)));
 
     // Reroll — UNDER the card, clearly separated so it can't be misclicked.
@@ -319,9 +403,13 @@ export class PickScene extends Phaser.Scene {
     const ry = y + h / 2 + 34;
     const disabled = o.rerolled || o.exhausted;
     const label = o.exhausted ? 'no augments left' : o.rerolled ? 'reroll used' : '⟳  Reroll';
-    const rBtn = this.add
-      .rectangle(x, ry, w - 40, 52, disabled ? 0x191922 : 0x243050, 1)
-      .setStrokeStyle(2, disabled ? 0x33384a : 0x6a9ad0, 1);
+    // Rounded to match the card; flat rectangles were the cheapest-looking part.
+    const rg = this.add.graphics();
+    rg.fillStyle(disabled ? 0x191922 : 0x243050, 1);
+    rg.fillRoundedRect(x - (w - 40) / 2, ry - 26, w - 40, 52, 14);
+    rg.lineStyle(2, disabled ? 0x33384a : 0x6a9ad0, 1);
+    rg.strokeRoundedRect(x - (w - 40) / 2, ry - 26, w - 40, 52, 14);
+    const rBtn = this.add.rectangle(x, ry, w - 40, 52, 0xffffff, 0.001);
     this.add.text(x, ry, label, {
       fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'bold',
       color: disabled ? '#44485a' : '#a8d8ff',
