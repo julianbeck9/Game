@@ -1140,9 +1140,19 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.bus.emit('roundEnd', { win });
     this.projectiles = [];
 
-    // Zahltag nur jede 2. Runde (dafür doppelt) — Kills bleiben Kleingeld
+    // Zahltag nur jede 2. Runde (dafür doppelt) — Kills bleiben Kleingeld.
+    //
+    // The first payday is deliberately larger. The starter shop spends almost
+    // all of the 350 opening gold on boots, so that one payday has to carry the
+    // entire first real shop by itself. Measured before this boost: 458 gold in
+    // hand at the round-3 shop against a cheapest core item of 640 — so the
+    // first shop a player ever reaches was the one shop where nothing
+    // interesting was ever affordable, and it stocked budget gear twice over.
+    // With the boost it lands near 680: one core item, chosen deliberately,
+    // instead of a consolation trinket.
     const payday = run.round % 2 === 0;
-    const reward = payday ? (win ? 240 + 24 * run.round : 160) : 0;
+    const firstPayday = payday && win && run.round === 2 ? 220 : 0;
+    const reward = payday ? (win ? 240 + 24 * run.round + firstPayday : 160) : 0;
     if (reward > 0) {
       earnGold(reward);
       // Screen-locked. These announce the round to the player rather than

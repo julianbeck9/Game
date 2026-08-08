@@ -47,12 +47,23 @@ export function hitStopMs(sev: number, opts: ImpactOpts): number {
   return Math.round(35 + sev * 75);
 }
 
-/** Camera shake as [duration ms, intensity]. */
+/**
+ * Camera shake as [duration ms, intensity].
+ *
+ * Cut to roughly a third of the original numbers. Those were tuned when shake
+ * was the ONLY thing the camera did on a hit; it now also kicks along the
+ * damage vector and punches the zoom, and all three landing at full strength
+ * read as the camera being knocked about rather than as a blow connecting.
+ * Playtest feedback was blunt about it: "der screenshake ist recht stark".
+ *
+ * The kick is the part that carries information — it says which direction the
+ * hit came from — so shake gives way to it and stays as texture underneath.
+ */
 export function shakeFor(sev: number, opts: ImpactOpts): [number, number] {
-  if (opts.onPlayer) return [150, Math.min(0.02, 0.005 + sev * 0.02)];
-  if (opts.killing) return [140, 0.008];
+  if (opts.onPlayer) return [150, Math.min(0.008, 0.002 + sev * 0.008)];
+  if (opts.killing) return [140, 0.0035];
   if (sev < 0.12) return [0, 0];
-  return [Math.round(70 + sev * 90), Math.min(0.014, 0.002 + sev * 0.014)];
+  return [Math.round(70 + sev * 90), Math.min(0.005, 0.001 + sev * 0.005)];
 }
 
 /** Damage-number size in px, so a big hit is legible as big before it is read. */

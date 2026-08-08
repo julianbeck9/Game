@@ -22,8 +22,17 @@ export interface ItemDef extends AugmentDef {
   color: number;
   /** 16-bit thematic icon; defaults per category if omitted. */
   icon?: ItemIconKind;
-  /** Boots and other one-of-a-kind items: can only be owned once. */
-  unique?: boolean;
+  /**
+   * Mutual-exclusion group. Owning one item from a group bars every other item
+   * in it — all four boots share `'boots'`, so a run wears one pair, not four.
+   *
+   * This was a boolean, and every check compared `o.id === it.id`, so it only
+   * ever stopped a *second copy of the same* item. Owning Wind Boots left the
+   * other three pairs in the pool, and they kept taking up slots in a six-slot
+   * shop marked "Owned" — the docstring on `rollShop` claimed they were
+   * filtered out, which was simply not true of the code beneath it.
+   */
+  unique?: string;
   /** Star rank 1..3 (see items/stars.ts). Absent means an unforged ★1 item. */
   stars?: number;
   /** Pristine ★1 snapshot, so each forge derives from the base, not a scaled copy. */
@@ -42,7 +51,7 @@ const BUDGET: ItemDef[] = [
   item({
     id: 'it_windsohlen',
     icon: 'boots',
-    unique: true,
+    unique: 'boots',
     name: 'Wind Boots',
     cost: 280,
     glyph: 'W',
@@ -53,7 +62,7 @@ const BUDGET: ItemDef[] = [
   item({
     id: 'it_sporensohlen',
     icon: 'boots',
-    unique: true,
+    unique: 'boots',
     name: 'Spur Boots',
     cost: 340,
     glyph: 'S',
@@ -68,7 +77,7 @@ const BUDGET: ItemDef[] = [
   item({
     id: 'it_panzerstiefel',
     icon: 'boots',
-    unique: true,
+    unique: 'boots',
     name: 'Plated Boots',
     cost: 340,
     glyph: 'P',
@@ -82,7 +91,7 @@ const BUDGET: ItemDef[] = [
   item({
     id: 'it_kettenschuhe',
     icon: 'boots',
-    unique: true,
+    unique: 'boots',
     name: 'Mercury Boots',
     cost: 330,
     glyph: 'C',
@@ -920,12 +929,23 @@ export function itemById(id: string): ItemDef | undefined {
  * gating them would remove real choices instead of dead ones. Move that line by
  * adding or removing `needs: ['ap']` — nothing else needs touching.
  */
+/**
+ * True when the run already owns something from this item's exclusion group —
+ * the check that makes `unique` mean "one pair of boots" rather than "not this
+ * exact pair twice". Shared by the offer roll and the buy button so the shop
+ * cannot show an item it would then refuse to sell.
+ */
+export function blockedByUnique(it: ItemDef): boolean {
+  return !!it.unique && run.items.some((o) => o.unique === it.unique);
+}
+
 export function rollShop(round: number, count = 6): ItemDef[] {
   const owned = (id: string) => run.items.some((it) => it.id === id);
   // The pre-round-1 starter shop only stocks cheap gear (boots, basic pieces)
   const pool = ITEMS.filter(
     (i) =>
       !owned(i.id) &&
+      !blockedByUnique(i) &&
       !isDeleted(i.id) &&
       (round <= 2 ? i.cost <= 400 : true) &&
       augmentFitsChampion(i, run.champion),

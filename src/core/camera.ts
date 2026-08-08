@@ -92,7 +92,7 @@ export class CameraRig {
    * with the hit-stop and the spray instead of having its own opinion.
    */
   kick(dx: number, dy: number, sev: number): void {
-    const power = 14 + sev * 46;
+    const power = 10 + sev * 32;
     this.kickVX += dx * power;
     this.kickVY += dy * power;
   }
@@ -116,7 +116,7 @@ export class CameraRig {
    * convention so the existing call sites did not have to be retuned.
    */
   shake(intensity: number): void {
-    this.shakeAmp = Math.min(46, Math.max(this.shakeAmp, intensity * GAME_W));
+    this.shakeAmp = Math.min(22, Math.max(this.shakeAmp, intensity * GAME_W));
   }
 
   /**

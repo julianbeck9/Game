@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { run, addItem, sellItem, upgradeItem } from '../core/run';
-import { ItemDef, rollShop, MAX_ITEMS } from '../items/registry';
+import { ItemDef, rollShop, MAX_ITEMS, blockedByUnique } from '../items/registry';
 import { drawItemIcon } from '../items/icons';
 import { starLabel, starUpgradeCost, starsOf, MAX_STARS } from '../items/stars';
 import { sfx } from '../core/sfx';
@@ -309,7 +309,7 @@ export class ShopScene extends Phaser.Scene {
         .setOrigin(0.5),
     );
 
-    const ownsBoots = it.unique && run.items.some((o) => o.id === it.id);
+    const ownsBoots = blockedByUnique(it);
     const costText = this.add
       .text(0, h / 2 - 42, ownsBoots ? 'Owned' : `${it.cost} Gold`, {
         fontFamily: 'sans-serif',
@@ -324,7 +324,7 @@ export class ShopScene extends Phaser.Scene {
     const tryBuy = () => {
       if (bought) return;
       // Unique items (boots) can only be owned once
-      const dupUnique = it.unique && run.items.some((o) => o.id === it.id);
+      const dupUnique = blockedByUnique(it);
       if (dupUnique || run.gold < it.cost || run.items.length >= MAX_ITEMS) {
         this.tweens.add({ targets: zone, x: x + 8, duration: 50, yoyo: true, repeat: 2 });
         return;
