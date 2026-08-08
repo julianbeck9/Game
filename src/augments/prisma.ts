@@ -1101,10 +1101,63 @@ const kettenschlag: AugmentDef = {
   ruleFlags: { autoChain: 2 },
 };
 
+// Kronlos — the flag `noAutoAttacks` was implemented in the combat core and
+// referenced by name in Player, but no augment had ever set it: a finished
+// rule-breaker with no way into a run. Giving up the auto-attack is the
+// largest single change to how a round is played that this game can express.
+const kronlos: AugmentDef = {
+  id: 'kronlos',
+  name: 'Crownless',
+  tier: 'prisma',
+  tags: ['Arkan', 'Bruch'],
+  description: 'You can no longer auto-attack. In return: +70% ability amp and +60 ability haste.',
+  ruleFlags: { noAutoAttacks: true },
+  statMods: [
+    { stat: 'abilityDamage', pct: 0.7 },
+    { stat: 'abilityHaste', flat: 60 },
+  ],
+};
+
+// Nadelöhr — the world slows and the player does not. Deliberately not a
+// uniform slow-motion: that scales threat and escape by the same factor and
+// changes nothing.
+const nadeloehr: AugmentDef = {
+  id: 'nadeloehr',
+  name: 'Needle’s Eye',
+  tier: 'prisma',
+  tags: ['Ward'],
+  description: 'Below 30% health the world slows to 40% for 2.6s while you keep full speed (16s cooldown).',
+  ruleFlags: { clutchSlowmo: true },
+};
+
+// Sturmbock — the dash stops being travel and becomes the attack.
+const sturmbock: AugmentDef = {
+  id: 'sturmbock',
+  name: 'Battering Charge',
+  tier: 'prisma',
+  tags: ['Sturm', 'Bruch'],
+  description: 'Your dash deals 70 damage to every enemy it passes through.',
+  ruleFlags: { dashDamage: 70 },
+};
+
+// Brecheisen — every hit buys space, which rewrites melee spacing entirely.
+const brecheisen: AugmentDef = {
+  id: 'brecheisen',
+  name: 'Crowbar',
+  tier: 'prisma',
+  tags: ['Bruch'],
+  description: 'Your hits shove enemies 46 units away from you.',
+  ruleFlags: { knockbackOnHit: 46 },
+};
+
 export const PRISMA: AugmentDef[] = [
   kronjagd,
   brandspur,
   kettenschlag,
+  kronlos,
+  nadeloehr,
+  sturmbock,
+  brecheisen,
   tempospirale,
   bodenstaendig,
   klingenwalzer,

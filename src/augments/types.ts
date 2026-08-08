@@ -40,6 +40,12 @@ export interface RuleFlags {
   dashFireTrail: number;
   /** Extra enemies an auto-attack arcs to. */
   autoChain: number;
+  /** Below 30% health the world slows and the player does not; 0 = off. */
+  clutchSlowmo: boolean;
+  /** Damage dealt to enemies the dash passes through; 0 = none. */
+  dashDamage: number;
+  /** Pixels a hit shoves its target away from the source; 0 = none. */
+  knockbackOnHit: number;
 }
 
 export const DEFAULT_FLAGS: RuleFlags = {
@@ -58,6 +64,9 @@ export const DEFAULT_FLAGS: RuleFlags = {
   qResetOnKill: false,
   dashFireTrail: 0,
   autoChain: 0,
+  clutchSlowmo: false,
+  dashDamage: 0,
+  knockbackOnHit: 0,
 };
 
 /** Everything an augment hook may touch. Handlers never reach into scene internals. */

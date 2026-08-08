@@ -101,6 +101,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private offGfx: Phaser.GameObjects.Graphics | null = null;
   /** Throttle for the Brandspur dash trail (run.flags.dashFireTrail). */
   private nextTrailFireAt = 0;
+  /** Nadelöhr bullet-time window and its re-arm point (run.flags.clutchSlowmo). */
+  private clutchUntil = 0;
+  private clutchReadyAt = 0;
+  /** Enemies already struck by the current dash (run.flags.dashDamage). */
+  private dashHits = new Set<Unit>();
   private goldHudText: Phaser.GameObjects.Text | null = null;
   private buildChips: Phaser.GameObjects.Container | null = null;
   private buildChipsTop = 250;
@@ -708,6 +713,14 @@ export class ArenaScene extends Phaser.Scene implements Combat {
           dy = (target.y - source.y) / l;
         }
       }
+      // Brecheisen: shove the target along the blow. Uses moveBy, so a body
+      // driven into a wall stops at it instead of phasing through — the same
+      // collision path walking uses, which keeps knockback from becoming a way
+      // to post enemies inside terrain.
+      const shove = run.flags.knockbackOnHit;
+      if (shove > 0 && target !== this.player && target.alive) {
+        target.moveBy(dx * shove, dy * shove);
+      }
       const [dur, amp] = shakeFor(sev, opts);
       if (dur > 0) this.rig?.shake(amp);
       this.rig?.kick(dx, dy, sev);
@@ -1115,9 +1128,38 @@ export class ArenaScene extends Phaser.Scene implements Combat {
           y: (this.keys.S.isDown ? 1 : 0) - (this.keys.W.isDown ? 1 : 0),
         };
       }
+      // Nadelöhr: at low health the WORLD slows and the player does not. A
+      // uniform slow-motion would be no help at all — it scales the threat and
+      // the escape by the same factor. Splitting the two is the whole point:
+      // the moment you are about to die is the moment you get to out-read the
+      // fight, which is a different feeling from simply surviving on stats.
+      if (
+        run.flags.clutchSlowmo &&
+        this.player.alive &&
+        this.player.hpPct < 0.3 &&
+        time >= this.clutchReadyAt
+      ) {
+        this.clutchUntil = time + 2600;
+        this.clutchReadyAt = time + 16000;
+        this.announce('Needle’s Eye!', '#a8d8ff');
+      }
+      const worldDt = time < this.clutchUntil ? dt * 0.4 : dt;
+
       this.player.move(dt, mv);
+      if (!this.player.dashing) this.dashHits.clear();
       if (this.player.dashing) {
         this.dashTrail.push({ x: this.player.x, y: this.player.y, until: time + 450 });
+        // Sturmbock: the dash itself hurts what it passes through, once per
+        // enemy per dash — otherwise a single crossing ticks every frame and
+        // deletes the round.
+        if (run.flags.dashDamage > 0) {
+          for (const u of this.units) {
+            if (u.team !== 'enemy' || !u.alive || this.dashHits.has(u)) continue;
+            if (dist(this.player.x, this.player.y, u.x, u.y) > u.radius + this.player.radius + 14) continue;
+            this.dashHits.add(u);
+            this.dealDamage(this.player, u, run.flags.dashDamage, 'ability');
+          }
+        }
         // Brandspur: the dash stops being purely an escape and becomes a way
         // to draw a line across the arena that enemies have to path around.
         // Throttled so a single dash lays a trail of pools, not one per frame.
@@ -1135,13 +1177,14 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         }
       }
 
-      for (const u of this.units) u.update(time, dt);
+      // The player keeps real time; everything hostile runs on worldDt.
+      for (const u of this.units) u.update(time, u === this.player ? dt : worldDt);
       this.augments.update(dt);
-      this.tickDots(dt);
-      this.updateModifier(dt);
+      this.tickDots(worldDt);
+      this.updateModifier(worldDt);
       this.flushHealNumbers();
 
-      for (const p of this.projectiles) p.update(dt, this.units);
+      for (const p of this.projectiles) p.update(worldDt, this.units);
       // [vfx-agent] Trails are emitted here rather than in render() so they only
       // drop while the fight is actually running — a stationary projectile on a
       // paused field would otherwise keep shedding motes on the spot.
