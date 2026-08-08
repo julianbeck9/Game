@@ -66,6 +66,9 @@ export class CameraRig {
   /** Extra zoom on top of the base, decaying back to 0. */
   private punchZ = 0;
 
+  /** Current shake amplitude in WORLD px, decaying. See `shake`. */
+  private shakeAmp = 0;
+
   constructor(scene: Phaser.Scene, startX = GAME_W / 2, startY = GAME_H / 2) {
     this.cam = scene.cameras.main;
     // Bounds are the field itself: the camera may never show the void outside
@@ -97,6 +100,23 @@ export class CameraRig {
   /** A snap of zoom that eases back out. `amount` is in zoom units. */
   punch(amount: number): void {
     this.punchZ = Math.min(0.35, this.punchZ + amount);
+  }
+
+  /**
+   * Random jitter, replacing `Phaser.Camera.shake`.
+   *
+   * Phaser's own shake offsets the camera MATRIX, which moves everything the
+   * camera draws — including `scrollFactor(0)` objects. With the HUD now
+   * screen-locked and anchored hard against the edges, a shake dragged the
+   * round counter and the ability buttons past the border and clipped them:
+   * on a screenshot it read as a broken layout rather than as a jolt.
+   *
+   * Applied as a world-space offset instead, so it shakes the arena and leaves
+   * the interface alone. `intensity` keeps Phaser's fraction-of-viewport
+   * convention so the existing call sites did not have to be retuned.
+   */
+  shake(intensity: number): void {
+    this.shakeAmp = Math.min(46, Math.max(this.shakeAmp, intensity * GAME_W));
   }
 
   /**
@@ -144,8 +164,18 @@ export class CameraRig {
     if (this.punchZ > 0.0005) this.punchZ *= Math.exp(-7 * dt);
     else this.punchZ = 0;
 
+    let shX = 0;
+    let shY = 0;
+    if (this.shakeAmp > 0.4) {
+      shX = (Math.random() * 2 - 1) * this.shakeAmp;
+      shY = (Math.random() * 2 - 1) * this.shakeAmp;
+      this.shakeAmp *= Math.exp(-9 * dt);
+    } else {
+      this.shakeAmp = 0;
+    }
+
     this.cam.setZoom(BASE_ZOOM + this.punchZ);
-    this.cam.centerOn(this.cx + this.kickX, this.cy + this.kickY);
+    this.cam.centerOn(this.cx + this.kickX + shX, this.cy + this.kickY + shY);
   }
 }
 

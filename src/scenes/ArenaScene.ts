@@ -324,7 +324,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
           }
           this.flashLine(s.x, s.y - 620, s.x, s.y, 0xaaddff);
           this.ring(s.x, s.y, 0xaaddff, 140);
-          this.cameras.main.shake(100, 0.005);
+          this.rig?.shake(0.005);
         }
         this.strikes = this.strikes.filter((s) => this.now < s.at);
         break;
@@ -680,7 +680,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         }
       }
       const [dur, amp] = shakeFor(sev, opts);
-      if (dur > 0) this.cameras.main.shake(dur, amp);
+      if (dur > 0) this.rig?.shake(amp);
       this.rig?.kick(dx, dy, sev);
       if (sev >= 0.4) this.rig?.punch(0.03 + sev * 0.07);
       // Hit-stop is the single biggest weight gain available, and it was only
@@ -724,7 +724,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       // come apart harder than trash — the radius is the only thing on a Unit
       // that reliably tracks "how big a deal was this".
       this.particles.death(target.x, target.y, COLORS.enemy, target.isBoss || target.radius > UNIT_RADIUS * 1.2);
-      this.cameras.main.shake(120, 0.006);
+      this.rig?.shake(0.006);
       this.rig?.punch(0.09);
       this.bus.emit('enemyDeath', { enemy: target });
       this.bus.emit('killWindow', { victim: target });
@@ -1126,7 +1126,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
         this.player.hp = this.player.maxHP * 0.5;
         this.ring(this.player.x, this.player.y, 0xffd24a, 260);
         this.announce('Phönixherz!', '#ffd24a');
-        this.cameras.main.shake(200, 0.008);
+        this.rig?.shake(0.008);
         return;
       }
       this.endFight(false);
@@ -1145,30 +1145,38 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     const reward = payday ? (win ? 240 + 24 * run.round : 160) : 0;
     if (reward > 0) {
       earnGold(reward);
-      this.add
-        .text(ARENA_X, ARENA_Y + 110, `+${reward} Gold`, {
-          fontFamily: 'sans-serif',
-          fontSize: '34px',
-          fontStyle: 'bold',
-          color: '#ffd24a',
-          stroke: '#000000',
-          strokeThickness: 5,
-        })
-        .setOrigin(0.5)
-        .setDepth(200);
+      // Screen-locked. These announce the round to the player rather than
+      // marking a place in the arena, so with a following camera they have to
+      // sit on the screen — left in world space they drift off-centre with
+      // wherever the player happened to be standing when the round ended.
+      this.uiLayer.add(
+        this.add
+          .text(ARENA_X, ARENA_Y + 110, `+${reward} Gold`, {
+            fontFamily: 'sans-serif',
+            fontSize: '34px',
+            fontStyle: 'bold',
+            color: '#ffd24a',
+            stroke: '#000000',
+            strokeThickness: 5,
+          })
+          .setOrigin(0.5)
+          .setDepth(200),
+      );
     }
 
-    this.add
-      .text(ARENA_X, ARENA_Y - 60, win ? STR.victory : STR.defeat, {
-        fontFamily: 'sans-serif',
-        fontSize: '110px',
-        fontStyle: 'bold',
-        color: win ? '#ffd24a' : '#e05555',
-        stroke: '#000000',
-        strokeThickness: 8,
-      })
-      .setOrigin(0.5)
-      .setDepth(200);
+    this.uiLayer.add(
+      this.add
+        .text(ARENA_X, ARENA_Y - 60, win ? STR.victory : STR.defeat, {
+          fontFamily: 'sans-serif',
+          fontSize: '110px',
+          fontStyle: 'bold',
+          color: win ? '#ffd24a' : '#e05555',
+          stroke: '#000000',
+          strokeThickness: 8,
+        })
+        .setOrigin(0.5)
+        .setDepth(200),
+    );
 
     if (!win) {
       // One life: any loss ends the run
