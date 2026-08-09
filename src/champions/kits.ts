@@ -28,6 +28,7 @@ export interface Kit {
   fireQ: ChampionDef['fireQ'];
   castE: ChampionDef['castE'];
   onDash?: ChampionDef['onDash'];
+  dashAimed?: ChampionDef['dashAimed'];
   onAutoHit?: ChampionDef['onAutoHit'];
   onCombatInit?: ChampionDef['onCombatInit'];
   passiveTick?: ChampionDef['passiveTick'];
@@ -540,6 +541,8 @@ export const KITS: Record<string, Kit> = {
     fireQ: (p) => { p.memory.blitzFist = 1; p.combat.ring(p.x, p.y, 0xffcc33, 60); },
     onAutoHit: (p, t) => { if (!p.memory.blitzFist || !t.alive) return; p.memory.blitzFist = 0; hit(p, t, (rs(...Q_SCALE.blitzcrank) + 0.5 * bAD(p)) * AMP(p), 'physisch', 'Q'); stun(t, 900, T(p)); },
     castE: (p) => { p.combat.ring(p.x, p.y, 0x66ccff, 220); for (const u of enemiesIn(p, p.x, p.y, 220)) { hit(p, u, (rs(30, 45, 60, 75) + 0.2 * AP(p)) * AMP(p), 'magisch', 'E'); stun(u, 500, T(p)); } },
+    // The hook is aimed at the cursor, not along movement — see Kit.dashAimed.
+    dashAimed: true,
     onDash: (p, dir) => {
       // A real skillshot, not a snap to the nearest body: the hook flies where
       // you aimed and grabs the first thing in its corridor. Auto-targeting

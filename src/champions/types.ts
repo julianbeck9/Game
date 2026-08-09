@@ -75,6 +75,17 @@ export interface ChampionDef {
    * suppressed) or false/undefined to keep the plain directional dash.
    */
   onDash?(p: Player, dir: Vec): boolean | void;
+  /**
+   * The dash is an aimed skillshot, not a movement dodge.
+   *
+   * `dash()` takes no arguments and has always used `facing`, i.e. the way the
+   * player is walking. For Blitzcrank that meant his hook — the one genuinely
+   * distinctive button in the roster — fired along your movement instead of at
+   * your cursor, so it could not be aimed at all. Kits that set this get the
+   * pointer direction; movement dashes keep facing, because a dodge that
+   * launches at the mouse instead of the stick feels wrong.
+   */
+  dashAimed?: boolean;
   /** Optional on-hit rider for auto-attacks (frost, marks, executes…). */
   onAutoHit?(p: Player, target: Unit): void;
   /** Passive setup at combat start (reset stacks, seed state). */

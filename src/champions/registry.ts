@@ -77,6 +77,7 @@ function build(row: Row): ChampionDef {
     fireQ: k.fireQ,
     castE: k.castE,
     onDash: k.onDash,
+    dashAimed: k.dashAimed,
     onAutoHit: k.onAutoHit,
     onCombatInit: k.onCombatInit,
     passiveTick: k.passiveTick,

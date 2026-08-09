@@ -275,13 +275,21 @@ export class Player extends Unit {
   }
 
   /** Phasenschritt: short dash in current move direction (charge system). */
-  dash(): boolean {
+  /**
+   * `aim` is the pointer direction. Only kits flagged `dashAimed` use it — a
+   * movement dodge that launches toward the mouse instead of the stick feels
+   * wrong, but a hook that ignores the mouse cannot be aimed at all.
+   */
+  dash(aim?: Vec): boolean {
     if (!this.isReady('Dash') || this.dashing) return false;
     const wasIdle = this.dashChargesUsed === 0;
     this.dashChargesUsed++;
     if (wasIdle) this.startCooldown('Dash');
     this.dashing = true;
-    this.dashDir = { ...this.facing };
+    this.dashDir =
+      this.champ.dashAimed && aim && len(aim.x, aim.y) > 0.01
+        ? norm(aim.x, aim.y)
+        : { ...this.facing };
     this.dashUntil = this.combat.now + ABILITIES.Dash.duration * 1000;
     this.dashSlashed.clear();
     // Champion-specific dash (leap / hook / blink); may take over movement.

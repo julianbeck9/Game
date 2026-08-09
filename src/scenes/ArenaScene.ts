@@ -608,7 +608,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
             g.fillTriangle(x + off - r * 0.3, y - r * 0.55, x + off - r * 0.3, y + r * 0.55, x + off + r * 0.42, y);
           }
         },
-        onCast: () => this.player.dash(),
+        // Aimable so a hook dash can be dragged on touch, like Q.
+        aimable: true,
+        onCast: (dir) => this.player.dash(dir ?? undefined),
+        onAimPreview: (dir) => (this.aimPreview = dir),
         getCooldownPct: () => this.player.cooldownPct('Dash'),
           getCharges: () => ({ avail: this.player.dashChargesAvail, max: this.player.maxDashCharges }),
         },
@@ -669,7 +672,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       const p = this.input.activePointer;
       this.player.castE({ x: p.worldX - this.player.x, y: p.worldY - this.player.y });
     });
-    kb.addKey('SPACE').on('down', () => this.player.dash());
+    kb.addKey('SPACE').on('down', () => {
+      const q = this.input.activePointer;
+      this.player.dash({ x: q.worldX - this.player.x, y: q.worldY - this.player.y });
+    });
   }
 
   // ---- Combat API ----
