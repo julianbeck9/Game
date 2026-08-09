@@ -29,13 +29,22 @@ export const MODIFIER_NAMES: Record<ModifierId, string> = {
  */
 export function roundScale(round: number): DifficultyScale {
   const capped = Math.min(round, MAX_ROUND);
+  // Difficulty moved out of the stat sheet and into the crowd.
+  //
+  // At the old rates round 20 gave every enemy 3.85x health and 38 armor while
+  // the squad only grew from 1 to 5 — so a late round was a slow trade against
+  // sponges, which is a stat check, not a fight. Halving the health curve and
+  // more than halving the resistances, then roughly doubling the head count
+  // (see `roundSpec`), keeps total enemy health in the same range but makes
+  // the difficulty about reading several telegraphs at once and holding
+  // position, which is skill the player can actually get better at.
   const base: DifficultyScale = {
-    hp: 1 + 0.15 * (capped - 1),
+    hp: 1 + 0.07 * (capped - 1),
     dmg: 1 + 0.1 * (capped - 1),
     reactionMs: Math.max(110, 400 - 16 * (capped - 1)),
     dodgeChance: Math.min(0.9, 0.4 + 0.028 * capped),
-    armor: 4 + 1.8 * (capped - 1),
-    mr: 4 + 1.8 * (capped - 1),
+    armor: 4 + 0.8 * (capped - 1),
+    mr: 4 + 0.8 * (capped - 1),
   };
   if (round > MAX_ROUND) {
     const over = round - MAX_ROUND;
@@ -121,14 +130,18 @@ export function roundSpec(round: number): RoundSpec {
   }
 
   let enemies: EnemyConfig[];
-  if (round <= 2) enemies = [pick([makeHaescher, makeSchuetze, makeHexer])(s)]; // gentle intro
-  else if (round === 3) enemies = squad(2, s);
-  else if (round === 4) enemies = [makeBerserker(s), makeSpeermaid(s)];
-  else if (round <= 6) enemies = squad(3, s);
-  else if (round <= 10) enemies = squad(3, s);
-  else if (round <= 13) enemies = squad(4, s);
-  else if (round <= 17) enemies = squad(4, s);
-  else enemies = squad(5, s);
+  // Head counts roughly doubled, paired with the flattened stat curve above.
+  // Round 1 still opens with a single enemy so the first fight teaches one
+  // telegraph at a time.
+  if (round === 1) enemies = [pick([makeHaescher, makeSchuetze, makeHexer])(s)];
+  else if (round === 2) enemies = squad(2, s);
+  else if (round === 3) enemies = squad(3, s);
+  else if (round === 4) enemies = [makeBerserker(s), makeSpeermaid(s), makeHaescher(s), makeSchuetze(s)];
+  else if (round <= 6) enemies = squad(5, s);
+  else if (round <= 10) enemies = squad(6, s);
+  else if (round <= 13) enemies = squad(7, s);
+  else if (round <= 17) enemies = squad(8, s);
+  else enemies = squad(9, s);
 
   return { enemies, boss: false, title: `Round ${round}`, map, modifier };
 }
