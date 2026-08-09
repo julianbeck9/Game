@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config';
+import { backdrop } from '../ui/panel';
 import { run } from '../core/run';
 import type { Player } from '../entities/Player';
 import type { Tier } from '../augments/types';
@@ -34,7 +35,7 @@ export class BuildScene extends Phaser.Scene {
 
   create(data: BuildSceneData): void {
     this.from = data?.from ?? 'arena';
-    this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.92);
+    backdrop(this, GAME_H / 2, 0x2a3a6a);
 
     this.add
       .text(GAME_W / 2, 54, 'Build & Stats', {

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config';
+import { backdrop, buttonPlate } from '../ui/panel';
 import { STR } from '../core/strings';
 import { run } from '../core/run';
 import { rollOffers } from '../augments/offers';
@@ -27,7 +28,7 @@ export class EndScene extends Phaser.Scene {
     if (v) sfx.victory();
     else sfx.defeat();
 
-    this.add.rectangle(cx, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 1);
+    backdrop(this, GAME_H / 2, 0x3a2f6a);
     this.emberGfx = this.add.graphics().setDepth(5);
 
     if (v) {
@@ -110,9 +111,10 @@ export class EndScene extends Phaser.Scene {
     // Victory: the crown is claimed — but the Endlosmodus beckons
     const offerEndless = v && !run.endless;
     const bx = offerEndless ? cx - 260 : cx;
+    // Rounded plate behind an invisible hit area, like every other screen.
+    buttonPlate(this, bx, GAME_H - 92, 460, 100, 0x2a2a40, v ? COLORS.player : COLORS.enemy, 18).setDepth(9);
     const btn = this.add
-      .rectangle(bx, GAME_H - 92, 460, 100, 0x2a2a40, 1)
-      .setStrokeStyle(4, v ? COLORS.player : COLORS.enemy, 1)
+      .rectangle(bx, GAME_H - 92, 460, 100, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true })
       .setDepth(10);
     this.add
@@ -129,9 +131,9 @@ export class EndScene extends Phaser.Scene {
     btn.on('pointerdown', again);
 
     if (offerEndless) {
+      buttonPlate(this, cx + 260, GAME_H - 92, 460, 100, 0x1a2a40, COLORS.prisma, 18).setDepth(9);
       const ebtn = this.add
-        .rectangle(cx + 260, GAME_H - 92, 460, 100, 0x1a2a40, 1)
-        .setStrokeStyle(4, COLORS.prisma, 1)
+        .rectangle(cx + 260, GAME_H - 92, 460, 100, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true })
         .setDepth(10);
       this.add
