@@ -84,6 +84,20 @@ const rs = (a: number, b: number, c: number, d: number) => {
   return r <= 4 ? a : r <= 9 ? b : r <= 14 ? c : d;
 };
 const near = (p: Player, r = 900): Unit | null => p.combat.nearestEnemy(p, r);
+
+/**
+ * Where a placed ability lands: at the point the player aimed at, clamped to
+ * the ability's range. Use this for anything the spec declares `at: 'cursor'`.
+ *
+ * Without it every placed blast used `p.x + d.x * RANGE`, i.e. always maximum
+ * range along the aim direction — the aim vector is normalised in castQ, so
+ * the distance was thrown away and only the heading survived. Aiming at an
+ * enemy 200px away dropped the blast 700px away, past them.
+ */
+const aimAt = (p: Player, d: Vec, range: number): { x: number; y: number } => {
+  const dist = p.aimDist > 0 ? Math.min(p.aimDist, range) : range;
+  return { x: p.x + d.x * dist, y: p.y + d.y * dist };
+};
 const enemiesIn = (p: Player, x: number, y: number, r: number): Unit[] =>
   p.combat.units.filter((u) => u.alive && u.team === 'enemy' && Math.hypot(u.x - x, u.y - y) <= r);
 const slowU = (u: Unit, id: string, pct: number, ms: number, t: number) =>
@@ -421,7 +435,7 @@ export const KITS: Record<string, Kit> = {
         onHit: (u) => { const pois = u.burns.length > 0; hit(p, u, (rs(...Q_SCALE.cassiopeia) + 0.35 * AP(p)) * AMP(p) * (pois ? 1.6 : 1), 'magisch', 'Q'); if (pois) p.combat.ring(u.x, u.y, 0xcc66ff, 40); } });
     },
     castE: (p, dir) => {
-      const d = dir ?? p.facing; const tx = p.x + d.x * 300, ty = p.y + d.y * 300; p.combat.ring(tx, ty, 0x77cc44, 150);
+      const d = dir ?? p.facing; const { x: tx, y: ty } = aimAt(p, d, 300); p.combat.ring(tx, ty, 0x77cc44, 150);
       p.combat.addHazard({ x: tx, y: ty, r: 150, until: T(p) + 3000, dps: (rs(15, 20, 25, 30) + 0.15 * AP(p)) * AMP(p), team: 'player', color: 0x77cc44 });
       for (const u of enemiesIn(p, tx, ty, 150)) { slowU(u, 'miasma', 0.2, 1000, T(p)); p.combat.addBurn(u, 3, 3000); }
     },
@@ -462,7 +476,7 @@ export const KITS: Record<string, Kit> = {
     onAutoHit: (p, t) => { if (!t.alive) return; p.memory.fuse = (p.memory.fuse ?? 0) + 1; if (p.memory.fuse >= 3) { p.memory.fuse = 0; hit(p, t, (rs(20, 30, 40, 50) + 0.2 * AP(p)) * AMP(p), 'magisch', 'Q'); p.combat.ring(t.x, t.y, 0xffaa33, 40); } },
     fireQ: (p) => { const t = near(p, 800); if (!t) return; const tx = t.x, ty = t.y; p.combat.delay(250, () => { p.combat.ring(tx, ty, 0xff5555, 130); for (const u of enemiesIn(p, tx, ty, 130)) hit(p, u, (rs(...Q_SCALE.ziggs) + 0.45 * AP(p)) * AMP(p), 'magisch', 'Q'); }); },
     castE: (p, dir) => {
-      const d = dir ?? p.facing; const cx = p.x + d.x * 260, cy = p.y + d.y * 260;
+      const d = dir ?? p.facing; const { x: cx, y: cy } = aimAt(p, d, 260);
       for (let i = 0; i < 5; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 120; p.combat.addHazard({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, r: 55, until: T(p) + 5000, dps: (rs(20, 30, 40, 50) + 0.15 * AP(p)) * AMP(p) * 3, team: 'player', color: 0xffaa33 }); }
       p.combat.ring(cx, cy, 0xffaa33, 150);
     },
@@ -587,7 +601,7 @@ export const KITS: Record<string, Kit> = {
       p.combat.spawnProjectile({ x: p.x, y: p.y, dirX: dx, dirY: dy, speed: 1100, radius: 9, color: 0xff6622, team: 'player', homing: t ?? undefined, maxDist: 650,
         onHit: (u) => { hit(p, u, (rs(...Q_SCALE.brand) + 0.5 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1200, T(p)); blaze(p, u); } });
     },
-    castE: (p, dir) => { const d = dir ?? p.facing; const tx = p.x + d.x * 280, ty = p.y + d.y * 280; p.combat.ring(tx, ty, 0xff5511, 150); p.combat.delay(250, () => { for (const u of enemiesIn(p, tx, ty, 150)) { hit(p, u, (rs(70, 105, 140, 175) + 0.55 * AP(p)) * AMP(p), 'magisch', 'E'); blaze(p, u); } }); },
+    castE: (p, dir) => { const d = dir ?? p.facing; const { x: tx, y: ty } = aimAt(p, d, 280); p.combat.ring(tx, ty, 0xff5511, 150); p.combat.delay(250, () => { for (const u of enemiesIn(p, tx, ty, 150)) { hit(p, u, (rs(70, 105, 140, 175) + 0.55 * AP(p)) * AMP(p), 'magisch', 'E'); blaze(p, u); } }); },
     onDash: (p, d) => { p.moveBy(d.x * 220, d.y * 220, true); p.combat.ring(p.x, p.y, 0xff6622, 70); return true; },
   },
 
@@ -705,7 +719,7 @@ export const KITS: Record<string, Kit> = {
       dash: AI('Ravenous Lunge', 'Leap and bite. [pounce, bite clamp]'),
     },
     onAutoHit: (p, t) => { if (!t.alive) { p.stats.set({ id: 'perm:carn', stat: 'maxHP', flat: (p.memory.carn = (p.memory.carn ?? 0) + 20) }); p.heal(20); } },
-    fireQ: (p, dir) => { const d = dir ?? p.facing; const tx = p.x + d.x * 260, ty = p.y + d.y * 260; p.combat.ring(tx, ty, 0x9955cc, 130); p.combat.delay(600, () => { for (const u of enemiesIn(p, tx, ty, 130)) { hit(p, u, (rs(...Q_SCALE.chogath) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1000, T(p)); } }); },
+    fireQ: (p, dir) => { const d = dir ?? p.facing; const { x: tx, y: ty } = aimAt(p, d, 260); p.combat.ring(tx, ty, 0x9955cc, 130); p.combat.delay(600, () => { for (const u of enemiesIn(p, tx, ty, 130)) { hit(p, u, (rs(...Q_SCALE.chogath) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); stun(u, 1000, T(p)); } }); },
     castE: (p, dir) => { const d = dir ?? p.facing; for (const u of p.combat.units) { if (!u.alive || u.team !== 'enemy') continue; const rx = u.x - p.x, ry = u.y - p.y, along = rx * d.x + ry * d.y; if (along < 0 || along > 380 || Math.abs(rx * d.y - ry * d.x) > 140) continue; hit(p, u, (rs(50, 80, 110, 140) + 0.35 * AP(p)) * AMP(p), 'magisch', 'E'); stun(u, 1000, T(p)); } p.combat.ring(p.x, p.y, 0x9955cc, 100); },
     onDash: (p, d) => { const t = near(p, 600); if (t) { leapTo(p, t.x, t.y, 40); hit(p, t, (rs(40, 65, 90, 115) + 0.25 * AP(p)) * AMP(p), 'magisch', 'Dash'); return true; } p.moveBy(d.x * 200, d.y * 200, true); return true; },
   },
@@ -742,8 +756,8 @@ export const KITS: Record<string, Kit> = {
       e: AI('Explosive Cask', 'Blast a zone, knocking enemies away. [barrel arcs and bursts]'),
       dash: AI('Body Slam', 'Charge into a foe, knocking it back. [rolling belly-flop]'),
     },
-    fireQ: (p, dir) => { p.heal(8 + 0.05 * AP(p)); const d = dir ?? p.facing; const tx = p.x + d.x * 300, ty = p.y + d.y * 300; p.combat.ring(tx, ty, 0xcc8844, 140); for (const u of enemiesIn(p, tx, ty, 140)) { hit(p, u, (rs(...Q_SCALE.gragas) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); slowU(u, 'barrel', 0.25, 1500, T(p)); } },
-    castE: (p, dir) => { p.heal(8 + 0.05 * AP(p)); const d = dir ?? p.facing; const tx = p.x + d.x * 260, ty = p.y + d.y * 260; p.combat.ring(tx, ty, 0xffaa55, 170); for (const u of enemiesIn(p, tx, ty, 170)) { hit(p, u, (rs(60, 90, 120, 150) + 0.35 * AP(p)) * AMP(p), 'magisch', 'E'); const a = norm(u.x - tx, u.y - ty); u.moveBy(a.x * 200, a.y * 200); } },
+    fireQ: (p, dir) => { p.heal(8 + 0.05 * AP(p)); const d = dir ?? p.facing; const { x: tx, y: ty } = aimAt(p, d, 300); p.combat.ring(tx, ty, 0xcc8844, 140); for (const u of enemiesIn(p, tx, ty, 140)) { hit(p, u, (rs(...Q_SCALE.gragas) + 0.35 * AP(p)) * AMP(p), 'magisch', 'Q'); slowU(u, 'barrel', 0.25, 1500, T(p)); } },
+    castE: (p, dir) => { p.heal(8 + 0.05 * AP(p)); const d = dir ?? p.facing; const { x: tx, y: ty } = aimAt(p, d, 260); p.combat.ring(tx, ty, 0xffaa55, 170); for (const u of enemiesIn(p, tx, ty, 170)) { hit(p, u, (rs(60, 90, 120, 150) + 0.35 * AP(p)) * AMP(p), 'magisch', 'E'); const a = norm(u.x - tx, u.y - ty); u.moveBy(a.x * 200, a.y * 200); } },
     onDash: (p, d) => { p.heal(8 + 0.05 * AP(p)); const t = near(p, 600); if (t) { leapTo(p, t.x, t.y, 50); const a = norm(t.x - p.x, t.y - p.y); t.moveBy(a.x * 160, a.y * 160); hit(p, t, (rs(50, 80, 110, 140) + 0.3 * AP(p)) * AMP(p), 'magisch', 'Dash'); stun(t, 500, T(p)); return true; } p.moveBy(d.x * 220, d.y * 220, true); return true; },
   },
 
@@ -774,8 +788,7 @@ export const KITS: Record<string, Kit> = {
       // Cursor-aimed, not snap-to-nearest: the point of the ability is leading
       // a moving target, which auto-targeting would do for you.
       const d = dir ?? p.facing;
-      const tx = p.x + d.x * KARTHUS_Q_RANGE;
-      const ty = p.y + d.y * KARTHUS_Q_RANGE;
+      const { x: tx, y: ty } = aimAt(p, d, KARTHUS_Q_RANGE);
       p.combat.ring(tx, ty, 0x8866cc, 90);
       p.combat.delay(350, () => {
         const hits = enemiesIn(p, tx, ty, 90);

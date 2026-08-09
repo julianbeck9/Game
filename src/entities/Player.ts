@@ -51,6 +51,8 @@ export class Player extends Unit {
   private dashCustom = false;
   /** Direction of the last Q cast (Echo re-fires along it). */
   lastQDir: Vec = { x: 1, y: 0 };
+  /** Distance the last cast was aimed at, in px. 0 = no explicit aim. */
+  aimDist = 0;
   /** Kit-local state for champion scripts (Yasuo Q stacks, Ashe focus timer…). */
   memory: Record<string, number> = {};
 
@@ -224,10 +226,18 @@ export class Player extends Unit {
   castQ(dir?: Vec): boolean {
     if (!this.isReady('Q')) return false;
     let d: Vec;
+    // How FAR the player aimed, not just which way. castQ normalises the aim
+    // vector, and every placed ability then multiplied that unit vector by its
+    // own fixed range — so an "at: cursor" blast always landed at maximum
+    // range regardless of where you pointed. That is the whole of "man kann
+    // Karthus' Q nicht aimen", and it applied to five champions at once.
+    this.aimDist = 0;
     if (dir && len(dir.x, dir.y) > 0.01) {
+      this.aimDist = len(dir.x, dir.y);
       d = norm(dir.x, dir.y);
     } else {
       const target = this.combat.nearestEnemy(this, this.champ.qRange + 150);
+      if (target) this.aimDist = len(target.x - this.x, target.y - this.y);
       d = target ? norm(target.x - this.x, target.y - this.y) : this.facing;
     }
     this.lastQDir = { ...d };
@@ -249,6 +259,8 @@ export class Player extends Unit {
     this.startCooldown('E');
     this.combat.bus.emit('abilityCast', { ability: 'E' });
     this.sprite.cast(this.castVfx('e'), Math.atan2(this.facing.y, this.facing.x));
+    // Same aim-distance capture as castQ; placed E abilities read it too.
+    this.aimDist = dir && len(dir.x, dir.y) > 0.01 ? len(dir.x, dir.y) : 0;
     this.champ.castE(this, dir && len(dir.x, dir.y) > 0.01 ? norm(dir.x, dir.y) : undefined);
     return true;
   }
