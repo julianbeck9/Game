@@ -187,6 +187,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     // Augments plug in before the round starts so roundStart hooks fire
     this.augments = new AugmentManager(this, this.player);
     this.augments.init();
+    // Carry health in AFTER augments and items have applied, because they set
+    // maxHP — clamping against the base value would silently cap the pool.
+    if (run.carriedHP !== null) {
+      this.player.hp = Math.max(1, Math.min(run.carriedHP, this.player.maxHP));
+    }
     this.events.once('shutdown', () => {
       this.augments.destroy();
       this.env?.destroy(); // [env-agent]
@@ -1248,6 +1253,8 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
   private endFight(win: boolean): void {
     this.fightState = win ? 'won' : 'lost';
+    // Health is a run-long pool: whatever survived the round starts the next.
+    if (win) run.carriedHP = Math.max(1, Math.round(this.player.hp));
     this.bus.emit('roundEnd', { win });
     this.projectiles = [];
 
@@ -1312,10 +1319,24 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       return;
     }
 
-    // Onward: augment pick, then the next round. Offers gate on the round just played.
-    const offers = rollOffers(run.round);
+    // Onward. An augment pick no longer follows EVERY round.
+    //
+    // Six slots handed out over nineteen rounds meant most picks were noise:
+    // you filled up by round 6 and then spent the rest of the run trading, and
+    // because a pick arrived constantly none of them felt like a decision.
+    // Picks now land on rounds 2, 5, 8, 11, 15 and 19 — six moments, one per
+    // slot, spaced so each one is a step change rather than a drip.
+    const PICK_AFTER = [2, 5, 8, 11, 15, 19];
+    const justPlayed = run.round;
     run.round++;
-    this.time.delayedCall(1300, () => this.scene.start('pick', { offers }));
+    if (PICK_AFTER.includes(justPlayed)) {
+      const offers = rollOffers(justPlayed);
+      this.time.delayedCall(1300, () => this.scene.start('pick', { offers }));
+    } else {
+      // No pick this round: go straight on, through the shop on shop days.
+      const shopDay = (run.round - 1) % 2 === 0;
+      this.time.delayedCall(1300, () => this.scene.start(shopDay ? 'shop' : 'arena'));
+    }
   }
 
   private render(): void {

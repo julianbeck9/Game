@@ -81,6 +81,8 @@ export class ShopScene extends Phaser.Scene {
     const y = GAME_H / 2 + 70;
     offers.forEach((it, i) => this.makeItemCard(it, x0 + i * (cardW + gap), y, cardW, cardH));
 
+    this.healButton();
+
     // Rounded plate + invisible hit area, matching the pick screen's buttons.
     buttonPlate(this, GAME_W / 2, GAME_H - 74, 420, 88, 0x2a2a40, COLORS.player, 18);
     const btn = this.add
@@ -277,6 +279,47 @@ export class ShopScene extends Phaser.Scene {
   private closeItemActions(): void {
     this.actionPanel?.destroy(true);
     this.actionPanel = null;
+  }
+
+  /**
+   * Buy health back. The counterweight to health being a run-long pool: without
+   * a way to recover, a bad round would quietly end the run four rounds later
+   * with no decision in between.
+   *
+   * Heals a flat amount rather than a percentage because maxHP is only known
+   * once the round builds the player with items and augments applied — the
+   * clamp there does the rest. Price climbs per purchase so healing competes
+   * with buying, instead of being the obvious first spend every shop.
+   */
+  private healButton(): void {
+    const bought = run.memory.healsBought ?? 0;
+    const cost = 120 + bought * 90;
+    const AMOUNT = 90;
+    const full = run.carriedHP === null;
+    const y = GAME_H - 74;
+    const x = GAME_W / 2 - 380;
+    const afford = run.gold >= cost && !full;
+    buttonPlate(this, x, y, 300, 88, afford ? 0x1e3524 : 0x191922, afford ? 0x5fd06a : 0x33384a, 18);
+    const label = full ? 'Full health' : `✚ Heal ${AMOUNT} — ${cost}g`;
+    const txt = this.add
+      .text(x, y, label, {
+        fontFamily: 'sans-serif', fontSize: '26px', fontStyle: 'bold',
+        color: afford ? '#bff0c4' : '#5a6480',
+      })
+      .setOrigin(0.5);
+    if (!afford) return;
+    this.add
+      .rectangle(x, y, 300, 88, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        if (run.gold < cost || run.carriedHP === null) return;
+        run.gold -= cost;
+        run.carriedHP += AMOUNT;
+        run.memory.healsBought = (run.memory.healsBought ?? 0) + 1;
+        sfx.pick();
+        this.refreshLabels();
+        txt.setText('Healed').setColor('#7ee08a');
+      });
   }
 
   private makeItemCard(it: ItemDef, x: number, y: number, w: number, h: number): void {

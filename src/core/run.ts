@@ -20,6 +20,15 @@ export interface RunState {
   items: ItemDef[];
   gold: number;
   goldEarned: number;
+  /**
+   * Health carried between rounds. Null = start this round at full.
+   *
+   * A run is meant to be survived, not fought as twenty independent duels.
+   * Refilling to full every round made damage taken free the moment a round
+   * ended, so nothing that healed, shielded or protected you ever mattered —
+   * and "survive the run" was never actually the game being played.
+   */
+  carriedHP: number | null;
   tagCounts: Record<Tag, number>;
   flags: RuleFlags;
   /** Run-permanent counters owned by augments (e.g. Blutrausch stacks). */
@@ -49,6 +58,7 @@ function newRunState(): RunState {
     items: [],
     gold: 350, // starter-shop budget: enough for a first pair of boots
     goldEarned: 0,
+    carriedHP: null,
     tagCounts: { Blut: 0, Sturm: 0, Arkan: 0, Ward: 0, Bruch: 0 },
     flags: { ...DEFAULT_FLAGS },
     memory: {},
