@@ -7,6 +7,7 @@ import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/dr
 import { ACTIVE_CHAMPIONS, CHAMP_IMAGE_KEYS, ensureChampionTextures } from '../champions/registry';
 import { describeQ } from '../champions/describe';
 import { addFullscreenButton } from '../core/fullscreen';
+import { backdrop, cardFrame } from '../ui/panel';
 import { MAP_IMAGE_KEYS } from '../core/maps';
 import { isAdmin } from '../core/admin';
 
@@ -33,6 +34,9 @@ export class MenuScene extends Phaser.Scene {
     this.embers = [];
     ensureChampionTextures(this);
     const cx = GAME_W / 2;
+
+    // Shared backdrop first, so the arena silhouette sits on top of it.
+    backdrop(this, GAME_H / 2, 0x3a2f6a);
 
     // Faint arena silhouette in the background — where the story will happen
     const bg = this.add.graphics();
@@ -212,7 +216,19 @@ export class MenuScene extends Phaser.Scene {
     const zone = this.add.container(x, y).setDepth(10);
     const roleColor = (champ.scales ?? ['ad']).includes('ap') ? 0xb07aff : COLORS.player;
 
-    const bg = this.add.rectangle(0, 0, w, h, 0x14141f, 1).setStrokeStyle(3, roleColor, 0.7);
+    // Rounded frame in the champion's role colour, matching pick/shop cards.
+    // Drawn outside the container so it sits in scene coordinates like the
+    // other screens' frames; the container keeps its own local layout.
+    cardFrame(this, x, y, w, h, roleColor, 4, 18);
+    // Hover wash, hidden until pointerover.
+    const hov = this.add.graphics().setDepth(11).setVisible(false);
+    hov.fillStyle(0xffffff, 0.06);
+    hov.fillRoundedRect(x - w / 2, y - h / 2, w, h, 18);
+    hov.lineStyle(4, roleColor, 1);
+    hov.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 18);
+
+    // Invisible hit area; the visible frame is Graphics.
+    const bg = this.add.rectangle(0, 0, w, h, 0xffffff, 0.001);
     zone.add(bg);
 
     const sprite = this.add.image(0, -18, `champ:${champ.id}`);
@@ -236,8 +252,8 @@ export class MenuScene extends Phaser.Scene {
     );
 
     bg.setInteractive({ useHandCursor: true });
-    bg.on('pointerover', () => bg.setFillStyle(0x22223a));
-    bg.on('pointerout', () => bg.setFillStyle(0x14141f));
+    bg.on('pointerover', () => hov.setVisible(true));
+    bg.on('pointerout', () => hov.setVisible(false));
     bg.on('pointerdown', () => this.showDetail(index));
   }
 
