@@ -1,6 +1,6 @@
 /** All in-game text is English. */
 export const STR = {
-  title: 'Crown & Clash',
+  title: 'Lyareth',
   round: 'Round',
   victory: 'Victory',
   defeat: 'Defeat',

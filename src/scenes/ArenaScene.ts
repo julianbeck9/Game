@@ -29,6 +29,9 @@ import { EnvLayer } from '../core/env'; // [env-agent]
 import { addFullscreenButton } from '../core/fullscreen';
 import { CameraRig, hudTransform } from '../core/camera';
 
+/** Run health bar, bottom-centre: the one number a run-long health pool needs. */
+const HP_BAR = { x: GAME_W / 2 - 300, y: GAME_H - 66, w: 600, h: 40 };
+
 /** Feuerring geometry: the safe circle starts covering the whole screen. */
 const FIRE_MAX_R = Math.hypot(GAME_W / 2, GAME_H / 2) + 40;
 
@@ -101,6 +104,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
   private offGfx: Phaser.GameObjects.Graphics | null = null;
   /** Throttle for the Brandspur dash trail (run.flags.dashFireTrail). */
   private nextTrailFireAt = 0;
+  private hpBarGfx: Phaser.GameObjects.Graphics | null = null;
+  private hpBarText: Phaser.GameObjects.Text | null = null;
+  /** Trailing value so the run bar drains rather than jumping. */
+  private hpHudLag = 1;
   /** Nadelöhr bullet-time window and its re-arm point (run.flags.clutchSlowmo). */
   private clutchUntil = 0;
   private clutchReadyAt = 0;
@@ -439,6 +446,20 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     const roundLabel =
       run.round > MAX_ROUND ? `Endless · Round ${run.round}` : `${STR.round} ${run.round} / ${MAX_ROUND}`;
     ui(this.add.text(38, 27, roundLabel, style).setDepth(100));
+
+    // Run health bar. The small bar floating over the champion was enough when
+    // health refilled every round; now that it is a pool that has to last the
+    // whole run, it is the single most important number on screen and needs a
+    // permanent, readable home. Redrawn each frame in updateHpHud.
+    this.hpBarGfx = ui(this.add.graphics().setDepth(101));
+    this.hpBarText = ui(
+      this.add
+        .text(HP_BAR.x + HP_BAR.w / 2, HP_BAR.y + HP_BAR.h / 2, '', {
+          ...style, fontSize: '26px', fontStyle: 'bold', color: '#ffffff',
+        })
+        .setOrigin(0.5)
+        .setDepth(102),
+    );
     hud.fillStyle(0xffd24a, 1);
     hud.fillCircle(50, 84, 11);
     hud.fillStyle(0xb8912a, 1);
@@ -1118,6 +1139,40 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     }
   }
 
+  /** Redraw the run health bar. Same damage-lag idea as the unit bars. */
+  private updateHpHud(dtMs: number): void {
+    const g = this.hpBarGfx;
+    if (!g || !this.hpBarText) return;
+    const pct = Math.max(0, Math.min(1, this.player.hpPct));
+    const dt = Math.min(50, dtMs) / 1000;
+    if (this.hpHudLag < pct) this.hpHudLag = pct;
+    else this.hpHudLag += (pct - this.hpHudLag) * (1 - Math.exp(-5 * dt));
+
+    const { x, y, w, h } = HP_BAR;
+    const r = h / 2;
+    g.clear();
+    g.fillStyle(0x000000, 0.62);
+    g.fillRoundedRect(x - 4, y - 4, w + 8, h + 8, r + 4);
+    g.fillStyle(COLORS.hpBack, 0.95);
+    g.fillRoundedRect(x, y, w, h, r);
+    if (this.hpHudLag > pct + 0.002) {
+      g.fillStyle(0xffe9a8, 0.85);
+      g.fillRoundedRect(x, y, w * this.hpHudLag, h, r);
+    }
+    // Colour shifts toward red as the pool runs down — readable without reading.
+    const col = pct > 0.5 ? COLORS.hpGreen : pct > 0.25 ? 0xe0c341 : COLORS.hpRed;
+    g.fillStyle(col, 1);
+    g.fillRoundedRect(x, y, Math.max(r * 2, w * pct), h, r);
+    g.lineStyle(2, 0x000000, 0.5);
+    g.strokeRoundedRect(x, y, w, h, r);
+    if (this.player.shield > 0) {
+      const sw = Math.min(w, w * (this.player.shield / Math.max(1, this.player.maxHP)));
+      g.fillStyle(COLORS.shield, 0.55);
+      g.fillRoundedRect(x, y, Math.max(r * 2, sw), h * 0.42, r);
+    }
+    this.hpBarText.setText(`${Math.ceil(this.player.hp)} / ${Math.round(this.player.maxHP)}`);
+  }
+
   // ---- Frame loop ----
 
   update(time: number, deltaMs: number): void {
@@ -1135,6 +1190,7 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       const ht = hudTransform(this.rig.zoom);
       this.uiLayer.setPosition(ht.x, ht.y).setScale(ht.scale);
       this.drawOffscreenMarkers();
+      this.updateHpHud(deltaMs);
     }
 
     if (this.fightState === 'fighting') {

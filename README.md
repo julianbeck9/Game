@@ -1,4 +1,4 @@
-# Crown & Clash
+# Lyareth
 
 Ein rundenbasierter 1v1-Arena-Roguelike für den mobilen Browser (Landscape,
 Touch-first — läuft auch am Desktop). Du bist ein verbannter König: Kämpf dich

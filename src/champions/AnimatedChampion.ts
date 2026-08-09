@@ -1,5 +1,5 @@
 /**
- * AnimatedChampion — prozedurale Sprite-Animation für Crown & Clash (Phaser 3 + TS).
+ * AnimatedChampion — prozedurale Sprite-Animation für Lyareth (Phaser 3 + TS).
  *
  * Kein Sprite-Sheet: ein statisches 64x64-Sprite pro Champion, animiert via Transform
  * zur Laufzeit (Idle/Walk/Attack/Cast/Hurt). Ein Code-Pfad über alle 26, kein Art-Drift.
