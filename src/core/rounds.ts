@@ -72,6 +72,9 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// Kinds that can be dressed as a rival champion (mirrors RIVAL_KINDS in enemies.ts).
+const RIVAL_ELIGIBLE = new Set(['haescher', 'berserker', 'speermaid', 'schuetze', 'hexer']);
+
 const BUILDERS = [makeHaescher, makeSchuetze, makeHexer, makeWaechter, makeBerserker, makeSpeermaid];
 
 /** Random squad of n distinct-ish archetypes. */
@@ -142,6 +145,14 @@ export function roundSpec(round: number): RoundSpec {
   else if (round <= 13) enemies = squad(7, s);
   else if (round <= 17) enemies = squad(8, s);
   else enemies = squad(9, s);
+
+  // Mini-boss cadence: one rival champion on rounds 5, 9, 12, 16, 18 — never
+  // adjacent to the Usurpator rounds (7/14/20), so the run alternates between
+  // "read the crowd" and "fight one thing that can kill you".
+  if ([5, 9, 12, 16, 18].includes(round)) {
+    const slot = enemies.findIndex((e) => RIVAL_ELIGIBLE.has(e.kind));
+    if (slot >= 0) enemies[slot] = { ...enemies[slot], elite: true };
+  }
 
   return { enemies, boss: false, title: `Round ${round}`, map, modifier };
 }

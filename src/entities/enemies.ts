@@ -529,9 +529,18 @@ const RIVAL_KINDS: Record<string, 'melee' | 'ranged'> = {
   hexer: 'ranged',
 };
 
+/**
+ * Dress ONE marked enemy as a rival champion, and make it a real threat.
+ *
+ * This used to dress every fighter-type enemy, which meant a wave was five
+ * champions borrowing five signature kits and no plain enemies at all — so
+ * there was nothing with a simple readable attack to learn against, and a
+ * champion carried no weight because every enemy was one. Now the roster shows
+ * up as an occasional mini-boss: rarer, and worth being afraid of.
+ */
 function dressAsRival(cfg: EnemyConfig): EnemyConfig {
   const style = RIVAL_KINDS[cfg.kind];
-  if (!style || cfg.championSprite) return cfg;
+  if (!cfg.elite || !style || cfg.championSprite) return cfg;
   const pool = CHAMPIONS.filter(
     (c) => c.id !== run.champion && (style === 'melee' ? !c.ranged : c.ranged),
   );
@@ -540,7 +549,19 @@ function dressAsRival(cfg: EnemyConfig): EnemyConfig {
   // Borrow the champion's signature ability so the rival actually fights like
   // them; fall back to the archetype's kit if none is defined.
   const abilities = rivalAbilitiesFor(champ.id) ?? cfg.abilities;
-  return { ...cfg, championSprite: champ.id, name: champ.name, abilities };
+  // A mini-boss has to read as one: bigger, tougher, hits harder, presses more.
+  const stats = { ...cfg.stats };
+  stats.maxHP = (stats.maxHP ?? 100) * 3.2;
+  stats.damage = (stats.damage ?? 10) * 1.5;
+  return {
+    ...cfg,
+    championSprite: champ.id,
+    name: champ.name,
+    abilities,
+    stats,
+    radius: Math.round(cfg.radius * 1.25),
+    aggression: Math.min(1, cfg.aggression + 0.2),
+  };
 }
 
 export function spawnEnemy(

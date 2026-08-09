@@ -74,6 +74,8 @@ export interface EnemyConfig {
   visibleAugments?: string[];
   /** Rival champions render a baked champion sprite instead of a plain disc. */
   championSprite?: string;
+  /** Mini-boss slot: gets dressed as a rival champion and buffed. See dressAsRival. */
+  elite?: boolean;
 }
 
 interface Lunge {
