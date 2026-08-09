@@ -1099,7 +1099,9 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       const py = cy + dy * t;
 
       const a = Math.atan2(dy, dx);
-      const boss = u.isBoss;
+      // Elites share the boss marker: gold and larger, so a mini-boss offscreen
+      // is never mistaken for another minion.
+      const boss = u.isBoss || (u as { isElite?: boolean }).isElite === true;
       const size = boss ? 26 : 17;
       g.fillStyle(boss ? 0xffd24a : 0xff5a5a, boss ? 0.95 : 0.8);
       g.beginPath();

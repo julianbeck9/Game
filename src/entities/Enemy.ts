@@ -5,7 +5,7 @@ import { Combat } from '../core/combat';
 import { findOpenSpawn, norm, len, dist, Vec } from '../core/geometry';
 import { flowDir } from '../core/flowfield';
 import { COLORS, UNIT_SCALE } from '../config';
-import { shadedDisc } from '../core/draw';
+import { shadedDisc, crown } from '../core/draw';
 import { AnimatedChampion } from '../champions/AnimatedChampion';
 import type { AbilityShape } from '../champions/types';
 import { cfgFor } from '../champions/championConfig';
@@ -158,6 +158,15 @@ export class Enemy extends Unit {
 
   get isBoss(): boolean {
     return this.cfg.kind === 'usurpator';
+  }
+
+  /**
+   * Mini-boss. Shares the boss presentation — aura, bigger death burst, gold
+   * off-screen marker — without the Usurpator's execute resistance, which is
+   * a boss-only rule and stays keyed to `isBoss`.
+   */
+  get isElite(): boolean {
+    return !!this.cfg.elite;
   }
 
   startLunge(l: Lunge): void {
@@ -545,6 +554,18 @@ export class Enemy extends Unit {
     // Grounding drop shadow so the unit reads as standing on the map (3D feel)
     g.fillStyle(0x000000, 0.32);
     g.fillEllipse(this.x + 2, this.y + this.radius * 0.92, this.radius * 2.1, this.radius * 0.68);
+
+    // Elite crown mark: a mini-boss must be identifiable across a crowd of
+    // nine, before it does anything. Gold, because that is already the "this
+    // one matters" colour on the off-screen markers.
+    if (this.isElite) {
+      const pulse = Math.sin(this.combat.now / 260) * 2;
+      g.lineStyle(3, 0xffd24a, 0.8);
+      g.strokeCircle(this.x, this.y, this.radius + 10 + pulse);
+      g.fillStyle(0xffd24a, 0.07);
+      g.fillCircle(this.x, this.y, this.radius + 10 + pulse);
+      crown(g, this.x, this.y - this.radius - 16, 26, 0xffd24a, 0.95);
+    }
 
     // Boss aura: slow-pulsing ring so the Usurpator dominates the frame
     if (this.isBoss) {
