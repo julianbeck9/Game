@@ -196,6 +196,9 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     this.augments.init();
     // Carry health in AFTER augments and items have applied, because they set
     // maxHP — clamping against the base value would silently cap the pool.
+    if (run.flags.shieldPerRound > 0) {
+      this.player.addShield(this.player.maxHP * run.flags.shieldPerRound);
+    }
     if (run.carriedHP !== null) {
       this.player.hp = Math.max(1, Math.min(run.carriedHP, this.player.maxHP));
     }
@@ -796,6 +799,9 @@ export class ArenaScene extends Phaser.Scene implements Combat {
 
     if (killedByThisCall && target.team === 'enemy') {
       run.kills++;
+      // Sustain now matters: health is a run-long pool, so healing on a takedown
+      // is a real build axis rather than a rounding error.
+      if (run.flags.healPerKill > 0) this.player.heal(run.flags.healPerKill);
       // Kill gold + hit-stop + death burst
       earnGold(25);
       const gt = this.add

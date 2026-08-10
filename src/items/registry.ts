@@ -888,6 +888,30 @@ let itTanzTicking = false;
 // Both below change a decision (when to dash / who to hit) rather than a number.
 const LUXUS: ItemDef[] = [
   item({
+    // Heal on takedown — turns aggression into sustain now that health persists.
+    id: 'it_blutkelch',
+    icon: 'orb',
+    name: 'Sanguine Chalice',
+    cost: 700,
+    glyph: '❦',
+    color: 0xd05070,
+    description: '+25 HP · takedowns restore 12 health',
+    statMods: [{ stat: 'maxHP', flat: 25 }],
+    ruleFlags: { healPerKill: 12 },
+  }),
+  item({
+    // Fresh shield every round — the answer to a health pool that never refills.
+    id: 'it_aegiskern',
+    icon: 'orb',
+    name: 'Aegis Core',
+    cost: 720,
+    glyph: '◈',
+    color: 0x88bbff,
+    description: '+20 armor · start every round with a shield worth 25% of your max health',
+    statMods: [{ stat: 'armor', flat: 20 }],
+    ruleFlags: { shieldPerRound: 0.25 },
+  }),
+  item({
     // Dash fires Q too — fuses the escape button and the damage button.
     id: 'it_sturmschritt',
     icon: 'boots',

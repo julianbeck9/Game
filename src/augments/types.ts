@@ -50,6 +50,10 @@ export interface RuleFlags {
   dashCastsQ: boolean;
   // Enemies left below this HP fraction by a hit die outright. 0 = off.
   executeBelow: number;
+  // Health restored per takedown. Meaningful now that health is a run-long pool.
+  healPerKill: number;
+  // Shield at the start of every round, as a fraction of max health.
+  shieldPerRound: number;
 }
 
 export const DEFAULT_FLAGS: RuleFlags = {
@@ -73,6 +77,8 @@ export const DEFAULT_FLAGS: RuleFlags = {
   knockbackOnHit: 0,
   dashCastsQ: false,
   executeBelow: 0,
+  healPerKill: 0,
+  shieldPerRound: 0,
 };
 
 /** Everything an augment hook may touch. Handlers never reach into scene internals. */

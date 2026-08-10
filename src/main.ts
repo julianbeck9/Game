@@ -16,7 +16,8 @@ applyBalance();
 import { run, addAugment, newRun, upgradeItem } from './core/run';
 import { augmentById, AUGMENTS } from './augments/registry';
 import { rollOffers } from './augments/offers';
-import { championUsesAP } from './champions/registry';
+import { championUsesAP, ACTIVE_CHAMPIONS } from './champions/registry';
+import { KITS } from './champions/kits';
 import { itemById } from './items/registry';
 import { forceMap } from './core/maps';
 
@@ -94,6 +95,10 @@ declare global {
       forceMap: (id: string | null) => void;
       /** Measurement: roll a pick-screen offer set without entering the scene. */
       rollOffers: (round: number) => { id: string; tier: string; name: string }[];
+      /** Measurement: playable champion ids. */
+      champIds: () => string[];
+      /** Measurement: a champion's declared Q shape (the hitbox contract). */
+      qSpec: (id: string) => { kind: string; range?: number; radius?: number } | null;
     };
   }
 }
@@ -156,6 +161,11 @@ window.__CC = {
   },
   resumeClock: () => { game.loop.wake(); },
   forceMap: (id: string | null) => forceMap(id),
+  champIds: () => ACTIVE_CHAMPIONS.map((c) => c.id),
+  qSpec: (id: string) => {
+    const q = KITS[id]?.spec?.q as { kind: string; range?: number; radius?: number } | undefined;
+    return q ? { kind: q.kind, range: q.range, radius: q.radius } : null;
+  },
   rollOffers: (round: number) =>
     rollOffers(round).map((a) => ({ id: a.id, tier: a.tier, name: a.name })),
   // Test helper: grant an augment by id (takes effect on next goto/round)
