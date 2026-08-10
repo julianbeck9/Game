@@ -1301,10 +1301,26 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       if ((run.memory.revivesUsed ?? 0) < run.flags.revives) {
         run.memory.revivesUsed = (run.memory.revivesUsed ?? 0) + 1;
         this.player.alive = true;
-        this.player.hp = this.player.maxHP * 0.5;
-        this.ring(this.player.x, this.player.y, 0xffd24a, 260);
+        // A revive is the single most valuable thing in a one-life run, so it
+        // has to actually save it. Half health with the same crowd still on
+        // top of you was usually just a slower version of the same death.
+        // Full health, a shield, a clearing blast and two seconds of
+        // invulnerability buy the space to re-establish.
+        this.player.hp = this.player.maxHP;
+        this.player.addShield(this.player.maxHP * 0.3);
+        this.player.invulnUntil = this.now + 2000;
+        for (const u of this.units) {
+          if (u.team !== 'enemy' || !u.alive) continue;
+          if (dist(u.x, u.y, this.player.x, this.player.y) > 420) continue;
+          const a = Math.atan2(u.y - this.player.y, u.x - this.player.x);
+          u.moveBy(Math.cos(a) * 260, Math.sin(a) * 260);
+          this.dealDamage(this.player, u, this.player.maxHP * 0.4, 'ability');
+        }
+        this.ring(this.player.x, this.player.y, 0xffd24a, 420);
+        this.particles.death(this.player.x, this.player.y, 0xffd24a, true);
         this.announce('Phönixherz!', '#ffd24a');
         this.rig?.shake(0.008);
+        this.rig?.punch(0.16);
         return;
       }
       this.endFight(false);

@@ -658,9 +658,11 @@ const ozeankern: AugmentDef = {
 const fluchtkammer: AugmentDef = {
   id: 'fluchtkammer',
   name: 'Escape Pod',
-  tier: 'silber',
+  // Promoted out of Silver: surviving your own death is the strongest thing an
+  // augment can do in a one-life run, and it was priced as a minor pick.
+  tier: 'prisma',
   tags: ['Ward'],
-  description: 'Once per run: lethal damage instead lets you escape with 35% HP.',
+  description: 'Once per run: lethal damage instead revives you at full health with a shield, blasting nearby enemies away.',
   ruleFlags: { revives: 1 },
 };
 
