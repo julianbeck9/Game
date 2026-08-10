@@ -1,0 +1,502 @@
+{
+  "schemaVersion": 1,
+  "sprite": {
+    "size": 64,
+    "origin": [
+      0.5,
+      0.9375
+    ],
+    "baselineY": 60,
+    "basePath": "champs/{id}.png",
+    "posePath": "champs/anim/{id}_{pose}.png",
+    "dirPath": "champs/dir/{id}_{dir}.png",
+    "poses": [
+      "idle",
+      "idle_b",
+      "run_a",
+      "run_b",
+      "attack",
+      "cast",
+      "hurt"
+    ],
+    "directions": [
+      "up",
+      "left",
+      "right"
+    ],
+    "note": "Kein eingebrannter Schatten. Schatten zur Laufzeit als Ellipse unter dem Sprite zeichnen."
+  },
+  "wardSystem": {
+    "description": "Ward ist temporaere HP ueber der echten HP-Leiste. Absorbiert Schaden zuerst.",
+    "graceSeconds": 2.0,
+    "decayPerSecond": 8.0,
+    "rule": "Ward stellt niemals echte HP wieder her und ueberschreitet nie den Champion-Cap."
+  },
+  "healingRules": [
+    "Keine Ability stellt HP wieder her. Ausnahmslos.",
+    "Sustain existiert nur als Ward, immer mit Cap und immer an eine Bedingung gebunden.",
+    "Drei Champions koennen HP als Ressource ausgeben (Brannoc, Nyth, Tessaly).",
+    "Echte Heilung kommt ausschliesslich aus Raum-Belohnungen, nie aus dem Kit."
+  ],
+  "champions": [
+    {
+      "id": "brannoc",
+      "name": "Brannoc Emberjaw",
+      "title": "Aschewache von Kharsun",
+      "role": "melee",
+      "archetype": "Bruiser",
+      "difficulty": 1,
+      "hp": 158,
+      "damageReduction": 0.1,
+      "moveSpeed": 210,
+      "radius": 16,
+      "blurb": "Ein Veteran aus einer Kriegsschmiede, der seine Rüstung nie ganz abkühlen lässt. Er baut Glut auf den Gegnern auf und zündet sie mit dem Dash. Der einzige Champion ohne jede Form von Sustain — er tauscht eigene HP gegen Tempo.",
+      "auto": {
+        "name": "Aschehieb",
+        "type": "cone",
+        "interval": 0.85,
+        "damage": 14,
+        "range": 62,
+        "arc": 180,
+        "note": "Trifft alle im Kegel. Gibt 1 Stack Glut (3 s, max 5)."
+      },
+      "dash": {
+        "name": "Ofenlauf",
+        "cooldown": 4.0,
+        "charges": 1,
+        "iframes": 0.26,
+        "distance": 260,
+        "damage": 10,
+        "note": "Rammt durch Gegner: Knockback + verbraucht Glut. Jeder verbrauchte Stack: +8 Schaden."
+      },
+      "q": {
+        "name": "Schmelzbogen",
+        "cooldown": 7.0,
+        "damage": 35,
+        "radius": 140,
+        "note": "Sprungschlag. Hinterlaesst 4 s Brandboden (8 dmg/s)."
+      },
+      "e": {
+        "name": "Anfachen",
+        "cooldown": 12.0,
+        "hpCost": 12,
+        "duration": 5.0,
+        "note": "+40 % Angriffstempo, Autos geben 2 Glut-Stacks. Kostet 12 HP, heilt nichts."
+      },
+      "ward": {
+        "perMinute": 0,
+        "cap": 0
+      },
+      "tip": "Glut aufbauen, dann Ofenlauf durch die Gruppe. E nur wenn du die HP wirklich uebrig hast.",
+      "balance": {
+        "ehp": 175.6,
+        "iframeUptime": 0.065,
+        "wardPerFight": 0.0,
+        "effExposure": 1.449,
+        "survivalIndex": 121.1,
+        "autoDps": 16.5
+      }
+    },
+    {
+      "id": "skorrvald",
+      "name": "Skorrvald",
+      "title": "Wall von Hohlfrost",
+      "role": "melee",
+      "archetype": "Tank",
+      "difficulty": 1,
+      "hp": 170,
+      "damageReduction": 0.15,
+      "moveSpeed": 186,
+      "radius": 17,
+      "blurb": "Frostwaechter mit Rundschild und Reifaxt. Er ist der einzige Champion, der Ward durch aktives Blocken generiert — Sustain als Belohnung fuer richtiges Stehen, nicht als Knopfdruck.",
+      "auto": {
+        "name": "Reifaxt",
+        "type": "arc",
+        "interval": 1.0,
+        "damage": 16,
+        "range": 55,
+        "arc": 110,
+        "note": "Jeder 3. Auto gibt Frost (-30 % Gegnertempo, 2 s)."
+      },
+      "dash": {
+        "name": "Gletscherschritt",
+        "cooldown": 5.0,
+        "charges": 1,
+        "iframes": 0.34,
+        "distance": 180,
+        "damage": 12,
+        "note": "Kurzer Dash, endet in 90px Frostschlag + Frost. Laengste i-Frames im Cast."
+      },
+      "q": {
+        "name": "Reifwall",
+        "cooldown": 9.0,
+        "duration": 1.5,
+        "note": "Blockt 1.5 s lang 80 % Frontalschaden. Jeder geblockte Treffer: +6 Ward (Cap 40)."
+      },
+      "e": {
+        "name": "Lawinenruf",
+        "cooldown": 11.0,
+        "damage": 25,
+        "radius": 200,
+        "note": "Zersplittert alle Frost-Stacks im Radius: 25 Schaden + 1 s Root pro Ziel."
+      },
+      "ward": {
+        "perMinute": 44,
+        "cap": 40
+      },
+      "tip": "Reifwall gegen den Boss-Swing timen, nicht praeventiv. Ward faellt sonst ungenutzt ab.",
+      "balance": {
+        "ehp": 200.0,
+        "iframeUptime": 0.068,
+        "wardPerFight": 33.0,
+        "effExposure": 1.584,
+        "survivalIndex": 147.1,
+        "autoDps": 16.0
+      }
+    },
+    {
+      "id": "nyth",
+      "name": "Nyth",
+      "title": "Aus der Umbraltiefe",
+      "role": "melee",
+      "archetype": "Assassin",
+      "difficulty": 3,
+      "hp": 90,
+      "damageReduction": 0.0,
+      "moveSpeed": 246,
+      "radius": 13,
+      "blurb": "Etwas, das durch einen Riss gekommen ist und gelernt hat, wie ein Koerper laeuft. Hoechster Schadensausstoss, duennste HP-Leiste. Sustain existiert nur ueber Kills — wenn du nicht toetest, bekommst du gar nichts.",
+      "auto": {
+        "name": "Chitinriss",
+        "type": "single",
+        "interval": 0.45,
+        "damage": 9,
+        "range": 40,
+        "note": "Gleiches Ziel hintereinander stapelt Riss: +15 % Auto-Schaden pro Stack, max 4, 3 s."
+      },
+      "dash": {
+        "name": "Phasenriss",
+        "cooldown": 3.0,
+        "charges": 2,
+        "iframes": 0.3,
+        "distance": 300,
+        "damage": 0,
+        "note": "Durch Gegner UND Terrain. Naechster Auto in 1.2 s crittet (x2.5)."
+      },
+      "q": {
+        "name": "Umbrapeitsche",
+        "cooldown": 6.0,
+        "damage": 28,
+        "length": 250,
+        "note": "Markiert getroffene Ziele 4 s. Kill an markiertem Ziel: 1 Dash-Ladung zurueck + 8 Ward (Cap 24)."
+      },
+      "e": {
+        "name": "Schleierbruch",
+        "cooldown": 14.0,
+        "hpCost": 15,
+        "radius": 220,
+        "note": "0.8 s nicht anvisierbar, markiert alle im Radius: +20 % erlittener Schaden fuer 5 s."
+      },
+      "ward": {
+        "perMinute": 12,
+        "cap": 24
+      },
+      "tip": "Dash-Ladungen sind deine HP. Nie beide gleichzeitig ausgeben.",
+      "balance": {
+        "ehp": 90.0,
+        "iframeUptime": 0.2,
+        "wardPerFight": 9.0,
+        "effExposure": 1.08,
+        "survivalIndex": 91.7,
+        "autoDps": 20.0
+      }
+    },
+    {
+      "id": "sunna",
+      "name": "Sunna Veyl",
+      "title": "Speertaenzerin von Sonnenmal",
+      "role": "melee",
+      "archetype": "Reach / Skirmisher",
+      "difficulty": 2,
+      "hp": 125,
+      "damageReduction": 0.05,
+      "moveSpeed": 216,
+      "radius": 14,
+      "blurb": "Kaempft auf Glefenreichweite und lebt davon, staendig in Bewegung zu bleiben. Ihr E schaltet die Autos ab — sie ist der Champion, bei dem 'mehr Buttons' nicht automatisch 'mehr Schaden' heisst.",
+      "auto": {
+        "name": "Glefenschwung",
+        "type": "arc",
+        "interval": 0.7,
+        "damage": 12,
+        "range": 110,
+        "arc": 140,
+        "note": "Durchdringt bis zu 3 Gegner."
+      },
+      "dash": {
+        "name": "Sonnensprung",
+        "cooldown": 4.5,
+        "charges": 1,
+        "iframes": 0.22,
+        "distance": 240,
+        "damage": 18,
+        "note": "Springt UEBER Gegner (keine Kollision in der Luft). Landung: 90px Schockwelle."
+      },
+      "q": {
+        "name": "Sonnennagel",
+        "cooldown": 8.0,
+        "damage": 30,
+        "range": 300,
+        "note": "Glefe bleibt stecken: 70px Aura, 6 dmg/s. Dash zur Glefe holt sie zurueck + 50 % Dash-CD."
+      },
+      "e": {
+        "name": "Zenit",
+        "cooldown": 13.0,
+        "duration": 4.0,
+        "note": "Glefe kreist um sie: 10 Schaden alle 0.25 s im 70px Ring. Autos sind waehrenddessen deaktiviert."
+      },
+      "ward": {
+        "perMinute": 0,
+        "cap": 0
+      },
+      "tip": "Q an eine Wand nageln und darum kaempfen. Der Dash-Rueckruf ist deine halbe Mobilitaet.",
+      "balance": {
+        "ehp": 131.6,
+        "iframeUptime": 0.049,
+        "wardPerFight": 0.0,
+        "effExposure": 1.189,
+        "survivalIndex": 110.7,
+        "autoDps": 17.1
+      }
+    },
+    {
+      "id": "mirelle",
+      "name": "Mirelle Vosk",
+      "title": "Laternenhexe aus dem Schleiermoor",
+      "role": "ranged",
+      "archetype": "Zone Control",
+      "difficulty": 2,
+      "hp": 85,
+      "damageReduction": 0.0,
+      "moveSpeed": 204,
+      "radius": 13,
+      "blurb": "Sie kaempft nicht gegen Gegner, sie macht Flaechen unbetretbar. Ihr Sustain haengt an einem 3-Sekunden-Kanal auf mittlerer Distanz — sie muss naeher ran als ihr lieb ist, um Ward zu bekommen.",
+      "auto": {
+        "name": "Irrlichtbolzen",
+        "type": "homing",
+        "interval": 0.9,
+        "damage": 11,
+        "range": 380,
+        "note": "Langsames Suchgeschoss auf das naechste Ziel."
+      },
+      "dash": {
+        "name": "Laternenschritt",
+        "cooldown": 5.0,
+        "charges": 1,
+        "iframes": 0.16,
+        "distance": 220,
+        "damage": 0,
+        "note": "Sofort-Blink. Laesst am Startpunkt ein Grablicht zurueck, das 1 s lang Gegner 60px anzieht."
+      },
+      "q": {
+        "name": "Moorbluete",
+        "cooldown": 8.0,
+        "radius": 120,
+        "duration": 5.0,
+        "note": "7 dmg/s + 25 % Slow. Gegner die darin sterben spawnen ein Irrlicht (20 Schaden auf ein neues Ziel)."
+      },
+      "e": {
+        "name": "Fessel der Ertrunkenen",
+        "cooldown": 12.0,
+        "duration": 3.0,
+        "note": "Strahl, 9 dmg/s. Haelt die Fessel volle 3 s (Ziel < 280px): 20 Ward (Cap 40). Bricht sie ab: nichts."
+      },
+      "ward": {
+        "perMinute": 26,
+        "cap": 40
+      },
+      "tip": "Blink weg, aber Grablicht als Falle setzen. Der Blink ist Zonenkontrolle, kein Fluchtknopf.",
+      "balance": {
+        "ehp": 85.0,
+        "iframeUptime": 0.032,
+        "wardPerFight": 19.5,
+        "effExposure": 0.968,
+        "survivalIndex": 108.0,
+        "autoDps": 12.2
+      }
+    },
+    {
+      "id": "kip",
+      "name": "Kip Ratchett",
+      "title": "Buechsenmacher der Messingwacht",
+      "role": "ranged",
+      "archetype": "Burst / Rotation",
+      "difficulty": 2,
+      "hp": 102,
+      "damageReduction": 0.0,
+      "moveSpeed": 218,
+      "radius": 13,
+      "blurb": "Magazin statt Dauerfeuer. Sein Dash laedt nach — der Dash ist damit Teil der Schadensrotation, nicht nur Ausweichen. Wer ihn nur zum Fliehen benutzt, spielt ihn auf halber Leistung.",
+      "auto": {
+        "name": "Sechsschuss",
+        "type": "projectile",
+        "interval": 0.35,
+        "damage": 9,
+        "range": 340,
+        "magazine": 6,
+        "reload": 1.4,
+        "note": "6 Schuss, dann 1.4 s Nachladen. Effektiv ~15.4 DPS ohne Dash."
+      },
+      "dash": {
+        "name": "Rueckstossrolle",
+        "cooldown": 3.5,
+        "charges": 1,
+        "iframes": 0.22,
+        "distance": 250,
+        "damage": 0,
+        "note": "Laedt sofort nach. Die naechsten 3 Schuesse: +50 % Schaden."
+      },
+      "q": {
+        "name": "Streuschuss",
+        "cooldown": 6.0,
+        "damage": 72,
+        "pellets": 8,
+        "arc": 60,
+        "note": "8 Schrot x 9. Voller Schaden nur auf Kontakt, harter Falloff ab 200px. Kostet 3 Magazinschuss."
+      },
+      "e": {
+        "name": "Uhrwerkgeschuetz",
+        "cooldown": 14.0,
+        "duration": 8.0,
+        "note": "Turm: 8 Schaden alle 0.6 s, 300px. Max 1 gleichzeitig, 40 HP, von Gegnern zerstoerbar."
+      },
+      "ward": {
+        "perMinute": 0,
+        "cap": 0
+      },
+      "tip": "Nie mit vollem Magazin dashen. Leerschiessen, dashen, weiterschiessen.",
+      "balance": {
+        "ehp": 102.0,
+        "iframeUptime": 0.063,
+        "wardPerFight": 0.0,
+        "effExposure": 0.984,
+        "survivalIndex": 103.7,
+        "autoDps": 15.4
+      }
+    },
+    {
+      "id": "tessaly",
+      "name": "Tessaly Marrow",
+      "title": "Harpunierin der Salzbrand-Kueste",
+      "role": "ranged",
+      "archetype": "Control / Hook",
+      "difficulty": 3,
+      "hp": 98,
+      "damageReduction": 0.05,
+      "moveSpeed": 210,
+      "radius": 14,
+      "blurb": "Sie entscheidet, wer wo steht. Ihr Dash ist ein Enterhaken, der sie zum Gegner zieht — der einzige Dash im Cast, der Distanz schliesst statt sie zu schaffen. Ihr Sustain kostet erst HP und zahlt nur bei Kills aus.",
+      "auto": {
+        "name": "Widerhakenschuss",
+        "type": "projectile",
+        "interval": 0.75,
+        "damage": 13,
+        "range": 320,
+        "note": "Gibt Blutung: 4 dmg/s, 3 s, bis zu 3 Stacks."
+      },
+      "dash": {
+        "name": "Kettenzug",
+        "cooldown": 5.0,
+        "charges": 1,
+        "iframes": 0.2,
+        "distance": 300,
+        "damage": 15,
+        "note": "Trifft Gegner: sie zieht SICH zu ihm. Trifft nichts: normaler 200px Dash."
+      },
+      "q": {
+        "name": "Harpunenzug",
+        "cooldown": 8.0,
+        "damage": 30,
+        "range": 350,
+        "note": "Zieht das Ziel 150px zu ihr und rootet 0.8 s."
+      },
+      "e": {
+        "name": "Blutflut",
+        "cooldown": 15.0,
+        "hpCost": 10,
+        "duration": 6.0,
+        "note": "6 s lang: jeder Kill an einem blutenden Gegner gibt 6 Ward (Cap 36) + 5 % Angriffstempo (max 10 Stacks)."
+      },
+      "ward": {
+        "perMinute": 14,
+        "cap": 36
+      },
+      "tip": "Blutflut vor einer vollen Welle zuenden, nie gegen einen einzelnen Gegner.",
+      "balance": {
+        "ehp": 103.2,
+        "iframeUptime": 0.04,
+        "wardPerFight": 10.5,
+        "effExposure": 1.008,
+        "survivalIndex": 112.8,
+        "autoDps": 17.3
+      }
+    },
+    {
+      "id": "aeren",
+      "name": "Aeren Sil",
+      "title": "Windwart des Talrands",
+      "role": "ranged",
+      "archetype": "Poke / Mobility",
+      "difficulty": 1,
+      "hp": 90,
+      "damageReduction": 0.0,
+      "moveSpeed": 232,
+      "radius": 13,
+      "blurb": "Zwei Dash-Ladungen, durchdringende Pfeile, eine Wand die Projektile schluckt. Kein Sustain, kein Burst — sie gewinnt durch Distanz und dadurch, dass sie nie getroffen wird. Der einsteigerfreundlichste Ranged-Pick.",
+      "auto": {
+        "name": "Schnittwind",
+        "type": "pierce",
+        "interval": 0.6,
+        "damage": 10,
+        "range": 360,
+        "note": "Durchdringt 2 Gegner in einer Linie."
+      },
+      "dash": {
+        "name": "Boeenschritt",
+        "cooldown": 4.0,
+        "charges": 2,
+        "iframes": 0.18,
+        "distance": 280,
+        "damage": 8,
+        "note": "Hinterlaesst 2.5 s eine Windspur: 8 Schaden + seitlicher Schub beim Durchqueren."
+      },
+      "q": {
+        "name": "Spaltschaft",
+        "cooldown": 5.0,
+        "damage": 22,
+        "chargedDamage": 26,
+        "chargeTime": 0.6,
+        "note": "Ungeladen 1 Pfeil (22). Voll geladen 3 Pfeile im Faecher (je 26), durchdringen 3."
+      },
+      "e": {
+        "name": "Sturmlinie",
+        "cooldown": 16.0,
+        "duration": 4.0,
+        "damage": 20,
+        "note": "Zwei Ankerpunkte (2x casten, 3 s Fenster). Wand dazwischen blockt gegnerische Projektile; Durchqueren: 20 Schaden + 40 % Slow."
+      },
+      "ward": {
+        "perMinute": 0,
+        "cap": 0
+      },
+      "tip": "Sturmlinie zwischen dich und die Fernkaempfer, nicht auf sie drauf.",
+      "balance": {
+        "ehp": 90.0,
+        "iframeUptime": 0.09,
+        "wardPerFight": 0.0,
+        "effExposure": 0.864,
+        "survivalIndex": 104.1,
+        "autoDps": 16.7
+      }
+    }
+  ]
+}

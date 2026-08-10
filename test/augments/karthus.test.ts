@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { KARTHUS_AUGMENTS } from '../../src/augments/champions/karthus';
-import { AUGMENTS } from '../../src/augments/registry';
+// Legacy pool: these champions belong to the League-derived roster being
+// replaced, and their augments no longer reach a run. The definitions are
+// still asserted so the files stay valid until the new roster lands.
+import { LEGACY_AUGMENTS as AUGMENTS } from '../../src/augments/registry';
 import { augmentFitsChampion } from '../../src/augments/eligibility';
 import { championById } from '../../src/champions/registry';
 
