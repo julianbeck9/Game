@@ -15,6 +15,7 @@ import { setAutopilot } from './core/autopilot';
 applyBalance();
 import { run, addAugment, newRun, upgradeItem } from './core/run';
 import { augmentById, AUGMENTS } from './augments/registry';
+import { rollOffers } from './augments/offers';
 import { championUsesAP } from './champions/registry';
 import { itemById } from './items/registry';
 import { forceMap } from './core/maps';
@@ -91,6 +92,8 @@ declare global {
       resumeClock: () => void;
       /** Measurement: pin the arena map so screenshots compare like with like. */
       forceMap: (id: string | null) => void;
+      /** Measurement: roll a pick-screen offer set without entering the scene. */
+      rollOffers: (round: number) => { id: string; tier: string; name: string }[];
     };
   }
 }
@@ -153,6 +156,8 @@ window.__CC = {
   },
   resumeClock: () => { game.loop.wake(); },
   forceMap: (id: string | null) => forceMap(id),
+  rollOffers: (round: number) =>
+    rollOffers(round).map((a) => ({ id: a.id, tier: a.tier, name: a.name })),
   // Test helper: grant an augment by id (takes effect on next goto/round)
   grant: (id: string) => {
     const def = augmentById(id);

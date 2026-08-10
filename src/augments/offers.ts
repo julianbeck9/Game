@@ -68,6 +68,19 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
     if (prismas.length > 0) return prismas[Math.floor(Math.random() * prismas.length)];
   }
 
+  // Rule-breaker bias.
+  //
+  // A pick screen shows three cards out of a pool of ~170, and only a handful
+  // of those change a rule rather than adding a proc. Uniformly rolled, the
+  // chance any card in a whole run rewrites how you play is close to nil — so
+  // the pool reads as "mostly filler", which is exactly the complaint. Weight
+  // them heavily instead of deleting the rest: the procs still make sensible
+  // supporting picks, they just stop crowding out the memorable ones.
+  if (Math.random() < 0.45) {
+    const breakers = pool.filter((a) => a.ruleFlags && Object.keys(a.ruleFlags).length > 0);
+    if (breakers.length > 0) return breakers[Math.floor(Math.random() * breakers.length)];
+  }
+
   const ownedTags = new Set(
     (Object.keys(run.tagCounts) as (keyof typeof run.tagCounts)[]).filter((t) => run.tagCounts[t] > 0),
   );
