@@ -39,8 +39,12 @@ export function roundScale(round: number): DifficultyScale {
   // the difficulty about reading several telegraphs at once and holding
   // position, which is skill the player can actually get better at.
   const base: DifficultyScale = {
-    hp: 1 + 0.07 * (capped - 1),
-    dmg: 1 + 0.1 * (capped - 1),
+    hp: 1 + 0.06 * (capped - 1),
+    // Damage curve flattened again, and this time against the run-long health
+    // pool rather than a bar that refilled every round. Cumulative damage with
+    // no free refill is a completely different pressure from the same numbers
+    // taken twenty separate times.
+    dmg: 1 + 0.05 * (capped - 1),
     reactionMs: Math.max(110, 400 - 16 * (capped - 1)),
     dodgeChance: Math.min(0.9, 0.4 + 0.028 * capped),
     armor: 4 + 0.8 * (capped - 1),

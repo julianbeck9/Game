@@ -78,8 +78,11 @@ const lastTarget = new WeakMap<Player, Unit>();
  * the 1.6x camera zoom is accounted for, so an archer had to stand in the pile
  * to attack at all.
  */
-const MELEE = { attackRange: 170, attackSpeed: 1.0, critChance: 0.05, armor: 12, magicResist: 10 };
-const RANGED = { attackRange: 480, attackSpeed: 1.0, critChance: 0.05, armor: 7, magicResist: 8 };
+const MELEE = { attackRange: 170, attackSpeed: 1.0, critChance: 0.05, armor: 12, magicResist: 10, projSpeed: 900 };
+// projSpeed is REQUIRED for a ranged auto to travel. Leaving it off fell back
+// to the 900 default here, but the old kits set it explicitly and the omission
+// is the kind of gap that reads as 'the archer does nothing'.
+const RANGED = { attackRange: 480, attackSpeed: 1.0, critChance: 0.05, armor: 7, magicResist: 8, projSpeed: 1000 };
 
 export const NEW_KITS: Record<string, Kit> = {
   // -------------------------------------------------------------- Brannoc

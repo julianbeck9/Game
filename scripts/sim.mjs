@@ -93,9 +93,14 @@ async function newPage(browser, errors) {
   return page;
 }
 
-const CHAMPS = [
-  'sivir', 'lux', 'fizz', 'zac', 'blitzcrank', 'karthus', 'warwick', 'masteryi',
-];
+// The playable roster, read from the game rather than restated here.
+//
+// This was a hardcoded list of the League-derived champions, and it silently
+// kept measuring them after the roster was replaced — every "new roster"
+// balance number produced before this fix was actually Sivir and friends,
+// whose kits still exist but can no longer be picked. A harness that names its
+// own subjects will always drift away from the game it is meant to measure.
+let CHAMPS = [];
 
 /** Read everything one probe needs, in one round-trip. */
 const probe = (page) =>
@@ -401,6 +406,8 @@ async function main() {
     }
 
     const page = await newPage(browser, errors);
+    // Ask the running game which champions are actually playable.
+    CHAMPS = await page.evaluate(() => window.__CC.champIds());
     const champions = ONLY_CHAMPION ? [ONLY_CHAMPION] : CHAMPS;
     // Pick diversity must divide by what these champions could *reach*, not by
     // the whole registry. Champion augments are gated, so once M4 added eight
