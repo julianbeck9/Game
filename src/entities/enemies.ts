@@ -561,7 +561,11 @@ function dressAsRival(cfg: EnemyConfig): EnemyConfig {
     name: champ.name,
     abilities,
     stats,
-    radius: Math.round(cfg.radius * 1.25),
+    // Radius stays put. A 1.25x body cannot fit through gaps a normal enemy
+    // can, and the B9 standoff check caught exactly that on round 5 — an elite
+    // stranded 615px away, moving 10px in nine seconds. The crown mark and the
+    // gold ring already carry the identity; the hitbox does not need to.
+    radius: cfg.radius,
     aggression: Math.min(1, cfg.aggression + 0.2),
   };
 }

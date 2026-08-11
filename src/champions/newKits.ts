@@ -58,8 +58,28 @@ function readStacks(u: Unit, key: string, now: number): number {
 
 const lastTarget = new WeakMap<Player, Unit>();
 
-const MELEE = { attackRange: 120, attackSpeed: 1.0, critChance: 0.05 };
-const RANGED = { attackRange: 340, attackSpeed: 1.0, critChance: 0.05 };
+/*
+ * Pack numbers -> engine scale.
+ *
+ * champions.json is internally consistent but written on its own scale: 85-170
+ * health, 9-16 damage, 186-246 move speed. This engine runs at roughly double
+ * that (185-320 health, 16-23 damage, 295-335 speed), and its enemies carry
+ * 190-300 base health BEFORE per-round scaling. Imported raw, a champion needed
+ * seventeen auto-attacks to kill one trash enemy — which is precisely the
+ * reported "das game ist unmoeglich" and "alle fuehlen sich schwach an".
+ *
+ * The conversion keeps the pack's RELATIVE design intact — Nyth stays the glass
+ * cannon, Skorrvald stays the wall — and moves only the absolute scale: health
+ * x2.0, damage x1.7, move speed x1.45, attack ranges mapped onto the engine's
+ * 170 melee / 460-490 ranged bands.
+ *
+ * The ranged band is the other half of "alle sind melee": the pack's 320-380
+ * reach is shorter than this engine's MELEE champions used to have (160) once
+ * the 1.6x camera zoom is accounted for, so an archer had to stand in the pile
+ * to attack at all.
+ */
+const MELEE = { attackRange: 170, attackSpeed: 1.0, critChance: 0.05, armor: 12, magicResist: 10 };
+const RANGED = { attackRange: 480, attackSpeed: 1.0, critChance: 0.05, armor: 7, magicResist: 8 };
 
 export const NEW_KITS: Record<string, Kit> = {
   // -------------------------------------------------------------- Brannoc
@@ -68,7 +88,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: false,
     qRange: 300,
     cds: { Q: 7000, E: 12000, Dash: 4000 },
-    base: { ...MELEE, maxHP: 158, moveSpeed: 210, damage: 14, attackSpeed: 1.18 },
+    base: { ...MELEE, maxHP: 316, moveSpeed: 305, damage: 24, attackSpeed: 1.18, armor: 15 },
     scales: ['ad'],
     kitLine: 'Passive ember · Q melt arc · E stoke · Dash furnace run',
     spec: { q: { kind: 'circle', radius: 140, at: 'cursor', range: 300 } },
@@ -88,8 +108,8 @@ export const NEW_KITS: Record<string, Kit> = {
       const { x, y } = aimAt(p, d, 300);
       p.moveBy(x - p.x, y - p.y, true);
       p.combat.ring(x, y, 0xff7a3a, 140);
-      for (const u of inRange(p, x, y, 140)) boom(p, u, (35 + 0.5 * AD(p)) * AMP(p));
-      p.combat.addHazard({ x, y, r: 140, until: T(p) + 4000, dps: 8, team: 'player', color: 0xff7a3a });
+      for (const u of inRange(p, x, y, 140)) boom(p, u, (63 + 0.9 * AD(p)) * AMP(p));
+      p.combat.addHazard({ x, y, r: 140, until: T(p) + 4000, dps: 15, team: 'player', color: 0xff7a3a });
     },
     castE: (p) => {
       // Costs health and heals nothing — the pack is explicit that Brannoc has
@@ -104,7 +124,7 @@ export const NEW_KITS: Record<string, Kit> = {
       for (const u of inRange(p, p.x, p.y, 90)) {
         const em = readStacks(u, 'ember', T(p));
         (u as unknown as Record<string, number>).ember = 0;
-        boom(p, u, (10 + em * 8 + 0.3 * AD(p)) * AMP(p));
+        boom(p, u, (18 + em * 15 + 0.5 * AD(p)) * AMP(p));
         const a = Math.atan2(u.y - p.y, u.x - p.x);
         u.moveBy(Math.cos(a) * 90, Math.sin(a) * 90);
       }
@@ -118,7 +138,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: false,
     qRange: 200,
     cds: { Q: 9000, E: 11000, Dash: 5000 },
-    base: { ...MELEE, maxHP: 170, moveSpeed: 186, damage: 16, armor: 20, attackSpeed: 1.0 },
+    base: { ...MELEE, maxHP: 340, moveSpeed: 270, damage: 27, armor: 22, magicResist: 16, attackSpeed: 1.0 },
     scales: ['ad'],
     kitLine: 'Passive frost · Q rime wall · E avalanche · Dash glacier step',
     spec: { q: { kind: 'self' }, e: { kind: 'circle', radius: 200, at: 'self' } },
@@ -147,7 +167,7 @@ export const NEW_KITS: Record<string, Kit> = {
         const m = u as unknown as Record<string, number>;
         if ((m.frostUntil ?? 0) < T(p)) continue;
         m.frostUntil = 0;
-        boom(p, u, (25 + 0.4 * AD(p)) * AMP(p), 'magisch');
+        boom(p, u, (45 + 0.7 * AD(p)) * AMP(p), 'magisch');
         u.ctrlUntil = Math.max(u.ctrlUntil, T(p) + 1000);
       }
     },
@@ -156,7 +176,7 @@ export const NEW_KITS: Record<string, Kit> = {
       p.moveBy(d.x * 180, d.y * 180, true);
       p.combat.ring(p.x, p.y, 0x9fdfff, 90);
       for (const u of inRange(p, p.x, p.y, 90)) {
-        boom(p, u, (12 + 0.25 * AD(p)) * AMP(p), 'magisch');
+        boom(p, u, (22 + 0.45 * AD(p)) * AMP(p), 'magisch');
         u.stats.set({ id: 'slow:rime', stat: 'moveSpeed', pct: -0.3, expiresAt: T(p) + 2000 });
         (u as unknown as Record<string, number>).frostUntil = T(p) + 2000;
       }
@@ -170,7 +190,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: false,
     qRange: 250,
     cds: { Q: 6000, E: 14000, Dash: 3000 },
-    base: { ...MELEE, maxHP: 90, moveSpeed: 246, damage: 9, attackSpeed: 2.2, attackRange: 95 },
+    base: { ...MELEE, maxHP: 180, moveSpeed: 356, damage: 15, attackSpeed: 2.2, attackRange: 150, armor: 6 },
     scales: ['ad'],
     kitLine: 'Passive rend · Q umbra lash · E veilbreak · Dash phase tear',
     spec: { q: { kind: 'line', range: 250, width: 44 } },
@@ -201,7 +221,7 @@ export const NEW_KITS: Record<string, Kit> = {
         const ry = u.y - p.y;
         const along = rx * d.x + ry * d.y;
         if (along < 0 || along > 250 || Math.abs(rx * d.y - ry * d.x) > 22 + u.radius) continue;
-        boom(p, u, (28 + 0.6 * AD(p)) * AMP(p));
+        boom(p, u, (50 + 1.0 * AD(p)) * AMP(p));
         (u as unknown as Record<string, number>).nythMarkUntil = T(p) + 4000;
       }
     },
@@ -227,7 +247,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: false,
     qRange: 300,
     cds: { Q: 8000, E: 13000, Dash: 4500 },
-    base: { ...MELEE, maxHP: 125, moveSpeed: 216, damage: 12, attackSpeed: 1.43, attackRange: 140 },
+    base: { ...MELEE, maxHP: 250, moveSpeed: 313, damage: 20, attackSpeed: 1.43, attackRange: 205, armor: 10 },
     scales: ['ad'],
     kitLine: 'Passive sweep · Q sunnail · E zenith · Dash sunleap',
     spec: { q: { kind: 'circle', radius: 70, at: 'cursor', range: 300 } },
@@ -243,8 +263,8 @@ export const NEW_KITS: Record<string, Kit> = {
       p.memory.glaiveX = x;
       p.memory.glaiveY = y;
       p.combat.ring(x, y, 0xffd24a, 70);
-      for (const u of inRange(p, x, y, 70)) boom(p, u, (30 + 0.5 * AD(p)) * AMP(p));
-      p.combat.addHazard({ x, y, r: 70, until: T(p) + 6000, dps: 6, team: 'player', color: 0xffd24a });
+      for (const u of inRange(p, x, y, 70)) boom(p, u, (54 + 0.9 * AD(p)) * AMP(p));
+      p.combat.addHazard({ x, y, r: 70, until: T(p) + 6000, dps: 12, team: 'player', color: 0xffd24a });
     },
     castE: (p) => {
       p.memory.zenithUntil = T(p) + 4000;
@@ -255,12 +275,12 @@ export const NEW_KITS: Record<string, Kit> = {
       if ((p.memory.zenithNext ?? 0) > T(p)) return;
       p.memory.zenithNext = T(p) + 250;
       p.combat.ring(p.x, p.y, 0xffd24a, 70);
-      for (const u of inRange(p, p.x, p.y, 70)) boom(p, u, (10 + 0.18 * AD(p)) * AMP(p));
+      for (const u of inRange(p, p.x, p.y, 70)) boom(p, u, (18 + 0.32 * AD(p)) * AMP(p));
     },
     onDash: (p, d) => {
       p.moveBy(d.x * 240, d.y * 240, true);
       p.combat.ring(p.x, p.y, 0xffd24a, 90);
-      for (const u of inRange(p, p.x, p.y, 90)) boom(p, u, (18 + 0.3 * AD(p)) * AMP(p));
+      for (const u of inRange(p, p.x, p.y, 90)) boom(p, u, (32 + 0.55 * AD(p)) * AMP(p));
       // Landing on the pinned glaive recalls it and refunds half the cooldown.
       const gx = p.memory.glaiveX ?? 0;
       const gy = p.memory.glaiveY ?? 0;
@@ -279,7 +299,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: true,
     qRange: 420,
     cds: { Q: 8000, E: 12000, Dash: 5000 },
-    base: { ...RANGED, maxHP: 85, moveSpeed: 204, damage: 11, abilityPower: 10, attackRange: 380 },
+    base: { ...RANGED, maxHP: 170, moveSpeed: 296, damage: 19, abilityPower: 26, attackRange: 490 },
     scales: ['ap'],
     kitLine: 'Passive wisp · Q mire bloom · E drowned tether · Dash lantern step',
     spec: { q: { kind: 'circle', radius: 120, at: 'cursor', range: 420 } },
@@ -295,7 +315,7 @@ export const NEW_KITS: Record<string, Kit> = {
       p.combat.ring(x, y, 0x66ddaa, 120);
       p.combat.addHazard({
         x, y, r: 120, until: T(p) + 5000,
-        dps: 7 + 0.12 * AP(p), team: 'player', color: 0x66ddaa,
+        dps: 14 + 0.22 * AP(p), team: 'player', color: 0x66ddaa,
       });
       for (const u of inRange(p, x, y, 120)) {
         u.stats.set({ id: 'slow:mire', stat: 'moveSpeed', pct: -0.25, expiresAt: T(p) + 5000 });
@@ -308,7 +328,7 @@ export const NEW_KITS: Record<string, Kit> = {
         p.combat.delay(i * 500, () => {
           if (!t.alive || !p.alive) return;
           p.combat.flashLine(p.x, p.y, t.x, t.y, 0x66ddaa);
-          boom(p, t, (4.5 + 0.08 * AP(p)) * AMP(p), 'magisch');
+          boom(p, t, (9 + 0.16 * AP(p)) * AMP(p), 'magisch');
           if (i === 5) p.addShield(20 + 0.2 * AP(p));
         });
       }
@@ -336,7 +356,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: true,
     qRange: 260,
     cds: { Q: 6000, E: 14000, Dash: 3500 },
-    base: { ...RANGED, maxHP: 102, moveSpeed: 218, damage: 9, attackSpeed: 2.85, attackRange: 340 },
+    base: { ...RANGED, maxHP: 204, moveSpeed: 316, damage: 15, attackSpeed: 2.85, attackRange: 470 },
     scales: ['ad'],
     kitLine: 'Passive six-shooter · Q scattershot · E clockwork turret · Dash recoil roll',
     spec: { q: { kind: 'cone', range: 260, angle: 60 } },
@@ -359,7 +379,7 @@ export const NEW_KITS: Record<string, Kit> = {
         if (diff > Math.PI / 6) continue;
         // Hard falloff past 200px, exactly as the pack specifies.
         const falloff = dd <= 200 ? 1 : Math.max(0.25, 1 - (dd - 200) / 200);
-        boom(p, u, (72 + 0.9 * AD(p)) * AMP(p) * falloff);
+        boom(p, u, (130 + 1.6 * AD(p)) * AMP(p) * falloff);
       }
       p.combat.ring(p.x, p.y, 0xffcc66, 120);
     },
@@ -374,7 +394,7 @@ export const NEW_KITS: Record<string, Kit> = {
           );
           if (!t) return;
           p.combat.flashLine(x, y, t.x, t.y, 0xffcc66);
-          boom(p, t, (8 + 0.2 * AD(p)) * AMP(p));
+          boom(p, t, (15 + 0.35 * AD(p)) * AMP(p));
         });
       }
     },
@@ -392,7 +412,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: true,
     qRange: 350,
     cds: { Q: 8000, E: 15000, Dash: 5000 },
-    base: { ...RANGED, maxHP: 98, moveSpeed: 210, damage: 13, armor: 8, attackSpeed: 1.33, attackRange: 320 },
+    base: { ...RANGED, maxHP: 196, moveSpeed: 305, damage: 22, armor: 10, attackSpeed: 1.33, attackRange: 460 },
     scales: ['ad'],
     kitLine: 'Passive bleed · Q harpoon · E bloodtide · Dash chainpull',
     spec: { q: { kind: 'line', range: 350, width: 40 } },
@@ -419,7 +439,7 @@ export const NEW_KITS: Record<string, Kit> = {
       }
       p.combat.flashLine(p.x, p.y, p.x + d.x * 350, p.y + d.y * 350, 0xdd5577);
       if (!best) return;
-      boom(p, best, (30 + 0.6 * AD(p)) * AMP(p));
+      boom(p, best, (54 + 1.1 * AD(p)) * AMP(p));
       const a = Math.atan2(p.y - best.y, p.x - best.x);
       best.moveBy(Math.cos(a) * 150, Math.sin(a) * 150);
       best.ctrlUntil = Math.max(best.ctrlUntil, T(p) + 800);
@@ -444,7 +464,7 @@ export const NEW_KITS: Record<string, Kit> = {
         const a = Math.atan2(target.y - p.y, target.x - p.x);
         const dd = Math.hypot(target.x - p.x, target.y - p.y) - 60;
         p.moveBy(Math.cos(a) * dd, Math.sin(a) * dd, true);
-        boom(p, target, (15 + 0.3 * AD(p)) * AMP(p));
+        boom(p, target, (27 + 0.55 * AD(p)) * AMP(p));
       } else {
         p.moveBy(d.x * 200, d.y * 200, true);
       }
@@ -458,7 +478,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: true,
     qRange: 360,
     cds: { Q: 5000, E: 16000, Dash: 4000 },
-    base: { ...RANGED, maxHP: 90, moveSpeed: 232, damage: 10, attackSpeed: 1.67, attackRange: 360 },
+    base: { ...RANGED, maxHP: 180, moveSpeed: 336, damage: 17, attackSpeed: 1.67, attackRange: 480 },
     scales: ['ad'],
     kitLine: 'Passive pierce · Q splitshaft · E stormline · Dash gust step',
     spec: { q: { kind: 'line', range: 360, width: 36 } },
@@ -487,7 +507,7 @@ export const NEW_KITS: Record<string, Kit> = {
           const along = rx * dx + ry * dy;
           if (along < 0 || along > 360 || Math.abs(rx * dy - ry * dx) > 18 + u.radius) continue;
           hits++;
-          boom(p, u, ((charged ? 26 : 22) + 0.5 * AD(p)) * AMP(p));
+          boom(p, u, ((charged ? 47 : 40) + 0.9 * AD(p)) * AMP(p));
         }
       }
     },
@@ -495,9 +515,9 @@ export const NEW_KITS: Record<string, Kit> = {
       const d = dir ?? p.facing;
       const { x, y } = aimAt(p, d, 300);
       p.combat.ring(x, y, 0xaaf0ff, 150);
-      p.combat.addHazard({ x, y, r: 150, until: T(p) + 4000, dps: 5, team: 'player', color: 0xaaf0ff });
+      p.combat.addHazard({ x, y, r: 150, until: T(p) + 4000, dps: 10, team: 'player', color: 0xaaf0ff });
       for (const u of inRange(p, x, y, 150)) {
-        boom(p, u, (20 + 0.3 * AD(p)) * AMP(p), 'magisch');
+        boom(p, u, (36 + 0.55 * AD(p)) * AMP(p), 'magisch');
         u.stats.set({ id: 'slow:storm', stat: 'moveSpeed', pct: -0.4, expiresAt: T(p) + 2000 });
       }
     },
@@ -507,7 +527,7 @@ export const NEW_KITS: Record<string, Kit> = {
       p.moveBy(d.x * 280, d.y * 280, true);
       p.combat.addHazard({
         x: (ox + p.x) / 2, y: (oy + p.y) / 2, r: 80,
-        until: T(p) + 2500, dps: 8, team: 'player', color: 0xaaf0ff,
+        until: T(p) + 2500, dps: 15, team: 'player', color: 0xaaf0ff,
       });
       return true;
     },
