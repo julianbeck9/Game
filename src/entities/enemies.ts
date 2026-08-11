@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import { EnemyConfig, Enemy, EnemyAbilitySpec } from './Enemy';
 import { COLORS } from '../config';
 import { AUGMENTS } from '../augments/registry';
-import { CHAMPIONS } from '../champions/registry';
+import { ACTIVE_CHAMPIONS } from '../champions/registry';
 import { rivalAbilitiesFor } from '../champions/rivalKits';
 import { run } from '../core/run';
 import { clampToArena, resolvePillars } from '../core/geometry';
@@ -541,7 +541,9 @@ const RIVAL_KINDS: Record<string, 'melee' | 'ranged'> = {
 function dressAsRival(cfg: EnemyConfig): EnemyConfig {
   const style = RIVAL_KINDS[cfg.kind];
   if (!cfg.elite || !style || cfg.championSprite) return cfg;
-  const pool = CHAMPIONS.filter(
+  // ACTIVE_CHAMPIONS, not CHAMPIONS: the 26 retired League-derived entries are
+  // still in the registry for reference, and an elite must never be one of them.
+  const pool = ACTIVE_CHAMPIONS.filter(
     (c) => c.id !== run.champion && (style === 'melee' ? !c.ranged : c.ranged),
   );
   if (pool.length === 0) return cfg;
