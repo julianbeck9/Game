@@ -18,6 +18,7 @@ import { augmentById, AUGMENTS } from './augments/registry';
 import { rollOffers } from './augments/offers';
 import { championUsesAP, ACTIVE_CHAMPIONS } from './champions/registry';
 import { KITS } from './champions/kits';
+import { NEW_KITS } from './champions/newKits';
 import { itemById } from './items/registry';
 import { forceMap } from './core/maps';
 
@@ -163,7 +164,8 @@ window.__CC = {
   forceMap: (id: string | null) => forceMap(id),
   champIds: () => ACTIVE_CHAMPIONS.map((c) => c.id),
   qSpec: (id: string) => {
-    const q = KITS[id]?.spec?.q as { kind: string; range?: number; radius?: number } | undefined;
+    // Same lookup order as the registry: new roster first.
+    const q = (NEW_KITS[id] ?? KITS[id])?.spec?.q as { kind: string; range?: number; radius?: number } | undefined;
     return q ? { kind: q.kind, range: q.range, radius: q.radius } : null;
   },
   rollOffers: (round: number) =>

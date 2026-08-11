@@ -6,6 +6,7 @@ import type Phaser from 'phaser';
 import { ChampionDef } from './types';
 import { shade } from '../core/draw';
 import { KITS } from './kits';
+import { NEW_KITS } from './newKits';
 
 /**
  * The champion roster. Each champion is a data row (name / tagline / region)
@@ -55,10 +56,21 @@ const ROSTER: Row[] = [
   { id: 'karthus', name: 'Karthus', tagline: 'The Deathsinger', region: 'The Dark' },
   { id: 'lucian', name: 'Lucian', tagline: 'The Purifier', region: 'Demacia' },
   { id: 'shen', name: 'Shen', tagline: 'The Eye of Twilight', region: 'Ionia' },
+  // ---- the new roster (champion pack) ----
+  { id: 'brannoc', name: 'Brannoc Emberjaw', tagline: 'Aschewache von Kharsun', region: 'Bruiser' },
+  { id: 'skorrvald', name: 'Skorrvald', tagline: 'Wall von Hohlfrost', region: 'Tank' },
+  { id: 'nyth', name: 'Nyth', tagline: 'Aus der Umbraltiefe', region: 'Assassin' },
+  { id: 'sunna', name: 'Sunna Veyl', tagline: 'Speertaenzerin von Sonnenmal', region: 'Reach / Skirmisher' },
+  { id: 'mirelle', name: 'Mirelle Vosk', tagline: 'Laternenhexe aus dem Schleiermoor', region: 'Zone Control' },
+  { id: 'kip', name: 'Kip Ratchett', tagline: 'Buechsenmacher der Messingwacht', region: 'Burst / Rotation' },
+  { id: 'tessaly', name: 'Tessaly Marrow', tagline: 'Harpunierin der Salzbrand-Kueste', region: 'Control / Hook' },
+  { id: 'aeren', name: 'Aeren Sil', tagline: 'Windwart des Talrands', region: 'Poke / Mobility' },
 ];
 
 function build(row: Row): ChampionDef {
-  const k = KITS[row.id];
+  // New roster first: NEW_KITS replaces the League-derived kits, which stay in
+  // KITS so their rows keep building until the old ids are removed entirely.
+  const k = NEW_KITS[row.id] ?? KITS[row.id];
   return {
     id: row.id,
     name: row.name,
@@ -104,7 +116,8 @@ export const CHAMPIONS: ChampionDef[] = ROSTER.map(build);
  * champion augments for, one archetype each — marksman, burst mage, assassin,
  * engage tank, utility hook, zone caster, sustain bruiser, on-hit DPS.
  */
-const ACTIVE_IDS = ['sivir', 'lux', 'fizz', 'zac', 'blitzcrank', 'karthus', 'warwick', 'masteryi'];
+// The playable roster: eight original champions from the champion pack.
+const ACTIVE_IDS = ['brannoc', 'skorrvald', 'nyth', 'sunna', 'mirelle', 'kip', 'tessaly', 'aeren'];
 
 export const ACTIVE_CHAMPIONS: ChampionDef[] = ACTIVE_IDS.map((id) => {
   const c = CHAMPIONS.find((x) => x.id === id);

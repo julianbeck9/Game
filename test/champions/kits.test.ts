@@ -8,8 +8,8 @@ import { ACTIVE_CHAMPIONS, CHAMPIONS, isActiveChampion } from '../../src/champio
 const VALID_KINDS = new Set(['line', 'circle', 'cone', 'dash', 'self']);
 
 describe('AbilitySpec coverage (B3, S2-3)', () => {
-  it('has exactly 26 champions in the roster', () => {
-    expect(CHAMPIONS.length).toBe(26);
+  it('keeps every champion definition in the roster', () => {
+    expect(CHAMPIONS.length).toBe(34); // 26 legacy + 8 from the champion pack
   });
 
   it('every champion has a spec.q with a recognized shape kind', () => {
@@ -40,7 +40,9 @@ describe('AbilitySpec coverage (B3, S2-3)', () => {
  * became a deletion — re-activating one must remain a single id in ACTIVE_IDS.
  */
 describe('active roster (M3)', () => {
-  const ACTIVE = ['sivir', 'lux', 'fizz', 'zac', 'blitzcrank', 'karthus', 'warwick', 'masteryi'];
+  // The playable roster is now the eight original champions; the League-derived
+  // ids stay in CHAMPIONS as retired entries, not as offers.
+  const ACTIVE = ['brannoc', 'skorrvald', 'nyth', 'sunna', 'mirelle', 'kip', 'tessaly', 'aeren'];
 
   it('offers exactly the eight planned champions', () => {
     expect(ACTIVE_CHAMPIONS.map((c) => c.id).sort()).toEqual([...ACTIVE].sort());
@@ -48,10 +50,12 @@ describe('active roster (M3)', () => {
     expect(isActiveChampion('teemo')).toBe(false);
   });
 
-  it('keeps all 26 champions in the code, fully intact', () => {
-    expect(CHAMPIONS.length).toBe(26);
+  it('keeps every retired champion in the code, fully intact', () => {
+    expect(CHAMPIONS.length).toBe(34); // 26 legacy + 8 from the champion pack
     const benched = CHAMPIONS.filter((c) => !isActiveChampion(c.id));
-    expect(benched.length).toBe(18);
+    // All 26 League-derived champions are benched now, not 18: the eight that
+    // used to be playable were replaced by the champion pack.
+    expect(benched.length).toBe(26);
     for (const c of benched) {
       // Everything a champion needs to be playable again, still present.
       expect(typeof c.fireQ, c.id).toBe('function');
