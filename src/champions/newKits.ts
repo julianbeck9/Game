@@ -82,7 +82,10 @@ const MELEE = { attackRange: 170, attackSpeed: 1.0, critChance: 0.05, armor: 12,
 // projSpeed is REQUIRED for a ranged auto to travel. Leaving it off fell back
 // to the 900 default here, but the old kits set it explicitly and the omission
 // is the kind of gap that reads as 'the archer does nothing'.
-const RANGED = { attackRange: 480, attackSpeed: 1.0, critChance: 0.05, armor: 7, magicResist: 8, projSpeed: 1000 };
+// 540-580, deliberately ABOVE every enemy's ranged auto (now 370-430). A ranged
+// champion whose reach is shorter than the enemy archer's is a melee champion
+// with worse stats, which is what this roster shipped as.
+const RANGED = { attackRange: 560, attackSpeed: 1.0, critChance: 0.05, armor: 7, magicResist: 8, projSpeed: 1000 };
 
 export const NEW_KITS: Record<string, Kit> = {
   // -------------------------------------------------------------- Brannoc
@@ -302,7 +305,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: true,
     qRange: 420,
     cds: { Q: 8000, E: 12000, Dash: 5000 },
-    base: { ...RANGED, maxHP: 170, moveSpeed: 296, damage: 19, abilityPower: 26, attackRange: 490 },
+    base: { ...RANGED, maxHP: 170, moveSpeed: 296, damage: 19, abilityPower: 26, attackRange: 580 },
     scales: ['ap'],
     kitLine: 'Passive wisp · Q mire bloom · E drowned tether · Dash lantern step',
     spec: { q: { kind: 'circle', radius: 120, at: 'cursor', range: 420 } },
@@ -359,7 +362,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: true,
     qRange: 260,
     cds: { Q: 6000, E: 14000, Dash: 3500 },
-    base: { ...RANGED, maxHP: 204, moveSpeed: 316, damage: 15, attackSpeed: 2.85, attackRange: 470 },
+    base: { ...RANGED, maxHP: 204, moveSpeed: 316, damage: 15, attackSpeed: 2.85, attackRange: 545 },
     scales: ['ad'],
     kitLine: 'Passive six-shooter · Q scattershot · E clockwork turret · Dash recoil roll',
     spec: { q: { kind: 'cone', range: 260, angle: 60 } },
@@ -415,7 +418,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: true,
     qRange: 350,
     cds: { Q: 8000, E: 15000, Dash: 5000 },
-    base: { ...RANGED, maxHP: 196, moveSpeed: 305, damage: 22, armor: 10, attackSpeed: 1.33, attackRange: 460 },
+    base: { ...RANGED, maxHP: 196, moveSpeed: 305, damage: 22, armor: 10, attackSpeed: 1.33, attackRange: 540 },
     scales: ['ad'],
     kitLine: 'Passive bleed · Q harpoon · E bloodtide · Dash chainpull',
     spec: { q: { kind: 'line', range: 350, width: 40 } },
@@ -481,7 +484,7 @@ export const NEW_KITS: Record<string, Kit> = {
     ranged: true,
     qRange: 360,
     cds: { Q: 5000, E: 16000, Dash: 4000 },
-    base: { ...RANGED, maxHP: 180, moveSpeed: 336, damage: 17, attackSpeed: 1.67, attackRange: 480 },
+    base: { ...RANGED, maxHP: 180, moveSpeed: 336, damage: 17, attackSpeed: 1.67, attackRange: 560 },
     scales: ['ad'],
     kitLine: 'Passive pierce · Q splitshaft · E stormline · Dash gust step',
     spec: { q: { kind: 'line', range: 360, width: 36 } },

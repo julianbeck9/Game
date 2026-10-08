@@ -5,7 +5,8 @@ import { Combat } from '../core/combat';
 import { findOpenSpawn, norm, len, dist, Vec } from '../core/geometry';
 import { flowDir } from '../core/flowfield';
 import { COLORS, UNIT_SCALE } from '../config';
-import { shadedDisc, crown } from '../core/draw';
+import { crown } from '../core/draw';
+import { drawArchetype } from './enemyBody';
 import { AnimatedChampion } from '../champions/AnimatedChampion';
 import type { AbilityShape } from '../champions/types';
 import { cfgFor } from '../champions/championConfig';
@@ -551,9 +552,13 @@ export class Enemy extends Unit {
   }
 
   protected drawBody(g: Phaser.GameObjects.Graphics): void {
-    // Grounding drop shadow so the unit reads as standing on the map (3D feel)
-    g.fillStyle(0x000000, 0.32);
-    g.fillEllipse(this.x + 2, this.y + this.radius * 0.92, this.radius * 2.1, this.radius * 0.68);
+    // Grounding drop shadow. Only for sprite-based rivals — drawArchetype draws
+    // its own, because the hovering caster needs a smaller shadow set further
+    // down, and two stacked shadows read as mud.
+    if (this.sprite) {
+      g.fillStyle(0x000000, 0.32);
+      g.fillEllipse(this.x + 2, this.y + this.radius * 0.92, this.radius * 2.1, this.radius * 0.68);
+    }
 
     // Elite crown mark: a mini-boss must be identifiable across a crowd of
     // nine, before it does anything. Gold, because that is already the "this
@@ -598,18 +603,13 @@ export class Enemy extends Unit {
       return;
     }
 
-    shadedDisc(g, this.x, this.y, this.radius, swinging ? 0xffffff : this.cfg.color);
-
-    // Facing wedge
-    const f = this.facing;
-    g.fillStyle(this.cfg.darkColor, 1);
-    g.fillTriangle(
-      this.x + f.x * (this.radius + 6), this.y + f.y * (this.radius + 6),
-      this.x + f.x * (this.radius - 5) - f.y * 7, this.y + f.y * (this.radius - 5) + f.x * 7,
-      this.x + f.x * (this.radius - 5) + f.y * 7, this.y + f.y * (this.radius - 5) - f.x * 7,
+    // Archetype silhouette. Replaces the shared disc + facing wedge: the shape
+    // itself now points where the enemy faces, so the wedge is redundant, and
+    // the outline does the work the 20px insignia could not do at this zoom.
+    drawArchetype(
+      g, this.cfg.kind, this.x, this.y, this.radius,
+      this.facing, this.cfg.color, this.cfg.darkColor, !!swinging, this.combat.now,
     );
-
-    this.drawInsignia(g);
   }
 
   /** Archetype marking so enemies read at a glance. */

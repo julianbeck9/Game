@@ -169,7 +169,11 @@ export function makeSchuetze(s: DifficultyScale): EnemyConfig {
     reactionMs: s.reactionMs,
     dodgeChance: Math.min(0.9, s.dodgeChance + 0.15),
     aggression: 0.55,
-    rangedAuto: { range: 520, dmg: 9, intervalMs: 1050, projSpeed: 780 },
+    // 520 out-reached every playable ranged champion (best: 490), so an archer
+    // could never trade — it walked into the Marksman's range to enter its own.
+    // The player's band now sits at 540-580 and enemy autos below it: reach is
+    // the ranged player's advantage, and it has to actually exist.
+    rangedAuto: { range: 430, dmg: 9, intervalMs: 1050, projSpeed: 780 },
     abilities: [
       skillshotAbility(24),
       {
@@ -261,7 +265,7 @@ export function makeSpeermaid(s: DifficultyScale): EnemyConfig {
     reactionMs: s.reactionMs,
     dodgeChance: Math.min(0.9, s.dodgeChance + 0.1),
     aggression: 0.7,
-    rangedAuto: { range: 420, dmg: 8, intervalMs: 1100, projSpeed: 820 },
+    rangedAuto: { range: 370, dmg: 8, intervalMs: 1100, projSpeed: 820 },
     abilities: [
       {
         // Durchbohrender Speer: pierces everything on its line
@@ -371,7 +375,7 @@ export function makeHexer(s: DifficultyScale): EnemyConfig {
     reactionMs: s.reactionMs,
     dodgeChance: s.dodgeChance,
     aggression: 0.5,
-    rangedAuto: { range: 470, dmg: 8, intervalMs: 1250, projSpeed: 720 },
+    rangedAuto: { range: 400, dmg: 8, intervalMs: 1250, projSpeed: 720 },
     abilities: [
       {
         // Fluchzone: curses the ground under the player — punishes standing still
@@ -479,7 +483,7 @@ export function makeUsurpator(s: DifficultyScale, final: boolean): EnemyConfig {
     reactionMs: Math.max(120, s.reactionMs - 60),
     dodgeChance: Math.min(0.9, s.dodgeChance + 0.1),
     aggression: 0.9,
-    rangedAuto: { range: 480, dmg: 8, intervalMs: 1200, projSpeed: 820 },
+    rangedAuto: { range: 430, dmg: 8, intervalMs: 1200, projSpeed: 820 },
     abilities: [
       lungeAbility(30, { cd: 6000 }),
       skillshotAbility(26, { cd: 5000 }),

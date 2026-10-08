@@ -87,6 +87,48 @@ export const CHAMPS: Record<string, ChampCfg> = {
   lux:        { archetype: 'caster', attackStyle: 'recoil', castDur: 560, attackVfx: proj(0xffe070, { speed: 520, size: 3 }), castVfx: { kind: 'beam', color: 0xffe070, dist: 200, size: 10 } },
   cassiopeia: { archetype: 'caster', attackStyle: 'lunge', walkBob: 0, lunge: 8, attackVfx: arc(0x60c080), castVfx: aoe(0x60c080, { dist: 44 }) },
   karthus:    { archetype: 'caster', attackStyle: 'recoil', walkBob: 0, float: true, attackVfx: proj(0x50c0a0, { speed: 400, size: 4 }), castVfx: aoe(0x50c0a0, { dist: 56 }) },
+
+  // ---------------------------------------------------------------------
+  // The new roster.
+  //
+  // These eight had NO entry here, so cfgFor fell through to DEFAULT_CFG:
+  // melee archetype, lunge style, white slash arc, no cast effect. That
+  // applied to the four RANGED champions too — every one of them lunged at
+  // its target and swung a white sword, which is exactly the reported
+  // "alle Charaktere sind melee". The kit fired a real projectile; the body
+  // on screen said otherwise, and the body is what a player believes.
+  //
+  // attackDur is kept under each champion's attack interval (1000/attackSpeed),
+  // otherwise a fast attacker restarts its swing mid-swing and reads as a
+  // stutter rather than a rhythm. Kip at 2.85 AS has 351ms per shot, so 190.
+  // ---------------------------------------------------------------------
+
+  // --- Melee ---
+  brannoc:    { archetype: 'melee',  attackStyle: 'lunge', lunge: 15, idleAmp: 0.05, attackDur: 300,
+                attackVfx: arc(0xff7a3a, { size: 20, shake: 3 }), castVfx: aoe(0xff7a3a, { dist: 50, shake: 4 }) },
+  skorrvald:  { archetype: 'melee',  attackStyle: 'lunge', lunge: 12, idleAmp: 0.03, walkBob: 4, attackDur: 380,
+                attackVfx: arc(0x9fdfff, { size: 24, shake: 4 }), castVfx: aoe(0x9fdfff, { dist: 56, shake: 3 }) },
+  nyth:       { archetype: 'melee',  attackStyle: 'lunge', lunge: 14, idleAmp: 0.055, walkBob: 6, attackDur: 170,
+                attackVfx: arc(0xcc88ff, { size: 13 }), castVfx: { kind: 'flash', color: 0x8844cc } },
+  // Reach skirmisher: a glaive, so the swing is a wide cone rather than a slash.
+  sunna:      { archetype: 'melee',  attackStyle: 'lunge', lunge: 18, idleAmp: 0.045, attackDur: 260,
+                attackVfx: { kind: 'cone', color: 0xffd24a, dist: 110, spread: 85, size: 8 },
+                castVfx: aoe(0xffd24a, { dist: 46, shake: 3 }) },
+
+  // --- Ranged ---
+  // proj() here becomes a muzzle flash via attackVfxFor: the travelling visual
+  // is the real damaging projectile the kit spawns, not a cosmetic second one.
+  mirelle:    { archetype: 'caster', attackStyle: 'recoil', walkBob: 0, float: true, attackDur: 420, castDur: 560,
+                attackVfx: proj(0x66ddaa, { speed: 460, size: 5 }),
+                castVfx: { kind: 'beam', color: 0x66ddaa, dist: 220, size: 9 } },
+  kip:        { archetype: 'ranged', attackStyle: 'recoil', walkBob: 5, attackDur: 190,
+                attackVfx: proj(0xffcc66, { speed: 760, size: 3 }), castVfx: aoe(0xffcc66, { dist: 44, shake: 3 }) },
+  tessaly:    { archetype: 'ranged', attackStyle: 'recoil', attackDur: 420,
+                attackVfx: proj(0xdd5577, { speed: 620, size: 4 }),
+                castVfx: { kind: 'grab', color: 0xdd5577, dist: 260, size: 6 } },
+  aeren:      { archetype: 'ranged', attackStyle: 'recoil', walkBob: 4, attackDur: 300,
+                attackVfx: proj(0xaaf0ff, { speed: 900, size: 3, dist: 340 }),
+                castVfx: { kind: 'beam', color: 0xaaf0ff, dist: 240, size: 7 } },
 };
 
 /** Alle 26 IDs, abgeleitet aus CHAMPS (für Loader/Demo als Manifest nutzbar). */
