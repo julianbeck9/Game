@@ -7,6 +7,7 @@ import { flowDir } from '../core/flowfield';
 import { COLORS, UNIT_SCALE } from '../config';
 import { crown } from '../core/draw';
 import { drawArchetype } from './enemyBody';
+import { tokensFor } from '../core/tokens';
 import { AnimatedChampion } from '../champions/AnimatedChampion';
 import type { AbilityShape } from '../champions/types';
 import { cfgFor } from '../champions/championConfig';
@@ -14,6 +15,29 @@ import { attackVfxFor, specForShape } from '../champions/abilityVfx';
 
 /** How long a stretch of movement is judged for net progress before detouring. */
 const PROGRESS_WINDOW_MS = 700;
+
+/** Half-width of a melee swing wedge (radians) — 55 degrees either side of the aim. */
+const SWING_HALF = 0.96;
+
+/**
+ * Melee wind-up length. Follows the enemy's reaction time so late rounds swing
+ * faster, but never below 300ms: under that a human cannot react to the tell,
+ * and an untellable swing is the instant hit this replaced.
+ */
+function swingWindupMs(reactionMs: number): number {
+  return Math.max(300, Math.min(450, reactionMs + 50));
+}
+
+/** Smallest signed difference between two angles, in (-PI, PI]. */
+function angleDiff(a: number, b: number): number {
+  let d = a - b;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d <= -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+/** Melee bots without an attack token wait on this ring, just outside reach. */
+const WAIT_RING = 210;
 
 /**
  * Last-resort headings when a bot makes no net progress (B9) — offsets to the
@@ -112,6 +136,8 @@ export class Enemy extends Unit {
 
   private abilityReadyAt = new Map<string, number>();
   private nextSwingAt = 0;
+  /** Holds an attack token this frame (core/tokens.ts). */
+  private hasToken = false;
   private strafeSign = 1;
   private strafeSwitchAt = 0;
   /** Personal flank slot on a ring around the target — squads surround, not queue. */
@@ -178,6 +204,11 @@ export class Enemy extends Unit {
     return this.telegraphing !== null || this.lunge !== null;
   }
 
+  /** What is being wound up ('swing', an ability id, 'lunge') or null. Bots read it. */
+  castingId(): string | null {
+    return this.telegraphing?.id ?? (this.lunge ? 'lunge' : null);
+  }
+
   update(time: number, dt: number): void {
     this.telegraphGfx.clear();
     if (!this.alive) return;
@@ -198,6 +229,15 @@ export class Enemy extends Unit {
     this.facing = norm(t.x - this.x, t.y - this.y);
     this.trackVelocity(time);
 
+    // Attack token (core/tokens.ts): only a few enemies attack at once, the
+    // rest wait their turn. Asked for only once engaged — a bot still walking in
+    // from across the map must not sit on a token it cannot use. Checked before
+    // the committed actions so a unit mid wind-up keeps its token until the
+    // attack lands.
+    const busy = this.isCasting();
+    const engaged = busy || d <= Math.max(this.cfg.preferredRange + this.cfg.rangeBand, WAIT_RING) + 150;
+    this.hasToken = this.isBoss || this.isElite || (engaged && tokensFor(this.combat).request(this, time, busy));
+
     // 1) Committed actions first
     if (this.lunge) {
       this.advanceLunge(dt);
@@ -205,7 +245,10 @@ export class Enemy extends Unit {
     }
     if (this.telegraphing) {
       const prog = (time - this.telegraphStart) / (this.telegraphUntil - this.telegraphStart);
-      this.telegraphing.drawTelegraph(this, this.telegraphGfx, Math.min(1, prog));
+      // Clamped at both ends: a clock that steps backwards (tab restore, the
+      // test harness's synthetic clock) gave negative progress, and telegraphs
+      // that scale a radius by it handed canvas a negative radius — a crash.
+      this.telegraphing.drawTelegraph(this, this.telegraphGfx, Math.max(0, Math.min(1, prog)));
       if (time >= this.telegraphUntil) {
         const spec = this.telegraphing;
         this.telegraphing = null;
@@ -221,11 +264,11 @@ export class Enemy extends Unit {
       this.noteProgress(time, Math.hypot(mv.x * dt, mv.y * dt));
     }
 
-    // 3) Abilities (only when not mid-dodge)
-    if (time >= this.dodgeUntil) this.tryAbilities(time, d);
+    // 3) Abilities (only when not mid-dodge, and only with a token)
+    if (time >= this.dodgeUntil && this.hasToken) this.tryAbilities(time, d);
 
     // 4) Basic attack
-    this.tryBasicAttack(time, d);
+    if (this.hasToken) this.tryBasicAttack(time, d);
   }
 
   // ---- Movement ----
@@ -340,8 +383,14 @@ export class Enemy extends Unit {
 
     // Range keeping + strafe
     const toT = norm(t.x - this.x, t.y - this.y);
-    const inner = this.cfg.preferredRange - this.cfg.rangeBand;
-    const outer = this.cfg.preferredRange + this.cfg.rangeBand;
+    // Without a token a melee bot holds a ring just outside reach instead of
+    // pressing in: it circles, visibly waiting its turn, and backs off after
+    // its token runs out — the attack rhythm Hades' melee enemies have.
+    const waiting = !this.hasToken && !!this.cfg.melee && this.cfg.preferredRange < WAIT_RING;
+    const pref = waiting ? WAIT_RING : this.cfg.preferredRange;
+    const band = waiting ? 40 : this.cfg.rangeBand;
+    const inner = pref - band;
+    const outer = pref + band;
 
     if (time >= this.strafeSwitchAt) {
       this.strafeSign = Math.random() < 0.5 ? -1 : 1;
@@ -353,8 +402,8 @@ export class Enemy extends Unit {
       // Head for your own flank slot on a ring around the target, so the
       // squad closes in from several directions at once.
       const slot = {
-        x: t.x + Math.cos(this.surroundAngle) * this.cfg.preferredRange,
-        y: t.y + Math.sin(this.surroundAngle) * this.cfg.preferredRange,
+        x: t.x + Math.cos(this.surroundAngle) * pref,
+        y: t.y + Math.sin(this.surroundAngle) * pref,
       };
       const toSlot = norm(slot.x - this.x, slot.y - this.y);
       const want = {
@@ -376,6 +425,20 @@ export class Enemy extends Unit {
     // Near the band: the slot follows the live orbit position
     this.surroundAngle = Math.atan2(this.y - t.y, this.x - t.x);
     if (d < inner) {
+      // A waiting bot does NOT back away from a player who walks up to it. It
+      // did at first, and a melee champion could then never reach anything
+      // without a token: the crowd kited him for the whole round, Skorrvald
+      // took zero damage and still timed out. Hold and circle instead — it is
+      // the player's choice to pick a fight with an enemy that is waiting.
+      // It does drift back toward its ring, at ~a third of its speed — slower
+      // than any champion walks, so it stays catchable, but it no longer
+      // circles inside the player's body, where its swing wedge cannot be read.
+      if (waiting) {
+        return this.withSeparation({
+          x: (perp.x * 0.6 - toT.x * 0.35) * speed,
+          y: (perp.y * 0.6 - toT.y * 0.35) * speed,
+        });
+      }
       return this.withSeparation({
         x: (-toT.x * 0.8 + perp.x * 0.45) * speed,
         y: (-toT.y * 0.8 + perp.y * 0.45) * speed,
@@ -455,6 +518,66 @@ export class Enemy extends Unit {
 
   // ---- Attacks ----
 
+  private swingSpec: EnemyAbilitySpec | null = null;
+
+  /** The melee swing as a telegraphed ability: a wedge that fills, then strikes. */
+  private meleeSwing(): EnemyAbilitySpec {
+    if (this.swingSpec) return this.swingSpec;
+    this.swingSpec = {
+      id: 'swing',
+      cd: 0,
+      condition: () => false, // never rolled by tryAbilities; started by tryBasicAttack
+      telegraphMs: 0,
+      drawTelegraph: (e, g, prog) => {
+        const a = Math.atan2(e.telegraphAim.y, e.telegraphAim.x);
+        const r = e.memory.swingR;
+        // Outline at full reach from the first frame: the danger zone is known
+        // immediately, the fill only says how long is left. Drawn heavy — the
+        // first version (2px, 30% fill) disappeared on the painted maps.
+        g.fillStyle(COLORS.telegraph, 0.14);
+        g.beginPath();
+        g.moveTo(e.x, e.y);
+        g.arc(e.x, e.y, r, a - SWING_HALF, a + SWING_HALF);
+        g.closePath();
+        g.fillPath();
+        g.fillStyle(COLORS.telegraph, prog > 0.85 ? 0.6 : 0.22 + prog * 0.25);
+        g.beginPath();
+        g.moveTo(e.x, e.y);
+        g.arc(e.x, e.y, r * Math.max(0.15, prog), a - SWING_HALF, a + SWING_HALF);
+        g.closePath();
+        g.fillPath();
+        g.lineStyle(3, COLORS.telegraph, 0.75 + prog * 0.25);
+        g.beginPath();
+        g.moveTo(e.x, e.y);
+        g.arc(e.x, e.y, r, a - SWING_HALF, a + SWING_HALF);
+        g.closePath();
+        g.strokePath();
+        // Bright leading edge on the fill: the eye tracks a moving line far
+        // better than a slowly darkening area.
+        g.lineStyle(2, 0xffffff, 0.35 + prog * 0.5);
+        g.beginPath();
+        g.arc(e.x, e.y, r * Math.max(0.15, prog), a - SWING_HALF, a + SWING_HALF);
+        g.strokePath();
+      },
+      execute: (e) => {
+        const t = e.target;
+        e.memory.swingAt = e.combat.now; // white body flash on the strike frame
+        e.sprite?.attack(Math.atan2(e.telegraphAim.y, e.telegraphAim.x));
+        if (!t.alive || !e.cfg.melee) return;
+        // Hit only inside the telegraphed wedge. Reach and aim were frozen when
+        // the wind-up started, so stepping back or around it is a real dodge.
+        const dx = t.x - e.x;
+        const dy = t.y - e.y;
+        const d = Math.hypot(dx, dy);
+        if (d > e.memory.swingR) return;
+        const off = Math.abs(angleDiff(Math.atan2(dy, dx), Math.atan2(e.telegraphAim.y, e.telegraphAim.x)));
+        if (d > t.radius && off > SWING_HALF + Math.atan2(t.radius, d)) return;
+        e.combat.dealDamage(e, t, e.cfg.melee.dmg * e.dmgScale(), 'auto');
+      },
+    };
+    return this.swingSpec;
+  }
+
   private tryAbilities(time: number, d: number): void {
     for (const a of this.cfg.abilities) {
       const ready = (this.abilityReadyAt.get(a.id) ?? 0) <= time;
@@ -481,10 +604,21 @@ export class Enemy extends Unit {
   private tryBasicAttack(time: number, d: number): void {
     const t = this.target;
     if (this.cfg.melee && d <= this.cfg.melee.range + t.radius && time >= this.nextSwingAt) {
-      this.nextSwingAt = time + this.cfg.melee.intervalMs;
-      this.combat.dealDamage(this, t, this.cfg.melee.dmg * this.dmgScale(), 'auto');
-      this.memory.swingAt = time; // for the monster-disc swing flash
-      this.sprite?.attack(Math.atan2(t.y - this.y, t.x - this.x));
+      // Melee swings are telegraphed now, through the same slot as abilities.
+      // They used to land the instant the player was in reach: four of the six
+      // archetypes dealt damage with no tell at all, so a melee champion took
+      // a hit every ~900ms from every enemy beside it whatever the player did.
+      // That is a stat check, and with health a pool across the whole run it
+      // ended runs in round 2. A wind-up the player can step out of turns the
+      // same swing into a read-and-punish rhythm (Hades, Dead Cells).
+      const windup = swingWindupMs(this.cfg.reactionMs);
+      this.nextSwingAt = time + windup + this.cfg.melee.intervalMs;
+      this.memory.swingR = this.cfg.melee.range + t.radius; // reach, frozen at wind-up start
+      this.telegraphing = this.meleeSwing();
+      this.telegraphStart = time;
+      this.telegraphUntil = time + windup;
+      this.telegraphAim = norm(t.x - this.x, t.y - this.y);
+      return;
     }
     if (this.cfg.rangedAuto && d <= this.cfg.rangedAuto.range && time >= this.nextSwingAt) {
       const r = this.cfg.rangedAuto;

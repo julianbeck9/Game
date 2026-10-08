@@ -62,10 +62,18 @@ function velocityOf(u: Unit, now: number): { vx: number; vy: number } {
   return { vx: prev?.vx ?? 0, vy: prev?.vy ?? 0 };
 }
 
-/** Close enough that a windup is worth breaking position for. */
-const THREAT_RANGE = 300;
+/**
+ * Close enough that a windup is worth breaking position for. Was 300, which
+ * ignored the Hexer entirely: it curses the ground under the player from
+ * 330-560 away, and the bot stood still under every curse a human would have
+ * walked out of. Sidestepping is cheap; E and dash keep their own, much
+ * shorter trigger distances below.
+ */
+const THREAT_RANGE = 600;
 /** Below this share of max HP, hold a wider berth. */
 const HURT_PCT = 0.4;
+/** How far ahead the bot checks its path for enemy damage zones. */
+const LOOKAHEAD_PX = 45;
 
 function visibleThreat(p: Player, foes: Unit[]): Unit | null {
   let best: Unit | null = null;
@@ -74,7 +82,13 @@ function visibleThreat(p: Player, foes: Unit[]): Unit | null {
     const e = f as Enemy;
     if (typeof e.isCasting !== 'function' || !e.isCasting()) continue;
     const d = dist(p.x, p.y, f.x, f.y);
-    if (d < bestD) {
+    // A melee swing only threatens inside its own wedge. Treating every swing
+    // in 600px as a threat kept the bot sidestepping nonstop — and champions
+    // only attack standing still, so round 1 against ONE enemy took 20-90s and
+    // the sim's median fell from 4 to 3. Ranged and ground telegraphs keep the
+    // wide radius; those are aimed at the player from afar.
+    const reach = e.castingId?.() === 'swing' ? (e.memory?.swingR ?? 80) + 40 : THREAT_RANGE;
+    if (d < bestD && d <= reach) {
       bestD = d;
       best = f;
     }
@@ -82,11 +96,11 @@ function visibleThreat(p: Player, foes: Unit[]): Unit | null {
   return best;
 }
 
-/** Enemy ground effect the player is currently standing in, if any. */
-function standingInHazard(p: Player, hazards: readonly Hazard[]): Hazard | null {
+/** Enemy ground effect a body of radius r at (x, y) stands in, if any. */
+function hazardAt(x: number, y: number, r: number, hazards: readonly Hazard[]): Hazard | null {
   for (const h of hazards) {
     if (h.team === 'player') continue;
-    if (dist(p.x, p.y, h.x, h.y) < h.r + p.radius) return h;
+    if (dist(x, y, h.x, h.y) < h.r + r) return h;
   }
   return null;
 }
@@ -135,9 +149,23 @@ export function autopilotIntent(p: Player, units: Unit[], hazards: readonly Haza
   else if (targetD < near) move = { x: -aim.x, y: -aim.y };
 
   // Standing in a damage zone beats any positioning plan.
-  const hazard = standingInHazard(p, hazards);
+  const hazard = hazardAt(p.x, p.y, p.radius, hazards);
   if (hazard) {
     move = norm(p.x - hazard.x, p.y - hazard.y);
+  } else if (move.x !== 0 || move.y !== 0) {
+    // Don't walk back INTO one either. Without this look-ahead the bot stepped
+    // out of a Hexer curse, then straight back in toward a target standing
+    // behind it, and hovered on the rim for the whole zone: ~90 damage a round
+    // for Mirelle, more than every enemy attack combined. A human does not do
+    // that, so the sim was measuring the bot rather than the game.
+    const zone = hazardAt(p.x + move.x * LOOKAHEAD_PX, p.y + move.y * LOOKAHEAD_PX, p.radius, hazards);
+    if (zone) {
+      // Skirt it: go round the side of the zone that is closer to the plan.
+      const out = norm(p.x - zone.x, p.y - zone.y);
+      const left = { x: -out.y, y: out.x };
+      const side = left.x * move.x + left.y * move.y >= 0 ? 1 : -1;
+      move = norm(left.x * side + out.x * 0.3, left.y * side + out.y * 0.3);
+    }
   }
 
   const threat = visibleThreat(p, foes);

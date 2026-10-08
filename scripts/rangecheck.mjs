@@ -45,7 +45,7 @@ for (const id of champs) {
     CC.run.champion = champId;
     CC.forceMap('highland'); // pin scenery: a wall would block the shot
     CC.goto(1);              // round 1 is a single enemy — no bystander lands the hit
-    await new Promise((res) => setTimeout(res, 900));
+    CC.stepMs(900, 16);      // synthetic clock: CPU load must not change the result
     const a = CC.arena();
     const p = a.player;
     p.hp = p.maxHP = 1e6;
@@ -66,6 +66,12 @@ for (const id of champs) {
     probe.cfg.melee = undefined;
     probe.cfg.abilities = [];
     probe.cfg.rangedAuto = { range: 430, dmg: 8, intervalMs: 900, projSpeed: 780 };
+    // Drop anything already in flight from the 900ms before this setup — a
+    // skillshot wound up then still fires after the override, and its damage
+    // would be read as the archer out-ranging the champion.
+    probe.telegraphing = null;
+    probe.lunge = null;
+    for (const pr of a.projectiles) if (pr.team === 'enemy') pr.alive = false;
     probe.hp = probe.maxHP = 1e6;
     probe.x = p.x + (reach - 25);
     probe.y = p.y;
@@ -76,7 +82,7 @@ for (const id of champs) {
 
     const pBefore = p.hp;
     const eBefore = probe.hp;
-    await new Promise((res) => setTimeout(res, 3000));
+    CC.stepMs(3000, 16);
 
     return {
       id: champId,
@@ -88,6 +94,8 @@ for (const id of champs) {
   }, id);
   results.push(r);
 }
+
+await page.evaluate(() => window.__CC.resumeClock());
 
 const PROBE_REACH = 430; // matches the archer the probe is dressed as, above
 

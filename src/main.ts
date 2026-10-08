@@ -40,6 +40,18 @@ const game = new Phaser.Game({
   scene: [MenuScene, ArenaScene, PickScene, ShopScene, BuildScene, EditorScene, AdminScene, EndScene],
 });
 
+// Measurement clock offset (see __CC.resumeClock). 0 in normal play, so the
+// patched step below is the stock one; wake() binds `loop.step` afresh, which
+// is why patching the instance property is enough.
+let clockOffset = 0;
+{
+  const loop = game.loop as unknown as { step: (t: number) => void; stepLimitFPS: (t: number) => void };
+  const rawStep = loop.step.bind(game.loop);
+  const rawLimited = loop.stepLimitFPS.bind(game.loop);
+  loop.step = (t: number) => rawStep(t + clockOffset);
+  loop.stepLimitFPS = (t: number) => rawLimited(t + clockOffset);
+}
+
 // iOS Safari leaves the canvas offset/mis-scaled after rotating the device:
 // re-measure once the browser has settled, and pin the page back to the top.
 const refreshScale = () => {
@@ -152,15 +164,26 @@ window.__CC = {
     const loop = game.loop;
     loop.sleep();
     const steps = Math.max(1, Math.round(ms / dtMs));
-    let t = loop.time;
+    // Continue from the last timestamp the game actually saw (loop.now), not
+    // loop.time — that is an accumulated duration on a different base, so
+    // starting from it made game time jump on the first synthetic step.
+    let t = loop.now;
     for (let i = 0; i < steps; i++) {
       t += dtMs;
       game.step(t, dtMs);
     }
-    loop.time = t;
+    loop.now = t;
+    loop.lastTime = t;
     return t;
   },
-  resumeClock: () => { game.loop.wake(); },
+  resumeClock: () => {
+    // Synthetic time runs ahead of the wall clock. Phaser's scene clock takes
+    // the RAF timestamp verbatim, so plain wake() threw game time backwards and
+    // every effect started in the 'future' drew with a negative radius — a
+    // canvas crash. Offset the RAF timestamps instead, so time carries on.
+    clockOffset = game.loop.now - performance.now();
+    game.loop.wake();
+  },
   forceMap: (id: string | null) => forceMap(id),
   champIds: () => ACTIVE_CHAMPIONS.map((c) => c.id),
   qSpec: (id: string) => {
