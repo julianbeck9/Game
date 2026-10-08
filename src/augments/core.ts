@@ -36,6 +36,7 @@ import { procDamage, enemiesWithin } from './helpers';
 
 const schnittfolge: AugmentDef = {
   id: 'schnittfolge',
+  slot: 'auto',
   name: 'Cutting Sequence',
   tier: 'silber',
   tags: ['Sturm'],
@@ -45,6 +46,7 @@ const schnittfolge: AugmentDef = {
 
 const brandspur: AugmentDef = {
   id: 'brandspur',
+  slot: 'dash',
   name: 'Ember Trail',
   tier: 'silber',
   tags: ['Bruch'],
@@ -54,6 +56,7 @@ const brandspur: AugmentDef = {
 
 const brecheisen: AugmentDef = {
   id: 'brecheisen',
+  slot: 'auto',
   name: 'Crowbar',
   tier: 'silber',
   tags: ['Bruch'],
@@ -81,6 +84,7 @@ const wachhaltung: AugmentDef = {
 
 const kurzschluss: AugmentDef = {
   id: 'kurzschluss',
+  slot: 'Q',
   name: 'Short Circuit',
   tier: 'silber',
   tags: ['Arkan'],
@@ -110,6 +114,7 @@ const nachhall: AugmentDef = {
 
 const kronjagd: AugmentDef = {
   id: 'kronjagd',
+  slot: 'Q',
   name: 'Crown Hunt',
   tier: 'gold',
   tags: ['Sturm'],
@@ -119,6 +124,7 @@ const kronjagd: AugmentDef = {
 
 const sturmbock: AugmentDef = {
   id: 'sturmbock',
+  slot: 'dash',
   name: 'Battering Charge',
   tier: 'gold',
   tags: ['Sturm', 'Bruch'],
@@ -128,6 +134,7 @@ const sturmbock: AugmentDef = {
 
 const kettenschlag: AugmentDef = {
   id: 'kettenschlag',
+  slot: 'auto',
   name: 'Chain Strike',
   tier: 'gold',
   tags: ['Sturm'],
@@ -137,6 +144,7 @@ const kettenschlag: AugmentDef = {
 
 const doppeltritt: AugmentDef = {
   id: 'doppeltritt',
+  slot: 'dash',
   name: 'Second Wind',
   tier: 'gold',
   tags: ['Sturm'],
@@ -146,6 +154,7 @@ const doppeltritt: AugmentDef = {
 
 const unantastbar: AugmentDef = {
   id: 'unantastbar',
+  slot: 'dash',
   name: 'Untouchable',
   tier: 'gold',
   tags: ['Ward'],
@@ -229,6 +238,7 @@ const kronlos: AugmentDef = {
 
 const sturmschritt: AugmentDef = {
   id: 'sturmschritt',
+  slot: 'dash',
   name: 'Stormstep',
   tier: 'prisma',
   tags: ['Sturm', 'Arkan'],

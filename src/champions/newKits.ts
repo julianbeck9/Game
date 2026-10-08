@@ -3,6 +3,7 @@ import type { Player } from '../entities/Player';
 import type { Unit } from '../entities/Unit';
 import { norm, type Vec } from '../core/geometry';
 import { run } from '../core/run';
+import { evolved } from './evolutions';
 
 /**
  * The eight original champions, built from champion-pack/champions.json.
@@ -198,12 +199,13 @@ function markNyth(p: Player, u: Unit): void {
   u.stats.set({ id: 'debuff:shadowmr', stat: 'magicResist', flat: -30, expiresAt: T(p) + 8000 });
 }
 
-/** Umbra Lash: cracks out 250 and snaps back; each enemy struck once. */
+/** Umbra Lash: cracks out 250 and snaps back; each enemy struck once. Rift Lash: a 450 line, one way. */
 function lash(p: Player, d: Vec): void {
   const struck = new Set<Unit>();
+  const rift = evolved('evo_riftlash');
   p.combat.spawnProjectile({
-    x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 1300, radius: 11, color: 0xcc88ff,
-    team: 'player', maxHits: 12, maxDist: 250, boomerangTo: p, spin: true,
+    x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 1300, radius: rift ? 14 : 11, color: 0xcc88ff,
+    team: 'player', maxHits: rift ? 99 : 12, maxDist: rift ? 450 : 250, boomerangTo: rift ? undefined : p, spin: true,
     onHit: (u) => {
       if (struck.has(u)) return;
       struck.add(u);
@@ -271,6 +273,13 @@ function tether(p: Player, t: Unit, reach: number, wardCap: number): void {
       if (Math.hypot(t.x - p.x, t.y - p.y) > reach) { held = false; return; }
       p.combat.flashLine(p.x, p.y, t.x, t.y, BOG);
       boom(p, t, (9 + 0.16 * AP(p)) * AMP(p) * (siphon ? 1.2 ** i : 1), 'magisch');
+      if (evolved('evo_undertow')) {
+        // Undertow: every tick hauls the target in
+        const a = Math.atan2(p.y - t.y, p.x - t.x);
+        const room = Math.hypot(p.x - t.x, p.y - t.y) - p.radius - t.radius - 8;
+        const s = Math.max(0, Math.min(30, room));
+        t.moveBy(Math.cos(a) * s, Math.sin(a) * s);
+      }
       if (i === ticks - 1) ward(p, 20, wardCap);
     });
   }
@@ -392,7 +401,18 @@ export const NEW_KITS: Record<string, Kit> = {
       leap(p, x, y, 220, () => {
         p.combat.ring(p.x, p.y, 0xff7a3a, 140);
         for (const u of inRange(p, p.x, p.y, 140)) boom(p, u, (63 + 0.9 * AD(p)) * AMP(p));
-        p.combat.addHazard({ x: p.x, y: p.y, r: 140, until: T(p) + 4000, dps: 15, team: 'player', color: 0xff7a3a });
+        const melt = evolved('evo_meltdown');
+        p.combat.addHazard({
+          x: p.x, y: p.y, r: melt ? 220 : 140, until: T(p) + (melt ? 6000 : 4000), dps: 15, team: 'player', color: 0xff7a3a,
+        });
+        if (melt) {
+          // Meltdown: the pool keeps feeding embers to whatever stands in it
+          const cx = p.x;
+          const cy = p.y;
+          for (let i = 1; i <= 12; i++) {
+            p.combat.delay(i * 500, () => { for (const u of inRange(p, cx, cy, 220)) addEmbers(p, u, 1); });
+          }
+        }
         if (!has('bra_furnace_heart')) return;
         // Furnace Heart: the slam sets off every ember within 300
         for (const u of inRange(p, p.x, p.y, 300)) {
@@ -409,7 +429,9 @@ export const NEW_KITS: Record<string, Kit> = {
       // no sustain at all and trades his own health for tempo.
       const candle = has('bra_candle');
       const ms = candle ? 9000 : 5000;
-      p.hp = Math.max(1, p.hp - (candle ? 25 : 12));
+      // Hearth Guard: the fire stops eating you and starts shielding you
+      if (evolved('evo_hearth')) ward(p, 30, 60);
+      else p.hp = Math.max(1, p.hp - (candle ? 25 : 12));
       p.memory.stokeUntil = T(p) + ms;
       p.stats.set({ id: 'buff:stoke', stat: 'attackSpeed', pct: 0.4, expiresAt: T(p) + ms });
       if (candle) p.stats.set({ id: 'buff:candle', stat: 'moveSpeed', pct: 0.25, expiresAt: T(p) + ms });
@@ -451,7 +473,8 @@ export const NEW_KITS: Record<string, Kit> = {
       if (!wallUp(p) || !src) return 1;
       const fx = src.x - p.x;
       const fy = src.y - p.y;
-      if (fx * p.facing.x + fy * p.facing.y <= 0) return 1;
+      // Glacier Fortress: no back to get round
+      if (!evolved('evo_fortress') && fx * p.facing.x + fy * p.facing.y <= 0) return 1;
       ward(p, 6, has('sko_glacial') ? 80 : 40);
       // Mirror Ice: the blocked hit goes back where it came from (next tick —
       // never re-enter dealDamage from inside it)
@@ -497,21 +520,29 @@ export const NEW_KITS: Record<string, Kit> = {
       p.combat.announce('Rime Wall', '#9fdfff');
     },
     castE: (p) => {
-      p.combat.ring(p.x, p.y, 0x9fdfff, 200);
+      const slide = evolved('evo_landslide');
+      const reach = slide ? 320 : 200;
+      p.combat.ring(p.x, p.y, 0x9fdfff, reach);
       const fm = (u: Unit) => u as unknown as Record<string, number>;
       // Collected first: a Shatterpoint chill is for the NEXT Avalanche, not this one
-      const shattered = inRange(p, p.x, p.y, 200).filter((u) => (fm(u).frostUntil ?? 0) >= T(p));
-      for (const u of shattered) {
-        fm(u).frostUntil = 0;
-        const frozen = (fm(u).frozenUntil ?? 0) > T(p);
-        boom(p, u, (45 + 0.7 * AD(p)) * AMP(p) * (frozen ? 1.5 : 1), 'magisch');
-        u.ctrlUntil = Math.max(u.ctrlUntil, T(p) + 1000);
-      }
-      if (!has('sko_shatter')) return;
-      for (const u of shattered) {
-        p.combat.ring(u.x, u.y, 0xdff6ff, 120);
-        for (const v of inRange(p, u.x, u.y, 120)) if (v !== u) chill(p, v);
-      }
+      const shattered = inRange(p, p.x, p.y, reach).filter((u) => (fm(u).frostUntil ?? 0) >= T(p));
+      const shatter = () => {
+        for (const u of shattered) {
+          fm(u).frostUntil = 0;
+          const frozen = (fm(u).frozenUntil ?? 0) > T(p);
+          boom(p, u, (45 + 0.7 * AD(p)) * AMP(p) * (frozen ? 1.5 : 1), 'magisch');
+          u.ctrlUntil = Math.max(u.ctrlUntil, T(p) + 1000);
+        }
+        if (!has('sko_shatter')) return;
+        for (const u of shattered) {
+          p.combat.ring(u.x, u.y, 0xdff6ff, 120);
+          for (const v of inRange(p, u.x, u.y, 120)) if (v !== u) chill(p, v);
+        }
+      };
+      if (!slide) return shatter();
+      // Landslide: drag every chilled enemy in, then break them all at once
+      for (const u of shattered) reelIn(p, u, Math.hypot(u.x - p.x, u.y - p.y), 0x9fdfff);
+      p.combat.delay(200, shatter);
     },
     onDash: () => 180,
     onDashEnd: (p) => {
@@ -582,9 +613,11 @@ export const NEW_KITS: Record<string, Kit> = {
       p.hp = Math.max(1, p.hp - 15);
       p.invulnUntil = T(p) + 800;
       p.combat.ring(p.x, p.y, 0x8844cc, 220);
+      const nova = evolved('evo_veilnova');
       for (const u of inRange(p, p.x, p.y, 220)) {
         u.stats.set({ id: 'debuff:veil', stat: 'armor', flat: -25, expiresAt: T(p) + 5000 });
         u.stats.set({ id: 'debuff:veilmr', stat: 'magicResist', flat: -25, expiresAt: T(p) + 5000 });
+        if (nova) boom(p, u, (60 + 1.0 * AD(p)) * AMP(p)); // Veil Nova
       }
     },
     onDash: (p) => {
@@ -638,7 +671,17 @@ export const NEW_KITS: Record<string, Kit> = {
       const { x, y } = aimAt(p, d, 300);
       // The glaive is thrown, spinning, and pins where it actually stops — a
       // wall in the way pins it at the wall.
-      lob(p, d, Math.hypot(x - p.x, y - p.y), 950, 14, 0xffd24a, true, (gx, gy) => pinGlaive(p, gx, gy));
+      const dist = Math.hypot(x - p.x, y - p.y);
+      if (!evolved('evo_twinsuns')) {
+        lob(p, d, dist, 950, 14, 0xffd24a, true, (gx, gy) => pinGlaive(p, gx, gy));
+        return;
+      }
+      // Twin Suns: two glaives in a V; the later landing is the one recalled
+      const base = Math.atan2(d.y, d.x);
+      for (const off of [-0.35, 0.35]) {
+        const v = { x: Math.cos(base + off), y: Math.sin(base + off) };
+        lob(p, v, dist, 950, 14, 0xffd24a, true, (gx, gy) => pinGlaive(p, gx, gy));
+      }
     },
     castE: (p) => {
       p.memory.zenithStart = T(p);
@@ -651,7 +694,11 @@ export const NEW_KITS: Record<string, Kit> = {
       p.memory.zenithNext = T(p) + 250;
       const r = has('sun_corona') ? 120 : 70;
       p.combat.ring(p.x, p.y, 0xffd24a, r);
-      for (const u of inRange(p, p.x, p.y, r)) boom(p, u, (18 + 0.32 * AD(p)) * AMP(p));
+      const shell = evolved('evo_solarshell');
+      for (const u of inRange(p, p.x, p.y, r)) {
+        boom(p, u, (18 + 0.32 * AD(p)) * AMP(p));
+        if (shell) ward(p, 4, 50); // Solar Shell
+      }
     },
     onDash: (p) => {
       p.memory.leapX = p.x;
@@ -726,8 +773,12 @@ export const NEW_KITS: Record<string, Kit> = {
       const { x, y } = aimAt(p, d, 420);
       // A lantern is lobbed and the bog spreads where it lands.
       const rising = has('mir_rising');
-      lob(p, d, Math.hypot(x - p.x, y - p.y), 800, 10, BOG, false, (bx, by) =>
-        bog(p, bx, by, rising ? 160 : 120, rising ? 9000 : 5000));
+      const r = rising ? 160 : 120;
+      lob(p, d, Math.hypot(x - p.x, y - p.y), 800, 10, BOG, false, (bx, by) => {
+        bog(p, bx, by, r, rising ? 9000 : 5000);
+        // Sunken Garden: the lantern's bog roots what it lands on (not the seeded ones)
+        if (evolved('evo_sunken')) for (const u of inRange(p, bx, by, r)) u.ctrlUntil = Math.max(u.ctrlUntil, T(p) + 800);
+      });
     },
     castE: (p) => {
       // Hold the tether its full length (target in reach) for 20 ward, cap 40.
@@ -818,6 +869,15 @@ export const NEW_KITS: Record<string, Kit> = {
     fireQ: (p, dir) => {
       const d = dir ?? p.facing;
       p.spendAmmo(3); // pack: the scattershot costs three rounds
+      if (evolved('evo_slug')) {
+        // Slug Round: one heavy slug through everything on the line
+        p.combat.spawnProjectile({
+          x: p.x, y: p.y, dirX: d.x, dirY: d.y, speed: 1600, radius: 11, color: 0xffcc66,
+          team: 'player', maxHits: 99, maxDist: 380,
+          onHit: (u) => boom(p, u, (130 + 1.6 * AD(p)) * AMP(p)),
+        });
+        return;
+      }
       const base = Math.atan2(d.y, d.x);
       const ox = p.x;
       const oy = p.y;
@@ -864,6 +924,7 @@ export const NEW_KITS: Record<string, Kit> = {
           if (!t) return;
           p.combat.flashLine(x, y, t.x, t.y, 0xffcc66);
           boom(p, t, (15 + 0.35 * AD(p)) * AMP(p));
+          if (evolved('evo_bunker')) ward(p, 4, 40); // Bunker Turret
         });
       }
     },
@@ -917,6 +978,12 @@ export const NEW_KITS: Record<string, Kit> = {
         onHit: (u) => {
           boom(p, u, (54 + 1.1 * AD(p)) * AMP(p));
           u.ctrlUntil = Math.max(u.ctrlUntil, T(p) + 800);
+          const n = readStacks(u, 'bleed', T(p));
+          if (evolved('evo_crimson') && n > 0) {
+            // Crimson Harpoon: the bleed it finds bursts
+            p.combat.ring(u.x, u.y, 0xdd5577, 120);
+            for (const v of inRange(p, u.x, u.y, 120)) boom(p, v, 14 * n * AMP(p));
+          }
           if (has('tes_reel')) p.reduceCooldown('Dash', 99999); // Reel and Strike
           reelIn(p, u, 150, 0xdd5577, keel ? (v) => keelhaul(p, v) : undefined);
         },
@@ -954,6 +1021,15 @@ export const NEW_KITS: Record<string, Kit> = {
         return Math.max(40, (target.x - p.x) * d.x + (target.y - p.y) * d.y - 60);
       }
       chainTarget.delete(p);
+      if (evolved('evo_grapple')) {
+        // Grapple: nothing ahead, so haul the nearest enemy in instead of going to it
+        const near = p.combat.nearestEnemy(p, 300);
+        if (near) {
+          reelIn(p, near, Math.hypot(near.x - p.x, near.y - p.y), 0xdd5577);
+          near.ctrlUntil = Math.max(near.ctrlUntil, T(p) + 600);
+          return true;
+        }
+      }
       return 200;
     },
     onDashEnd: (p) => {
@@ -1003,12 +1079,13 @@ export const NEW_KITS: Record<string, Kit> = {
       // A real wall of wind across the aim, 300 long, for 4s: it eats enemy
       // projectiles (combat.addWall), and anything that crosses it takes 20 and
       // a 40% slow — once per crossing. It was a circle that did neither.
-      const half = 150;
+      const front = evolved('evo_stormwall'); // Storm Front: twice the wall, longer
+      const half = front ? 300 : 150;
       const x1 = x - d.y * half;
       const y1 = y + d.x * half;
       const x2 = x + d.y * half;
       const y2 = y - d.x * half;
-      const until = T(p) + 4000;
+      const until = T(p) + (front ? 6000 : 4000);
       p.combat.addWall(x1, y1, x2, y2, until);
       const side = new Map<Unit, number>(); // which side of the line each enemy was on
       const tick = () => {
@@ -1035,6 +1112,7 @@ export const NEW_KITS: Record<string, Kit> = {
       return 280;
     },
     onDashEnd: (p) => {
+      if (evolved('evo_windshield')) ward(p, 15, 45); // Wind Shield
       // The trail lies along the path actually travelled, in three gusts.
       const ox = p.memory.gustX ?? p.x;
       const oy = p.memory.gustY ?? p.y;

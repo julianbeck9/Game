@@ -1,4 +1,5 @@
-import { AugmentDef, Tier } from './types';
+import { AugmentDef, Tag, Tier } from './types';
+import { PATH_TAGS } from './paths';
 import { AUGMENTS } from './registry';
 import { isDeleted } from '../core/balance';
 import { run } from '../core/run';
@@ -31,6 +32,8 @@ export interface RollOpts {
   allowPrisma?: boolean;
   /** This is a forced trade: strictly honor `tiers`, never fall back to another tier. */
   forced?: boolean;
+  /** Path card: roll only augments wearing one of these tags (when any exist). */
+  preferTags?: Tag[];
 }
 
 /**
@@ -51,7 +54,7 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
   const owns = (id: string) => run.augments.some((o) => o.id === id);
   const fits = (a: AugmentDef) => augmentFitsChampion(a, run.champion);
   const unlocked = (a: AugmentDef) => (a.requires ?? []).every(owns);
-  let pool = AUGMENTS.filter(
+  const pool = AUGMENTS.filter(
     (a) =>
       !a.champion && // champion lanes roll on their own track: championOffer()
       !owns(a.id) &&
@@ -63,6 +66,12 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
       (a.tier !== 'prisma' || prismaAllowed),
   );
   if (pool.length === 0) return null;
+
+  // The path card: something for a path you are already walking.
+  if (opts.preferTags?.length) {
+    const onPath = pool.filter((a) => a.tags.some((t) => opts.preferTags!.includes(t)));
+    if (onPath.length > 0) return onPath[Math.floor(Math.random() * onPath.length)];
+  }
 
   // Prisma bias: when prisma is on the table, give it a real chance to show up
   // (the gold pool is large, so uniform rolls under-represent prisma).
@@ -84,13 +93,8 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
     if (breakers.length > 0) return breakers[Math.floor(Math.random() * breakers.length)];
   }
 
-  const ownedTags = new Set(
-    (Object.keys(run.tagCounts) as (keyof typeof run.tagCounts)[]).filter((t) => run.tagCounts[t] > 0),
-  );
-  if (ownedTags.size > 0 && Math.random() < 0.4) {
-    const tagged = pool.filter((a) => a.tags.some((t) => ownedTags.has(t)));
-    if (tagged.length > 0) pool = tagged;
-  }
+  // No owned-tag bias here any more: that is the path card's job now, made
+  // explicit in rollOffers instead of a hidden 40% coin flip on every card.
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -124,10 +128,19 @@ export function championOffer(exclude: Set<string>): AugmentDef | null {
   return pick(pool);
 }
 
+/** Your two biggest started paths, most first (empty before any tag is owned). */
+export function topPaths(): Tag[] {
+  return PATH_TAGS.filter((t) => run.tagCounts[t] > 0)
+    .sort((a, b) => run.tagCounts[b] - run.tagCounts[a])
+    .slice(0, 2);
+}
+
 /**
- * Roll `count` distinct offers: one champion-lane card when the champion has
- * any left, the rest from the general pool — no owned duplicates, tier
- * gating, at most one prisma per selection, 40% owned-tag bias.
+ * Roll `count` distinct offers, each card with a job (SCHLACHTPLAN 3.6):
+ *   1. the lane card  — your champion's own build (championOffer);
+ *   2. the path card  — something for a path you have started;
+ *   3. the wildcard   — anything, so a run can still turn.
+ * No owned duplicates, tier gating, at most one prisma per selection.
  */
 export function rollOffers(round: number, count = 3): AugmentDef[] {
   const offers: AugmentDef[] = [];
@@ -139,8 +152,10 @@ export function rollOffers(round: number, count = 3): AugmentDef[] {
     exclude.add(champ.id);
     if (champ.tier === 'prisma') prismaOffered = true;
   }
+  const paths = topPaths();
   while (offers.length < count) {
-    const def = rollOneOffer(round, exclude, { allowPrisma: !prismaOffered });
+    const pathCard = offers.length === 1 && paths.length > 0;
+    const def = rollOneOffer(round, exclude, { allowPrisma: !prismaOffered, preferTags: pathCard ? paths : undefined });
     if (!def) break;
     if (def.tier === 'prisma') prismaOffered = true;
     offers.push(def);

@@ -30,6 +30,8 @@ export interface RunState {
    * and "survive the run" was never actually the game being played.
    */
   carriedHP: number | null;
+  /** Shop cards the player locked: they wait in the next shop (Brotato's lock). */
+  shopLocks: string[];
   tagCounts: Record<Tag, number>;
   flags: RuleFlags;
   /** Run-permanent counters owned by augments (e.g. Blutrausch stacks). */
@@ -60,6 +62,7 @@ function newRunState(): RunState {
     gold: 350, // starter-shop budget: enough for a first pair of boots
     goldEarned: 0,
     carriedHP: null,
+    shopLocks: [],
     tagCounts: { Blut: 0, Sturm: 0, Arkan: 0, Ward: 0, Bruch: 0 },
     flags: { ...DEFAULT_FLAGS },
     memory: {},
@@ -69,9 +72,20 @@ function newRunState(): RunState {
   };
 }
 
-/** Add a picked augment: registry entry + tag counts + rule flags. Refuses once MAX_AUGMENTS is hit. */
+/** The owned augment a pick would replace (same slot), if any. */
+export function slotRival(def: AugmentDef): AugmentDef | undefined {
+  return def.slot ? run.augments.find((a) => a.slot === def.slot && a.id !== def.id) : undefined;
+}
+
+/**
+ * Add a picked augment: registry entry + tag counts + rule flags. A slotted
+ * pick replaces the owned augment in its slot (and so never needs a free
+ * one); anything else refuses once MAX_AUGMENTS is hit.
+ */
 export function addAugment(def: AugmentDef): boolean {
-  if (run.augments.length >= MAX_AUGMENTS) return false;
+  const rival = slotRival(def);
+  if (rival) run.augments.splice(run.augments.indexOf(rival), 1);
+  else if (run.augments.length >= MAX_AUGMENTS) return false;
   run.augments.push(def);
   recomputeDerived(); // a new tag can light a path step
   return true;

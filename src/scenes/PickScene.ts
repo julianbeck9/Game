@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { AugmentDef, Tier } from '../augments/types';
-import { addAugment, run, MAX_AUGMENTS, removeAugment } from '../core/run';
+import { addAugment, run, MAX_AUGMENTS, removeAugment, slotRival } from '../core/run';
 import { rollOneOffer, nextOfferAfterReroll, Offer, championOffer } from '../augments/offers';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { sfx } from '../core/sfx';
@@ -329,6 +329,19 @@ export class PickScene extends Phaser.Scene {
       }
     }
 
+    // Slotted cards name their slot, and say what they would replace.
+    const rival = slotRival(def);
+    if (def.slot && !def.lane) {
+      this.add.text(L + w - 30, T + 44, `${def.slot.toUpperCase()} SLOT`, {
+        fontFamily: 'sans-serif', fontSize: '22px', fontStyle: 'bold', color: '#a8d8ff',
+      }).setOrigin(1, 0.5);
+    }
+    if (rival) {
+      this.add.text(x, T + h - 64, `replaces: ${rival.name}`, {
+        fontFamily: 'sans-serif', fontSize: '22px', fontStyle: 'bold', color: '#ff9a7a',
+      }).setOrigin(0.5);
+    }
+
     // Invisible hit area on top of the Graphics; Graphics itself is awkward to
     // make interactive and needs an explicit hit polygon.
     const bg = this.add.rectangle(x, y, w, h, 0xffffff, 0.001);
@@ -365,7 +378,7 @@ export class PickScene extends Phaser.Scene {
       fontFamily: 'sans-serif', fontSize: '30px', color: '#d8dce8', wordWrap: { width: w - 60 }, align: 'center', lineSpacing: 9,
     }).setOrigin(0.5, 0);
     for (const size of [27, 24, 21]) {
-      if (desc.height <= h - 262 - 64) break;
+      if (desc.height <= h - 262 - 96) break; // room for "replaces:" and the index
       desc.setFontSize(size).setLineSpacing(6);
     }
 

@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { run, addItem, sellItem, upgradeItem } from '../core/run';
-import { ItemDef, rollShop, MAX_ITEMS, blockedByUnique } from '../items/registry';
+import { ItemDef, rollShop, MAX_ITEMS, blockedByUnique, itemById } from '../items/registry';
 import { drawItemIcon } from '../items/icons';
 import { starLabel, starUpgradeCost, starsOf, MAX_STARS } from '../items/stars';
 import { sfx } from '../core/sfx';
 import { STR } from '../core/strings';
 import { backdrop, cardFrame, buttonPlate } from '../ui/panel';
 import { PATH_COLOR, pathGainLabel } from '../augments/paths';
+import { evolutionsFor, evolved, EVOLVE_AT } from '../champions/evolutions';
 
 /** Between rounds, after the augment pick: spend the round's gold. */
 export class ShopScene extends Phaser.Scene {
@@ -25,13 +26,17 @@ export class ShopScene extends Phaser.Scene {
    * drift from what the shop actually does.
    */
   cards: { item: ItemDef; buy: () => void }[] = [];
+  /** Rerolls bought in this shop visit; each costs more than the last. */
+  private rerolls = 0;
 
   constructor() {
     super('shop');
   }
 
-  create(): void {
+  /** `offers`/`rerolls` come back in through a reroll's scene restart. */
+  create(data?: { offers?: string[]; rerolls?: number }): void {
     this.actionPanel = null;
+    this.rerolls = data?.rerolls ?? 0;
     backdrop(this, GAME_H / 2 + 70, 0x3a2f6a);
     this.add
       .text(GAME_W / 2, 80, STR.shopTitle, {
@@ -52,6 +57,17 @@ export class ShopScene extends Phaser.Scene {
     this.hintText = this.add
       .text(GAME_W / 2, GAME_H - 152, '', { fontFamily: 'sans-serif', fontSize: '24px', color: '#a8d8ff' })
       .setOrigin(0.5);
+    // Evolution recipes and how far along each is — the reason to buy toward a path.
+    evolutionsFor(run.champion).forEach((e, i, all) => {
+      const col = '#' + PATH_COLOR[e.tag].toString(16).padStart(6, '0');
+      const have = Math.min(EVOLVE_AT, run.tagCounts[e.tag]);
+      const label = evolved(e.id) ? `✦ ${e.name} active` : `✦ ${e.tag} ${have}/${EVOLVE_AT} → ${e.name} (${e.ability})`;
+      this.add
+        .text(GAME_W / 2 + (i - (all.length - 1) / 2) * 520, 232, label, {
+          fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'bold', color: col,
+        })
+        .setOrigin(0.5);
+    });
     this.ownedRow = this.add.container(0, 0);
     this.rebuildOwnedRow();
     this.refreshLabels();
@@ -72,7 +88,9 @@ export class ShopScene extends Phaser.Scene {
     buildBtn.on('pointerdown', openBuild);
     this.input.keyboard?.on('keydown-TAB', openBuild);
 
-    const offers = rollShop(run.round);
+    const offers = data?.offers
+      ? data.offers.map(itemById).filter((it): it is ItemDef => !!it)
+      : this.composeShop();
     this.cards = [];
     const cardW = 285;
     const cardH = 420;
@@ -83,6 +101,7 @@ export class ShopScene extends Phaser.Scene {
     offers.forEach((it, i) => this.makeItemCard(it, x0 + i * (cardW + gap), y, cardW, cardH));
 
     this.healButton();
+    this.rerollButton();
 
     // Rounded plate + invisible hit area, matching the pick screen's buttons.
     buttonPlate(this, GAME_W / 2, GAME_H - 74, 420, 88, 0x2a2a40, COLORS.player, 18);
@@ -101,6 +120,46 @@ export class ShopScene extends Phaser.Scene {
     btn.on('pointerdown', go);
     this.input.keyboard?.once('keydown-ENTER', go);
     this.input.keyboard?.once('keydown-SPACE', go);
+  }
+
+  /** Locked cards first (still buyable), the rest rolled fresh. */
+  private composeShop(): ItemDef[] {
+    const locked = run.shopLocks
+      .map(itemById)
+      .filter((it): it is ItemDef => !!it && !run.items.some((o) => o.id === it.id) && !blockedByUnique(it));
+    run.shopLocks = locked.map((it) => it.id);
+    return [...locked, ...rollShop(run.round, 6 - locked.length, new Set(run.shopLocks))];
+  }
+
+  /**
+   * Reroll the unlocked cards for gold (20, 40, 60 … per visit). Locks hold,
+   * so a player can bank the piece their path needs and fish for the rest —
+   * the shop half of "Angebote lenken" (SCHLACHTPLAN 3.6).
+   */
+  private rerollButton(): void {
+    const cost = 20 * (this.rerolls + 1);
+    const x = GAME_W / 2 + 380;
+    const y = GAME_H - 74;
+    const afford = run.gold >= cost;
+    buttonPlate(this, x, y, 300, 88, afford ? 0x1e2a40 : 0x191922, afford ? 0x6a9ad0 : 0x33384a, 18);
+    this.add
+      .text(x, y, `⟳ Reroll — ${cost}g`, {
+        fontFamily: 'sans-serif', fontSize: '26px', fontStyle: 'bold', color: afford ? '#a8d8ff' : '#5a6480',
+      })
+      .setOrigin(0.5);
+    if (!afford) return;
+    this.add
+      .rectangle(x, y, 300, 88, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        if (run.gold < cost) return;
+        run.gold -= cost;
+        sfx.cast();
+        const keep = this.cards.map((c) => c.item).filter((it) => run.shopLocks.includes(it.id));
+        const shown = new Set(this.cards.map((c) => c.item.id));
+        const fresh = rollShop(run.round, 6 - keep.length, shown);
+        this.scene.restart({ offers: [...keep, ...fresh].map((it) => it.id), rerolls: this.rerolls + 1 });
+      });
   }
 
   private refreshLabels(): void {
@@ -406,6 +465,7 @@ export class ShopScene extends Phaser.Scene {
       }
       bought = true;
       addItem(it);
+      run.shopLocks = run.shopLocks.filter((id) => id !== it.id);
       sfx.pick();
       this.refreshLabels();
       this.rebuildOwnedRow();
@@ -415,6 +475,23 @@ export class ShopScene extends Phaser.Scene {
       soldG.setVisible(true);
       costText.setText(STR.shopBought).setColor('#7ee08a');
     };
+    // Lock: the card waits for you in the next shop (and survives rerolls).
+    if (!ownsBoots) {
+      const isLocked = () => run.shopLocks.includes(it.id);
+      const lockTxt = this.add
+        .text(w / 2 - 16, -h / 2 + 18, '', { fontFamily: 'sans-serif', fontSize: '18px', fontStyle: 'bold' })
+        .setOrigin(1, 0)
+        .setInteractive({ useHandCursor: true });
+      const paint = () =>
+        lockTxt.setText(isLocked() ? '■ LOCKED' : '□ lock').setColor(isLocked() ? '#ffd24a' : '#6a7490');
+      paint();
+      lockTxt.on('pointerdown', () => {
+        if (bought) return;
+        run.shopLocks = isLocked() ? run.shopLocks.filter((id) => id !== it.id) : [...run.shopLocks, it.id];
+        paint();
+      });
+      zone.add(lockTxt);
+    }
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => !bought && hov.setVisible(true));
     bg.on('pointerout', () => hov.setVisible(false));

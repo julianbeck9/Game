@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { ITEMS, rollShop } from '../../src/items/registry';
+import { ITEMS, rollShop, RETIRED_ITEM_IDS } from '../../src/items/registry';
 import { newRun, run } from '../../src/core/run';
 import { championUsesAP } from '../../src/champions/registry';
 
@@ -9,7 +9,7 @@ import { championUsesAP } from '../../src/champions/registry';
  * shop offered Soulstealer at exactly her 350 starting gold. Augment offers had
  * been gated by `augmentFitsChampion` all along; the shop simply never was.
  */
-const AP_ONLY = ITEMS.filter((i) => i.needs?.includes('ap'));
+const AP_ONLY = ITEMS.filter((i) => i.needs?.includes('ap') && !RETIRED_ITEM_IDS.has(i.id));
 
 describe('rollShop champion gating (B11)', () => {
   beforeEach(() => {
@@ -47,23 +47,30 @@ describe('rollShop champion gating (B11)', () => {
     expect(offered.length).toBe(AP_ONLY.length);
   });
 
-  it('keeps every genuine starter choice for an AD champion', () => {
+  it('fills the starter shop with cheap gear, boots and path pieces alike', () => {
+    // The starter shop is capped at gear costing <= 400. It used to hold five
+    // items (four boots and Soulstealer) — the B12 content gap. The path base
+    // pieces (augments/paths.ts) fill it, so an AD champion sees a full row.
     run.champion = 'sivir';
-    // The starter shop is capped at gear costing <= 400, and that pool holds
-    // exactly five items: the four boots plus Soulstealer. Gating drops it to
-    // four offers, and the whole boots decision (speed / armor / MR / attack
-    // speed) survives — only the dead pick is gone. See B12 for how thin this
-    // pool is in the first place; that is a content gap, not a gating bug.
-    const offers = rollShop(1);
-    const names = offers.map((o) => o.name).sort();
-    expect(names).toEqual(['Mercury Boots', 'Plated Boots', 'Spur Boots', 'Wind Boots']);
+    const seen = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      const offers = rollShop(1);
+      expect(offers.length).toBe(6);
+      for (const o of offers) {
+        expect(o.cost).toBeLessThanOrEqual(400);
+        seen.add(o.name);
+      }
+    }
+    for (const n of ['Mercury Boots', 'Plated Boots', 'Spur Boots', 'Wind Boots', 'Whetstone', 'Featherblade']) {
+      expect(seen.has(n), n).toBe(true);
+    }
   });
 
-  it('leaves the AP champion one more starter option than the AD champion', () => {
+  it('never offers a retired on-hit proc (SCHLACHTPLAN 3.5)', () => {
     run.champion = 'lux';
-    const ap = rollShop(1).length;
-    newRun();
-    run.champion = 'sivir';
-    expect(ap).toBe(rollShop(1).length + 1);
+    for (let i = 0; i < 300; i++) {
+      run.items.length = 0;
+      for (const it of rollShop(9)) expect(RETIRED_ITEM_IDS.has(it.id), it.id).toBe(false);
+    }
   });
 });

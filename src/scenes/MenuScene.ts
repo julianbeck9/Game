@@ -7,6 +7,8 @@ import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/dr
 import { ACTIVE_CHAMPIONS, CHAMP_IMAGE_KEYS, ensureChampionTextures } from '../champions/registry';
 import { describeQ } from '../champions/describe';
 import { loreFor } from '../champions/lore';
+import { evolutionsFor, EVOLVE_AT } from '../champions/evolutions';
+import { PATH_COLOR } from '../augments/paths';
 import { addFullscreenButton } from '../core/fullscreen';
 import { backdrop, cardFrame } from '../ui/panel';
 import { MAP_IMAGE_KEYS } from '../core/maps';
@@ -210,13 +212,23 @@ export class MenuScene extends Phaser.Scene {
     }
 
     if (lore?.tip) {
+      const tip = this.add.text(panelX + 60, yy + 4, `Tipp: ${lore.tip}`, {
+        fontFamily: 'sans-serif', fontSize: '23px', fontStyle: 'italic', color: '#ffd27a',
+        wordWrap: { width: panelW - 120 }, lineSpacing: 4,
+      });
+      layer.add(tip);
+      yy += tip.height + 16;
+    }
+
+    // Evolution recipes — the build goal is printed where the champion is chosen.
+    evolutionsFor(c.id).forEach((e, i) => {
+      const col = '#' + PATH_COLOR[e.tag].toString(16).padStart(6, '0');
       layer.add(
-        this.add.text(panelX + 60, yy + 4, `Tipp: ${lore.tip}`, {
-          fontFamily: 'sans-serif', fontSize: '23px', fontStyle: 'italic', color: '#ffd27a',
-          wordWrap: { width: panelW - 120 }, lineSpacing: 4,
+        this.add.text(panelX + 60 + i * 540, yy + 6, `✦ ${e.tag} ${EVOLVE_AT} → ${e.name} (${e.ability})`, {
+          fontFamily: 'sans-serif', fontSize: '23px', fontStyle: 'bold', color: col,
         }),
       );
-    }
+    });
 
     const play = this.add
       .rectangle(cx - 230, 985, 420, 78, 0x1a3a24, 1) // pack names are long: 'Brannoc Emberjaw'

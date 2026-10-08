@@ -15,6 +15,7 @@ import { AbilityButton } from '../ui/AbilityButton';
 import { AugmentManager } from '../augments/AugmentManager';
 import { rollOffers } from '../augments/offers';
 import { PATHS, PATH_TAGS, PATH_COLOR, pathLevel } from '../augments/paths';
+import { evolutionsFor, evolved } from '../champions/evolutions';
 import { run, earnGold } from '../core/run';
 import { dist, findOpenSpawn, pointInPillar, Vec } from '../core/geometry';
 import { autopilotEnabled, autopilotIntent } from '../core/autopilot';
@@ -195,6 +196,12 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     // Augments plug in before the round starts so roundStart hooks fire
     this.augments = new AugmentManager(this, this.player);
     this.augments.init();
+    // Evolutions (champions/evolutions.ts): the first round a recipe holds, say so.
+    for (const e of evolutionsFor(run.champion)) {
+      if (!evolved(e.id) || run.memory[`evo:${e.id}`]) continue;
+      run.memory[`evo:${e.id}`] = 1;
+      this.delay(700, () => this.announce(`EVOLUTION · ${e.name}`, '#ffd27a'));
+    }
     // Carry health in AFTER augments and items have applied, because they set
     // maxHP — clamping against the base value would silently cap the pool.
     if (run.flags.shieldPerRound > 0) {

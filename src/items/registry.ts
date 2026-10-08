@@ -975,7 +975,76 @@ const LUXUS: ItemDef[] = [
   }),
 ];
 
-export const ITEMS: ItemDef[] = [...BUDGET, ...KERN, ...LUXUS];
+// ---------------------------------------------------------------------------
+// PFAD-BASIS (~250 Gold) — one stat, one path. Cheap on purpose: these are how
+// gold turns into a path step (augments/paths.ts), the Brotato set piece.
+// ---------------------------------------------------------------------------
+
+const PATH_BASE: ItemDef[] = [
+  item({
+    id: 'it_blutphiole', icon: 'heart', name: 'Blood Vial', cost: 240, glyph: 'B', color: 0xe0475a,
+    description: '+9% life steal', statMods: [{ stat: 'lifesteal', flat: 0.09 }],
+  }),
+  item({
+    id: 'it_wetzstein', icon: 'dagger', name: 'Whetstone', cost: 250, glyph: 'W', color: 0xff8a3a,
+    description: '+10 AD', statMods: [{ stat: 'damage', flat: 10 }],
+  }),
+  item({
+    id: 'it_federklinge', icon: 'dagger', name: 'Featherblade', cost: 250, glyph: 'F', color: 0x6ad8ff,
+    description: '+22% attack speed', statMods: [{ stat: 'attackSpeed', pct: 0.22 }],
+  }),
+  item({
+    id: 'it_fokuskristall', icon: 'orb', name: 'Focus Crystal', cost: 250, glyph: 'K', color: 0xb08cff,
+    description: '+12% ability damage', statMods: [{ stat: 'abilityDamage', pct: 0.12 }],
+  }),
+  item({
+    id: 'it_stepprock', icon: 'plate', name: 'Quilted Coat', cost: 240, glyph: 'Q', color: 0xffd27a,
+    description: '+18 armor · +18 magic resist', statMods: [{ stat: 'armor', flat: 18 }, { stat: 'magicResist', flat: 18 }],
+  }),
+];
+
+// ---------------------------------------------------------------------------
+// REGEL-KERNE (~1000 Gold) — each one changes a verb rather than a number.
+// They replace the on-hit procs retired below.
+// ---------------------------------------------------------------------------
+
+const RULE_CORE: ItemDef[] = [
+  item({
+    id: 'it_spaltbogen', icon: 'bow', name: 'Splitting Bow', cost: 1000, glyph: 'S', color: 0x6ad8ff,
+    description: '+20% attack speed · every attack arcs on to 2 more enemies',
+    statMods: [{ stat: 'attackSpeed', pct: 0.2 }], ruleFlags: { autoChain: 2 },
+  }),
+  item({
+    id: 'it_widderhorn', icon: 'hammer', name: "Ram's Horn", cost: 950, glyph: 'R', color: 0xd8b070,
+    description: '+30 armor · every hit shoves its target 40 away from you',
+    statMods: [{ stat: 'armor', flat: 30 }], ruleFlags: { knockbackOnHit: 40 },
+  }),
+  item({
+    id: 'it_klingenmantel', icon: 'cloak', name: 'Razor Cloak', cost: 1000, glyph: 'C', color: 0xc8d0dc,
+    description: '+12 AD · your dash cuts everything it passes through for 45',
+    statMods: [{ stat: 'damage', flat: 12 }], ruleFlags: { dashDamage: 45 },
+  }),
+  item({
+    id: 'it_angstglas', icon: 'hourglass', name: 'Dread Glass', cost: 1000, glyph: 'D', color: 0xa8d8ff,
+    description: '+12% ability damage · below 30% health the world slows to 40% for 2.6s (every 16s)',
+    statMods: [{ stat: 'abilityDamage', pct: 0.12 }], ruleFlags: { clutchSlowmo: true },
+  }),
+];
+
+/**
+ * Retired from the shop (SCHLACHTPLAN 3.5): items whose whole identity was
+ * "on hit: extra damage". 15 of the 42 were exactly that, and a shop full of
+ * them made every purchase the same decision at a different number — the
+ * Risk-of-Rain trap. They still resolve through itemById (saved runs, tests,
+ * debug grants); they are just never offered. Pensioned, not deleted.
+ */
+export const RETIRED_ITEM_IDS = new Set([
+  'it_unendlichkeit', 'it_leerenstab', 'it_basiliskenzahn', 'it_lichklinge', 'it_lavamantel',
+  'it_koenigsklinge', 'it_sturmklinge', 'it_runenbogen', 'it_rasende', 'it_witzende',
+  'it_schattenflamme', 'it_herzstahl', 'it_titanenaxt', 'it_raubtierhydra', 'it_dornenwall',
+]);
+
+export const ITEMS: ItemDef[] = [...BUDGET, ...PATH_BASE, ...KERN, ...LUXUS, ...RULE_CORE];
 
 export function itemById(id: string): ItemDef | undefined {
   return ITEMS.find((i) => i.id === id);
@@ -1007,14 +1076,16 @@ export function blockedByUnique(it: ItemDef): boolean {
   return !!it.unique && run.items.some((o) => o.unique === it.unique);
 }
 
-export function rollShop(round: number, count = 6): ItemDef[] {
+export function rollShop(round: number, count = 6, exclude: ReadonlySet<string> = new Set()): ItemDef[] {
   const owned = (id: string) => run.items.some((it) => it.id === id);
   // The pre-round-1 starter shop only stocks cheap gear (boots, basic pieces)
   const pool = ITEMS.filter(
     (i) =>
       !owned(i.id) &&
+      !exclude.has(i.id) &&
       !blockedByUnique(i) &&
       !isDeleted(i.id) &&
+      !RETIRED_ITEM_IDS.has(i.id) &&
       (round <= 2 ? i.cost <= 400 : true) &&
       augmentFitsChampion(i, run.champion),
   );

@@ -114,3 +114,22 @@ describe('reroll dead-end repro + invariants (B4)', () => {
     }
   });
 });
+
+describe('offer steering (SCHLACHTPLAN 3.6)', () => {
+  it('the second card follows a started path', async () => {
+    // The namespace, not a destructured `run`: newRun() swaps the object.
+    const R = await import('../../src/core/run');
+    const { rollOffers } = await import('../../src/augments/offers');
+    let onPath = 0;
+    const N = 200;
+    for (let i = 0; i < N; i++) {
+      R.newRun();
+      R.run.champion = 'brannoc';
+      R.run.tagCounts.Ward = 3;
+      const offers = rollOffers(5);
+      if (offers[1]?.tags.includes('Ward')) onPath++;
+    }
+    // Every roll that can offer a Ward card does; allow for an exhausted pool.
+    expect(onPath / N).toBeGreaterThan(0.95);
+  });
+});

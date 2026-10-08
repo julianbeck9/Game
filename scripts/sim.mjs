@@ -113,6 +113,9 @@ const probe = (page) =>
       gold: r.gold,
       augs: (r.augments ?? []).map((a) => a.id),
       items: (r.items ?? []).map((i) => i.id),
+      tags: { ...(r.tagCounts ?? {}) },
+      // Evolutions that fired this run (ArenaScene marks them when they announce).
+      evolved: Object.keys(r.memory ?? {}).filter((k) => k.startsWith('evo:')).map((k) => k.slice(4)),
     };
     if (scenes.includes('arena')) {
       const a = window.__CC.arena();
@@ -280,7 +283,15 @@ async function playRun(page, champion, advance) {
     buys,
     augs: final.augs,
     items: final.items,
+    tags: final.tags,
+    evolved: final.evolved,
   };
+}
+
+/** The path a run leaned on most (null before it owned any tag). */
+function topPath(tags = {}) {
+  const best = Object.entries(tags).sort((a, b) => b[1] - a[1])[0];
+  return best && best[1] > 0 ? best[0] : null;
 }
 
 const steppedAdvance = (page) => (ms) => page.evaluate((m) => window.__CC.stepMs(m), ms);
@@ -333,8 +344,21 @@ function computeKpis(results, poolSize) {
     }
   }
 
+  // SCHLACHTPLAN 3.3/3.6: evolutions in runs that reach round 10 (target
+  // 40-70%), and how many different paths each champion's runs end up on.
+  const deep = results.filter((r) => r.reachedRound >= 10);
+  const evolvedAt10Pct = deep.length ? Math.round((deep.filter((r) => r.evolved?.length).length / deep.length) * 100) : null;
+  const pathsPerChampion = {};
+  for (const r of results) {
+    const t = topPath(r.tags);
+    if (t) (pathsPerChampion[r.champion] ??= new Set()).add(t);
+  }
+
   const winPcts = Object.values(byChampion).map((c) => c.winPct);
   return {
+    evolvedAt10Pct,
+    deepRuns: deep.length,
+    pathsPerChampion: Object.fromEntries(Object.entries(pathsPerChampion).map(([c, s]) => [c, [...s]])),
     runs: results.length,
     poolSize,
     pickDiversityPct: Math.round((pickCounts.size / poolSize) * 100),

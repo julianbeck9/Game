@@ -121,6 +121,8 @@ export interface AugmentStatMod {
   pct?: number;
 }
 
+export type AugmentSlot = 'auto' | 'Q' | 'dash';
+
 /** A champion capability an augment requires to be worth offering. */
 export type AugmentNeed = 'ap';
 
@@ -150,6 +152,13 @@ export interface AugmentDef {
   lane?: string;
   /** Augment ids that must all be owned before this one can be offered. */
   requires?: string[];
+  /**
+   * The verb this augment rewrites (Hades' boon slots). You hold one augment
+   * per slot: picking a second replaces the first, so a pick can be a trade.
+   * It also ends the order-dependence of overlapping flags — two `autoChain`
+   * picks used to overwrite each other silently, whichever came last.
+   */
+  slot?: AugmentSlot;
   hooks?: AugmentHooks;
   /** Permanent stat mods, re-applied at each combat init through the pipeline. */
   statMods?: AugmentStatMod[];
