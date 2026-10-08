@@ -14,6 +14,7 @@ import { Joystick } from '../ui/Joystick';
 import { AbilityButton } from '../ui/AbilityButton';
 import { AugmentManager } from '../augments/AugmentManager';
 import { rollOffers } from '../augments/offers';
+import { PATHS, PATH_TAGS, PATH_COLOR, pathLevel } from '../augments/paths';
 import { run, earnGold } from '../core/run';
 import { dist, findOpenSpawn, pointInPillar, Vec } from '../core/geometry';
 import { autopilotEnabled, autopilotIntent } from '../core/autopilot';
@@ -701,6 +702,10 @@ export class ArenaScene extends Phaser.Scene implements Combat {
       amount *= this.player.champ.incomingMult(this.player, source, amount);
       if (amount <= 0) return 0;
     }
+    // Ward 6 (Bulwark): less damage while any shield holds
+    if (target === this.player && this.player.shield > 0 && run.flags.wardedReduction > 0) {
+      amount *= 1 - run.flags.wardedReduction;
+    }
 
     // LoL-like mitigation: Rüstung vs physisch, MR vs magisch, wahr ignores both
     const sch: School =
@@ -1006,6 +1011,30 @@ export class ArenaScene extends Phaser.Scene implements Combat {
           })
           .setOrigin(0, 0.5),
       );
+    });
+
+    // Paths (augments/paths.ts): one row per path you have started — six
+    // pips, steps at 2/4/6 drawn larger, and the name of the highest lit step.
+    const started = PATH_TAGS.filter((t) => run.tagCounts[t] > 0).sort((a, b) => run.tagCounts[b] - run.tagCounts[a]);
+    started.forEach((t, i) => {
+      const y = this.buildChipsTop + run.augments.length * 34 + 18 + i * 30;
+      const col = PATH_COLOR[t];
+      const n = run.tagCounts[t];
+      const g = this.add.graphics();
+      g.fillStyle(0x0a0a14, 0.72);
+      g.fillRoundedRect(18, y - 13, 300, 26, 8);
+      for (let k = 1; k <= 6; k++) {
+        const px = 98 + k * 15;
+        const big = k % 2 === 0;
+        if (k <= n) g.fillStyle(col, 1).fillCircle(px, y, big ? 6 : 4);
+        else g.lineStyle(2, col, 0.4).strokeCircle(px, y, big ? 5 : 3);
+      }
+      c.add(g);
+      const lvl = pathLevel(n);
+      const stepName = lvl ? PATHS[t].find((s) => s.at === lvl)!.name : '';
+      const hex = '#' + col.toString(16).padStart(6, '0');
+      c.add(this.add.text(28, y, t, { fontFamily: 'sans-serif', fontSize: '17px', fontStyle: 'bold', color: hex }).setOrigin(0, 0.5));
+      c.add(this.add.text(208, y, stepName, { fontFamily: 'sans-serif', fontSize: '15px', color: hex }).setOrigin(0, 0.5));
     });
   }
 

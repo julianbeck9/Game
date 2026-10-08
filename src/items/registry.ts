@@ -1,4 +1,5 @@
-import { AugmentDef, AugmentCtx } from '../augments/types';
+import { AugmentDef, AugmentCtx, Tag } from '../augments/types';
+import type { StatName } from '../core/stats';
 import { procDamage, enemiesWithin, slowUnit, unitCounterAdd } from '../augments/helpers';
 import type { ItemIconKind } from './icons';
 // Laufzeit-sicher: core/run importiert von hier nur Typen (wird wegkompiliert)
@@ -39,8 +40,24 @@ export interface ItemDef extends AugmentDef {
   baseItem?: ItemDef;
 }
 
-function item(def: Omit<ItemDef, 'tier' | 'tags'>): ItemDef {
-  return { ...def, tier: 'gold', tags: [] };
+/**
+ * Which path a stat feeds (augments/paths.ts). An item wears the paths of its
+ * first two distinct stats, so buying stats also builds toward a path — the
+ * shop and the pick screen pull in the same direction.
+ */
+const STAT_PATH: Partial<Record<StatName, Tag>> = {
+  damage: 'Bruch', critChance: 'Bruch',
+  attackSpeed: 'Sturm', moveSpeed: 'Sturm',
+  abilityPower: 'Arkan', abilityDamage: 'Arkan', abilityHaste: 'Arkan', cooldown: 'Arkan',
+  armor: 'Ward', magicResist: 'Ward', maxHP: 'Ward',
+  lifesteal: 'Blut',
+};
+
+function item(def: Omit<ItemDef, 'tier' | 'tags'> & { tags?: Tag[] }): ItemDef {
+  const tags = def.tags ?? [
+    ...new Set((def.statMods ?? []).map((m) => STAT_PATH[m.stat]).filter((t): t is Tag => !!t)),
+  ].slice(0, 2);
+  return { ...def, tier: 'gold', tags };
 }
 
 // ---------------------------------------------------------------------------

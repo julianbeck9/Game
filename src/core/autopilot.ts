@@ -141,7 +141,12 @@ export function autopilotIntent(p: Player, units: Unit[], hazards: readonly Haza
   const targetD = dist(p.x, p.y, target.x, target.y);
 
   const hurt = p.maxHP > 0 && p.hp / p.maxHP < HURT_PCT;
-  const near = range * (hurt ? 0.75 : 0.6);
+  // Ranged: back off only when something is nearly in swing reach. The old
+  // 60%-of-range berth (348 for Mirelle) lay OUTSIDE the 210 waiting ring of
+  // the attack tokens, so the bot retreated from enemies that were not allowed
+  // to attack, never planted its feet, never shot — and Mirelle died in round
+  // 1 in three of four sim runs. That measured the bot, not the game.
+  const near = p.champ.ranged ? (hurt ? 240 : 170) : range * (hurt ? 0.75 : 0.6);
   const far = range * 0.92;
 
   let move: Vec = { x: 0, y: 0 };

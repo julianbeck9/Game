@@ -1,4 +1,5 @@
 import { AugmentDef, Tag, RuleFlags, DEFAULT_FLAGS } from '../augments/types';
+import { activePathSteps, mergePathFlags } from '../augments/paths';
 import type { ItemDef } from '../items/registry';
 // Runtime-safe: items/stars only imports types from the registry, so no cycle.
 import { starUpgradeCost, starsOf, withStars } from '../items/stars';
@@ -16,7 +17,7 @@ export interface RunState {
   /** Past round 20 the gauntlet becomes the Endlosmodus. */
   endless: boolean;
   augments: AugmentDef[];
-  /** Purchased items (activated each combat like augments; no tag counts). */
+  /** Purchased items (activated each combat like augments; their tags count toward paths). */
   items: ItemDef[];
   gold: number;
   goldEarned: number;
@@ -72,8 +73,7 @@ function newRunState(): RunState {
 export function addAugment(def: AugmentDef): boolean {
   if (run.augments.length >= MAX_AUGMENTS) return false;
   run.augments.push(def);
-  for (const t of def.tags) run.tagCounts[t]++;
-  if (def.ruleFlags) Object.assign(run.flags, def.ruleFlags);
+  recomputeDerived(); // a new tag can light a path step
   return true;
 }
 
@@ -112,8 +112,11 @@ export function sellItem(id: string): number {
   return refund;
 }
 
-/** Tag counts and rule flags are pure functions of what you own — rebuild. */
-function recomputeDerived(): void {
+/**
+ * Tag counts and rule flags are pure functions of what you own — rebuild.
+ * Items count toward paths like augments do; path steps fold in last.
+ */
+export function recomputeDerived(): void {
   run.tagCounts = { Blut: 0, Sturm: 0, Arkan: 0, Ward: 0, Bruch: 0 };
   run.flags = { ...DEFAULT_FLAGS };
   for (const a of run.augments) {
@@ -121,7 +124,11 @@ function recomputeDerived(): void {
     if (a.ruleFlags) Object.assign(run.flags, a.ruleFlags);
   }
   for (const it of run.items) {
+    for (const t of it.tags) run.tagCounts[t]++;
     if (it.ruleFlags) Object.assign(run.flags, it.ruleFlags);
+  }
+  for (const s of activePathSteps(run.tagCounts)) {
+    if (s.def.ruleFlags) mergePathFlags(run.flags, s.def.ruleFlags);
   }
 }
 
@@ -144,7 +151,7 @@ export function addItem(item: ItemDef): boolean {
   if (run.gold < item.cost) return false;
   run.gold -= item.cost;
   run.items.push(item);
-  // Items may break rules too (Schutzengel: +1 Wiederbelebung)
-  if (item.ruleFlags) Object.assign(run.flags, item.ruleFlags);
+  // Items break rules too (Schutzengel: +1 revive) and feed paths
+  recomputeDerived();
   return true;
 }

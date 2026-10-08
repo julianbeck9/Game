@@ -6,6 +6,7 @@ import { AbilityId } from '../core/events';
 import { norm, len, Vec, pointInTerrain } from '../core/geometry';
 import { COLORS, ABILITIES } from '../config';
 import { run } from '../core/run';
+import { PATH_TAGS, PATH_COLOR } from '../augments/paths';
 import { crown } from '../core/draw';
 import { ChampionDef } from '../champions/types';
 import { championById } from '../champions/registry';
@@ -429,7 +430,7 @@ export class Player extends Unit {
     let dmg = this.stats.get('damage');
     // Yasuo: crit chance counts double
     const crit = Math.random() < this.stats.get('critChance') * (this.champ.critMult ?? 1);
-    if (crit) dmg *= 1.75;
+    if (crit) dmg *= run.flags.critDamage;
     dmg *= shot?.mult ?? 1;
     const empowered = this.empoweredAutos > 0;
     if (empowered) {
@@ -519,6 +520,17 @@ export class Player extends Unit {
         g.fillCircle(this.x - (this.empoweredAutos - 1) * 6 + i * 12, this.y - this.radius - 26, 4);
       }
     }
+
+    // Path transformations (augments/paths.ts): each path at 6 wears its aura.
+    const auras = PATH_TAGS.filter((t) => run.tagCounts[t] >= 6);
+    auras.forEach((t, i) => {
+      const pulse = 0.5 + 0.5 * Math.sin(this.combat.now / 260 + i * 1.7);
+      const r = this.radius + 16 + i * 7;
+      g.fillStyle(PATH_COLOR[t], 0.07 + 0.06 * pulse);
+      g.fillCircle(this.x, this.y, r + 4);
+      g.lineStyle(3, PATH_COLOR[t], 0.45 + 0.4 * pulse);
+      g.strokeCircle(this.x, this.y, r);
+    });
 
     // Crown marker above whoever you play — you are the would-be king
     crown(g, this.x, this.y - this.radius - 12, 18, COLORS.player, 0.9);

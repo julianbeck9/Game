@@ -1,5 +1,6 @@
 import { AugmentCtx, AugmentDef } from './types';
 import { run } from '../core/run';
+import { activePathSteps } from './paths';
 import type { Combat } from '../core/combat';
 import type { Player } from '../entities/Player';
 import type { EventMap } from '../core/events';
@@ -66,11 +67,15 @@ export class AugmentManager {
     for (const def of [...run.augments]) this.activate(def);
     // Items are augment-shaped: same stat pipeline, same hook bus
     for (const item of [...run.items]) this.activate(item);
+    // Lit path steps, at face value — the tier multiplier is for picks
+    this.paths = activePathSteps(run.tagCounts).map((s) => s.def);
+    for (const def of this.paths) this.activate(def, 1);
   }
 
+  private paths: AugmentDef[] = [];
+
   /** Activate one augment for this combat (also used for mid-fight temp grants — Narrenwürfel). */
-  activate(def: AugmentDef): void {
-    const power = this.ctx.power(def);
+  activate(def: AugmentDef, power = this.ctx.power(def)): void {
     if (def.statMods) {
       for (let i = 0; i < def.statMods.length; i++) {
         const m = def.statMods[i];
@@ -104,6 +109,7 @@ export class AugmentManager {
   update(dt: number): void {
     for (const def of run.augments) def.onUpdate?.(dt, this.ctx);
     for (const item of run.items) item.onUpdate?.(dt, this.ctx);
+    for (const def of this.paths) def.onUpdate?.(dt, this.ctx);
   }
 
   destroy(): void {

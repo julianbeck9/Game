@@ -13,7 +13,8 @@ import { setAutopilot } from './core/autopilot';
 
 // Fold any admin balance overrides into the registries before the game starts.
 applyBalance();
-import { run, addAugment, newRun, upgradeItem } from './core/run';
+import { run, addAugment, newRun, upgradeItem, recomputeDerived } from './core/run';
+import type { Tag } from './augments/types';
 import { augmentById, AUGMENTS } from './augments/registry';
 import { rollOffers } from './augments/offers';
 import { championUsesAP, ACTIVE_CHAMPIONS } from './champions/registry';
@@ -75,6 +76,8 @@ declare global {
       goto: (round: number) => void;
       grant: (id: string) => boolean;
       grantItem: (id: string) => boolean;
+      /** Measurement: own `n` blank picks carrying `tag`, to light a path alone. */
+      grantTag: (tag: string, n: number) => void;
       forgeItem: (id: string) => boolean;
       arena: () => unknown;
       augIds: () => {
@@ -204,8 +207,16 @@ window.__CC = {
     const def = itemById(id);
     if (!def) return false;
     run.items.push(def);
-    if (def.ruleFlags) Object.assign(run.flags, def.ruleFlags);
+    recomputeDerived();
     return true;
+  },
+  // Test helper: n effect-free picks wearing one tag — a path step with nothing
+  // else attached, so a probe measures the path and only the path.
+  grantTag: (tag: string, n: number) => {
+    for (let i = 0; i < n; i++) {
+      run.augments.push({ id: `test:${tag}:${i}`, name: `${tag} probe`, tier: 'silber', tags: [tag as Tag], description: '' });
+    }
+    recomputeDerived();
   },
   // Test helper: forge an owned item one star up (charges gold, like the shop)
   forgeItem: (id: string) => upgradeItem(id),

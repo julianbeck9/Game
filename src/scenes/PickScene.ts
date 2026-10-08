@@ -5,6 +5,7 @@ import { rollOneOffer, nextOfferAfterReroll, Offer, championOffer } from '../aug
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { sfx } from '../core/sfx';
 import { backdrop, cardFrame, buttonPlate } from '../ui/panel';
+import { PATH_COLOR, pathGainLabel } from '../augments/paths';
 
 
 const TIER_COLOR: Record<Tier, number> = {
@@ -146,8 +147,10 @@ export class PickScene extends Phaser.Scene {
     if (full) this.continueButton();
 
     if (run.augments.length > 0) {
+      // With slots full the Continue button owns the bottom edge, so the list
+      // moves up under the notice instead of sitting beneath the button.
       this.add
-        .text(GAME_W / 2, GAME_H - 34, `Your augments: ${run.augments.map((a) => a.name).join(' · ')}`, {
+        .text(GAME_W / 2, full ? GAME_H / 2 + 60 : GAME_H - 34, `Your augments: ${run.augments.map((a) => a.name).join(' · ')}`, {
           fontFamily: 'sans-serif', fontSize: '22px', color: '#7a86a5',
           wordWrap: { width: GAME_W - 200 }, align: 'center',
         })
@@ -314,8 +317,8 @@ export class PickScene extends Phaser.Scene {
     // one pip per step, owned steps filled, this card's step ringed.
     if (def.lane) {
       const owned = run.augments.filter((a) => a.lane === def.lane && a.champion === def.champion).length;
-      const capstone = !!def.requires?.length;
-      this.add.text(L + w - 30 - 3 * 26, T + 44, (capstone ? 'CAPSTONE · ' : '') + def.lane.toUpperCase(), {
+      // The capstone says so in its text; the band only has room for the lane.
+      this.add.text(L + w - 30 - 3 * 26, T + 44, def.lane.toUpperCase(), {
         fontFamily: 'sans-serif', fontSize: '22px', fontStyle: 'bold', color: '#ffb066',
       }).setOrigin(1, 0.5);
       for (let k = 0; k < 3; k++) {
@@ -341,18 +344,30 @@ export class PickScene extends Phaser.Scene {
       wordWrap: { width: w - 60 }, align: 'center',
     }).setOrigin(0.5);
 
-    const tags = def.tags.length ? def.tags : ['—'];
-    const chipW = 108;
-    const totalW = tags.length * chipW + (tags.length - 1) * 12;
-    tags.forEach((t, i) => {
+    // Path chips: what this card adds to which path, and how close that puts
+    // the path to its next step (augments/paths.ts) — "+1 Sturm (3/4)".
+    const chipW = 176;
+    const totalW = def.tags.length * chipW + (def.tags.length - 1) * 12;
+    def.tags.forEach((t, i) => {
       const cxOff = x - totalW / 2 + chipW / 2 + i * (chipW + 12);
-      this.add.rectangle(cxOff, y - h / 2 + 220, chipW, 40, 0x232336, 1).setStrokeStyle(2, 0x3a3a55, 1);
-      this.add.text(cxOff, y - h / 2 + 220, t, { fontFamily: 'sans-serif', fontSize: '24px', color: '#9aa3bb' }).setOrigin(0.5);
+      const col = PATH_COLOR[t];
+      const hex = '#' + col.toString(16).padStart(6, '0');
+      this.add.rectangle(cxOff, y - h / 2 + 220, chipW, 40, 0x232336, 1).setStrokeStyle(2, col, 0.7);
+      this.add.text(cxOff, y - h / 2 + 220, pathGainLabel(t, run.tagCounts[t]), {
+        fontFamily: 'sans-serif', fontSize: '22px', fontStyle: 'bold', color: hex,
+      }).setOrigin(0.5);
     });
 
-    this.add.text(x, y + 40, def.description, {
+    // Hung from the top, under the path chips, and shrunk until it fits: a
+    // lane capstone's description is twice an ordinary card's, and centred
+    // text grew upward over the chips.
+    const desc = this.add.text(x, y - h / 2 + 262, def.description, {
       fontFamily: 'sans-serif', fontSize: '30px', color: '#d8dce8', wordWrap: { width: w - 60 }, align: 'center', lineSpacing: 9,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5, 0);
+    for (const size of [27, 24, 21]) {
+      if (desc.height <= h - 262 - 64) break;
+      desc.setFontSize(size).setLineSpacing(6);
+    }
 
     this.add.text(x, y + h / 2 - 34, `${index + 1}`, { fontFamily: 'sans-serif', fontSize: '24px', color: '#5a6480' }).setOrigin(0.5);
 

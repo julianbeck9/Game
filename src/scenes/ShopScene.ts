@@ -7,6 +7,7 @@ import { starLabel, starUpgradeCost, starsOf, MAX_STARS } from '../items/stars';
 import { sfx } from '../core/sfx';
 import { STR } from '../core/strings';
 import { backdrop, cardFrame, buttonPlate } from '../ui/panel';
+import { PATH_COLOR, pathGainLabel } from '../augments/paths';
 
 /** Between rounds, after the augment pick: spend the round's gold. */
 export class ShopScene extends Phaser.Scene {
@@ -359,9 +360,20 @@ export class ShopScene extends Phaser.Scene {
         .text(0, -h / 2 + 150, it.name, { fontFamily: 'sans-serif', fontSize: '29px', fontStyle: 'bold', color: '#ffffff' })
         .setOrigin(0.5),
     );
+    // Which paths the item feeds (augments/paths.ts): "+1 Ward (3/4)".
+    it.tags.forEach((t, i) => {
+      const col = '#' + PATH_COLOR[t].toString(16).padStart(6, '0');
+      zone.add(
+        this.add
+          .text((i - (it.tags.length - 1) / 2) * 134, -h / 2 + 190, pathGainLabel(t, run.tagCounts[t]), {
+            fontFamily: 'sans-serif', fontSize: '17px', fontStyle: 'bold', color: col,
+          })
+          .setOrigin(0.5),
+      );
+    });
     zone.add(
       this.add
-        .text(0, -h / 2 + 240, it.description, {
+        .text(0, -h / 2 + 262, it.description, {
           fontFamily: 'sans-serif',
           fontSize: '23px',
           color: '#d8dce8',

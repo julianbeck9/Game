@@ -61,6 +61,10 @@ export interface RuleFlags {
   magazineBonus: number;
   // Reload time override in ms; 0 = the kit's own.
   reloadMs: number;
+  // Auto-attack crit multiplier (Bruch 6 raises it).
+  critDamage: number;
+  // Share of incoming damage removed while any shield holds (Ward 6).
+  wardedReduction: number;
 }
 
 export const DEFAULT_FLAGS: RuleFlags = {
@@ -89,6 +93,8 @@ export const DEFAULT_FLAGS: RuleFlags = {
   attackWhileMoving: false,
   magazineBonus: 0,
   reloadMs: 0,
+  critDamage: 1.75,
+  wardedReduction: 0,
 };
 
 /** Everything an augment hook may touch. Handlers never reach into scene internals. */
