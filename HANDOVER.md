@@ -1,5 +1,7 @@
 # Crown & Clash — Übergabe & Roadmap
 
+> **Aktueller Arbeitsplan: [`SCHLACHTPLAN.md`](SCHLACHTPLAN.md)** (Stand 2026-10-08). Teil 0 hier gilt weiter; die Roadmap in Teil 3 ist davon abgelöst.
+
 > Stand: 2026-07-27 · Branch `claude/crown-clash-arena-game-pmb2ei` · Repo `julianbeck9/Game`
 > Adressat: der Agent, der lokal weiterarbeitet. Lies **Teil 0 komplett**, bevor du irgendetwas anfasst.
 

@@ -535,3 +535,42 @@ Einsen und Nullen ertrank. Kleine Ticks laufen jetzt durch denselben Sammler wie
 **Offen in B:** B1 (eigener Effekt je Fähigkeit) steht weiter auf 2 — 13 der 26 Champions
 hatten nie eine eigene `castVfx`, und die abgeleiteten sind Platzhalter. B4 und B6
 unverändert. **A4 und C2 stehen weiterhin auf 0.**
+
+---
+
+## Messung 008 — 2026-10-08 (nach Roster-Tausch und Augment-Neubau — Rückschritt)
+
+**Kontext:** Zwischen 007 und 008 lagen Kamera, Sound, Licht, UI, der Roster-Tausch
+auf die 8 Pack-Champions und der Neubau des Augment-Pools auf 21 generische Augments.
+Nichts davon wurde bewertet. Der Besitzer: *„es ist viel schlechter geworden mit den
+neuen Charakteren … es gibt keine Builds."* Die Zahlen geben ihm recht.
+
+### Geänderte Kriterien
+
+| # | Kriterium | 007 | **008** | Begründung |
+|---|---|---|---|---|
+| A1 | Pick verändert das Spielen | 4 | **3 ↓** | Die 21 neuen Augments ändern Regeln statt Zahlen — das ist besser als Procs. Aber keines ist an einen Champion gebunden |
+| A2 | Picks, die ohne Build wertlos sind | 4 | **1 ↓** | Die Champion-Lanes sind abgeschaltet; kein einziger Pick ist eine bewusste Wette |
+| A3 | Zwei Runs fühlen sich verschieden an | 3 | **1 ↓** | Ein Pool von 21 für alle Champions, Tags ohne Wirkung — Runs konvergieren |
+| A5 | Synergien erzeugen Kettenreaktionen | 3 | **1 ↓** | Die Ketten lebten in den Lanes (Cold Read, Riptide, Blood Frenzy). Weg |
+| A6 | Champions spielen sich grundverschieden | 4 | **2 ↓** | Kits unterscheiden sich, aber bis heute animierten alle 8 als Nahkämpfer mit weißem Schwert (Config fehlte) und Fernkämpfer reichten kürzer als der gegnerische Schütze. Beides heute behoben, daher 2 und nicht 1 |
+| B2 | Treffer fühlen sich wuchtig an | 3 | **4 ↑** | Kamera-Kick, Zoom-Punch, geschichteter Sound — im Juli gebaut, nie bewertet |
+| B6 | Kunststil konsistent | 3 | **3** | Gegner jetzt mit Silhouetten statt Kreisen, aber flache Vektorformen auf gemalten Karten |
+| C5 | Niederlagen fühlen sich fair an | 3 | **1 ↓** | Alle 6 Gegnertypen haben einen Grundangriff ohne Vorwarnung, 4 treffen im Nahkampf sofort. Mit HP-Pool über den Run ist Schaden für Nahkämpfer unvermeidbar |
+| D3 | Winrates im Zielkorridor | 3 | **1 ↓** | Mit dem echten Roster gemessen: Median Runde 2 von 20, 1 Sieg aus 16 |
+
+### Gesamtscore
+
+```
+A: (3+1+1+0+1+2) =  8 × 3 = 24   (54 -> 24)
+B: (2+4+3+3+3+3) = 18 × 2 = 36   (34 -> 36)
+C: (1+0+2+3+1)   =  7 × 2 = 14   (18 -> 14)
+D: (4+2+1+5)     = 12 × 1 = 12   (14 -> 12)
+                          -------
+                      GESAMT 86 / 275   (31 %)     vorher 120 / 275 (44 %)
+```
+
+**Die Build-Achse ist auf den Stand von Messung 001 zurückgefallen.** Ursache, ohne
+Beschönigung: Die Juli-Lanes waren der einzige Grund für A = 54, und sie wurden beim
+Pool-Neubau abgeschaltet, ohne für die neuen Champions ersetzt zu werden. Der Plan,
+das zurückzuholen und weiterzubauen, steht in `SCHLACHTPLAN.md`.
