@@ -28,12 +28,21 @@ export interface Kit {
   fireQ: ChampionDef['fireQ'];
   castE: ChampionDef['castE'];
   onDash?: ChampionDef['onDash'];
+  onDashEnd?: ChampionDef['onDashEnd'];
   dashAimed?: ChampionDef['dashAimed'];
   onAutoHit?: ChampionDef['onAutoHit'];
   onCombatInit?: ChampionDef['onCombatInit'];
   passiveTick?: ChampionDef['passiveTick'];
   onLethal?: ChampionDef['onLethal'];
   autoplay?: ChampionDef['autoplay'];
+  autoArc?: ChampionDef['autoArc'];
+  autoPierce?: ChampionDef['autoPierce'];
+  magazine?: ChampionDef['magazine'];
+  autoBlocked?: ChampionDef['autoBlocked'];
+  dashCharges?: ChampionDef['dashCharges'];
+  dashIFrames?: ChampionDef['dashIFrames'];
+  incomingMult?: ChampionDef['incomingMult'];
+  onAutoFire?: ChampionDef['onAutoFire'];
 }
 
 // ---- shared helpers ----

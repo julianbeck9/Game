@@ -19,6 +19,9 @@ const SPRITE_FOOT_OFFSET = (radius: number) => -4 + radius * 1.356;
 /** How long a refused death buys you (ChampionDef.onLethal). */
 const UNDYING_MS = 4000;
 
+/** Dash slide speed (px/s): the generic 220px in 0.18s, kept for every length. */
+const DASH_SPEED = ABILITIES.Dash.dist / ABILITIES.Dash.duration;
+
 /** Stats every champion shares unless their sheet overrides them. */
 const CHAMP_DEFAULTS: Partial<Record<StatName, number>> = {
   abilityPower: 0,
@@ -49,6 +52,8 @@ export class Player extends Unit {
   undyingUntil = 0;
   /** Champion Dash took over movement this dash — suppress the generic slide. */
   private dashCustom = false;
+  /** Slide length of the dash in progress (kits may set their own). */
+  private dashDist: number = ABILITIES.Dash.dist;
   /** Direction of the last Q cast (Echo re-fires along it). */
   lastQDir: Vec = { x: 1, y: 0 };
   /** Distance the last cast was aimed at, in px. 0 = no explicit aim. */
@@ -108,8 +113,7 @@ export class Player extends Unit {
       // Champion dashes that teleport/leap move the player themselves; the
       // generic slide only runs for the plain directional dash.
       if (!this.dashCustom) {
-        const speed = ABILITIES.Dash.dist / ABILITIES.Dash.duration;
-        this.moveBy(this.dashDir.x * speed * dt, this.dashDir.y * speed * dt, true); // crosses terrain
+        this.moveBy(this.dashDir.x * DASH_SPEED * dt, this.dashDir.y * DASH_SPEED * dt, true); // crosses terrain
       }
       this.phaseSlash();
       this.isMoving = true;
@@ -171,8 +175,47 @@ export class Player extends Unit {
   }
 
   get maxDashCharges(): number {
-    return run.flags.dashCharges;
+    // Champion base charges, plus whatever augments add above the default 1.
+    return (this.champ.dashCharges ?? 1) + Math.max(0, run.flags.dashCharges - 1);
   }
+
+  /** Autos left in the magazine (kits with `magazine` only). */
+  ammo = 0;
+
+  /** Magazine size after augments. */
+  get magazineSize(): number {
+    return (this.champ.magazine?.size ?? 0) + run.flags.magazineBonus;
+  }
+
+  /** Refill the magazine now (Kip's dash). */
+  reload(): void {
+    if (!this.champ.magazine) return;
+    this.ammo = this.magazineSize;
+    this.nextAttackAt = Math.min(this.nextAttackAt, this.combat.now);
+  }
+
+  /** Spend `n` rounds (Kip's Q costs three); an empty magazine starts reloading. */
+  spendAmmo(n: number): void {
+    const m = this.champ.magazine;
+    if (!m) return;
+    this.ammo = Math.max(0, this.ammo - n);
+    if (this.ammo === 0) this.startReload();
+  }
+
+  private startReload(): void {
+    const m = this.champ.magazine;
+    if (!m) return;
+    const ms = run.flags.reloadMs > 0 ? run.flags.reloadMs : m.reloadMs;
+    this.nextAttackAt = this.combat.now + ms;
+    this.reloadingUntil = this.nextAttackAt;
+    this.combat.bus.emit('reload', undefined);
+    this.combat.delay(ms, () => {
+      if (this.ammo === 0) this.ammo = this.magazineSize;
+    });
+  }
+
+  /** While now < reloadingUntil the magazine is empty and refilling (UI reads this). */
+  reloadingUntil = 0;
 
   get dashChargesAvail(): number {
     return this.maxDashCharges - this.dashChargesUsed;
@@ -292,8 +335,17 @@ export class Player extends Unit {
         : { ...this.facing };
     this.dashUntil = this.combat.now + ABILITIES.Dash.duration * 1000;
     this.dashSlashed.clear();
-    // Champion-specific dash (leap / hook / blink); may take over movement.
-    this.dashCustom = this.champ.onDash?.(this, this.dashDir) === true;
+    // Champion-specific dash (leap / hook / blink); may take over movement, or
+    // name its own slide length (see ChampionDef.onDash).
+    if (this.champ.dashIFrames) {
+      this.invulnUntil = Math.max(this.invulnUntil, this.combat.now + this.champ.dashIFrames * 1000);
+    }
+    const res = this.champ.onDash?.(this, this.dashDir);
+    this.dashCustom = res === true;
+    this.dashDist = typeof res === 'number' ? res : ABILITIES.Dash.dist;
+    // Same speed for every slide, so a longer dash takes longer rather than
+    // moving faster — distance is something the eye can then actually read.
+    this.dashUntil = this.combat.now + (this.dashDist / DASH_SPEED) * 1000;
     this.sprite.cast(this.castVfx('dash'), Math.atan2(this.dashDir.y, this.dashDir.x));
     this.combat.bus.emit('dashStart', undefined);
     return true;
@@ -335,6 +387,7 @@ export class Player extends Unit {
     if (this.dashing && time >= this.dashUntil) {
       this.dashing = false;
       this.ejectFromTerrain();
+      this.champ.onDashEnd?.(this);
       this.combat.bus.emit('dashEnd', undefined);
     }
 
@@ -349,15 +402,23 @@ export class Player extends Unit {
 
   private tryAutoAttack(time: number): void {
     if (run.flags.noAutoAttacks) return; // Kronlos rule flag
+    if (this.champ.autoBlocked?.(this)) return;
     if (time < this.nextAttackAt) return;
-    // Planted feet: champions only attack while standing still
-    if (this.isMoving || this.dashing) return;
+    // Planted feet: champions only attack while standing still — unless a
+    // pick lifts the rule (Running Shot).
+    if ((this.isMoving && !run.flags.attackWhileMoving) || this.dashing) return;
     const range = this.stats.get('attackRange');
     const target = this.combat.nearestEnemy(this, range);
     if (!target) return;
 
     const atkSpeed = Math.max(0.1, this.stats.get('attackSpeed'));
     this.nextAttackAt = time + 1000 / atkSpeed;
+    if (this.champ.magazine) {
+      if (this.ammo <= 0) this.ammo = this.magazineSize; // first shot of a fight
+      this.ammo--;
+      if (this.ammo === 0) this.startReload();
+    }
+    const shot = this.champ.onAutoFire?.(this, target) ?? null;
     this.facing = norm(target.x - this.x, target.y - this.y);
     this.sprite.attack(
       Math.atan2(target.y - this.y, target.x - this.x),
@@ -369,6 +430,7 @@ export class Player extends Unit {
     // Yasuo: crit chance counts double
     const crit = Math.random() < this.stats.get('critChance') * (this.champ.critMult ?? 1);
     if (crit) dmg *= 1.75;
+    dmg *= shot?.mult ?? 1;
     const empowered = this.empoweredAutos > 0;
     if (empowered) {
       this.empoweredAutos--;
@@ -384,6 +446,7 @@ export class Player extends Unit {
     };
 
     if (this.champ.ranged) {
+      const pierce = (this.champ.autoPierce ?? 0) + (shot?.pierce ?? 0);
       this.combat.spawnProjectile({
         x: this.x,
         y: this.y,
@@ -395,8 +458,36 @@ export class Player extends Unit {
         team: 'player',
         homing: target,
         maxDist: range + 200,
-        onHit,
+        // Pierce: the homing bolt lands on its target, then a straight bolt
+        // carries on along the same line through `pierce` more enemies.
+        onHit: pierce > 0
+          ? (t: Unit) => {
+              onHit(t);
+              const d = norm(t.x - this.x, t.y - this.y);
+              this.combat.spawnProjectile({
+                x: t.x, y: t.y, dirX: d.x, dirY: d.y,
+                speed: this.stats.get('projSpeed'), radius: 8, color: COLORS.playerProj,
+                team: 'player', maxHits: pierce, maxDist: 260, ignore: t, onHit,
+              });
+            }
+          : onHit,
       });
+    } else if (this.champ.autoArc) {
+      // Cleave: every enemy in the arc around the target takes the swing.
+      const half = (this.champ.autoArc.arc * Math.PI) / 360;
+      const aim = Math.atan2(target.y - this.y, target.x - this.x);
+      const victims = this.combat.units
+        .filter((u) => {
+          if (!u.alive || u.team === this.team) return false;
+          const dd = Math.hypot(u.x - this.x, u.y - this.y);
+          if (dd > range + u.radius) return false;
+          let off = Math.abs(Math.atan2(u.y - this.y, u.x - this.x) - aim);
+          if (off > Math.PI) off = Math.PI * 2 - off;
+          return u === target || off <= half + Math.atan2(u.radius, Math.max(1, dd));
+        })
+        .sort((a, b) => (a === target ? -1 : b === target ? 1 : 0))
+        .slice(0, this.champ.autoArc.maxTargets ?? 99);
+      for (const u of victims) onHit(u);
     } else {
       // Melee swing: instant, with a slash flash
       this.combat.flashLine(this.x, this.y, target.x, target.y, crit ? 0xffffff : COLORS.playerProj);

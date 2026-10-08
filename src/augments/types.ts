@@ -54,6 +54,13 @@ export interface RuleFlags {
   healPerKill: number;
   // Shield at the start of every round, as a fraction of max health.
   shieldPerRound: number;
+  // Auto-attacks while moving. The engine plants your feet to attack; this
+  // lifts that rule — a different verb, not a bigger number.
+  attackWhileMoving: boolean;
+  // Extra rounds in a champion's magazine (Kip).
+  magazineBonus: number;
+  // Reload time override in ms; 0 = the kit's own.
+  reloadMs: number;
 }
 
 export const DEFAULT_FLAGS: RuleFlags = {
@@ -79,6 +86,9 @@ export const DEFAULT_FLAGS: RuleFlags = {
   executeBelow: 0,
   healPerKill: 0,
   shieldPerRound: 0,
+  attackWhileMoving: false,
+  magazineBonus: 0,
+  reloadMs: 0,
 };
 
 /** Everything an augment hook may touch. Handlers never reach into scene internals. */
@@ -126,6 +136,14 @@ export interface AugmentDef {
    * nudging a stat, and are only ever offered to that champion.
    */
   champion?: string;
+  /**
+   * Build lane this augment belongs to (champion lanes, see augments/lanes.ts).
+   * A lane is two enablers and one capstone; the capstone lists both enablers
+   * in `requires` and is never offered before the player owns them.
+   */
+  lane?: string;
+  /** Augment ids that must all be owned before this one can be offered. */
+  requires?: string[];
   hooks?: AugmentHooks;
   /** Permanent stat mods, re-applied at each combat init through the pipeline. */
   statMods?: AugmentStatMod[];

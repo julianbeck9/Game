@@ -13,6 +13,7 @@ import { MASTERYI_AUGMENTS } from './champions/masteryi';
 import { WARWICK_AUGMENTS } from './champions/warwick';
 import { RETIRED_AUGMENT_IDS } from './retired';
 import { CORE_AUGMENTS } from './core';
+import { LANE_AUGMENTS } from './lanes';
 
 /**
  * THE augment registry. Augments are data + hooks only: they subscribe to
@@ -50,7 +51,7 @@ export const LEGACY_AUGMENTS: AugmentDef[] = [...SILBER, ...GOLD, ...PRISMA, ...
   (a) => !RETIRED_AUGMENT_IDS.has(a.id),
 );
 
-export const AUGMENTS: AugmentDef[] = CORE_AUGMENTS;
+export const AUGMENTS: AugmentDef[] = [...CORE_AUGMENTS, ...LANE_AUGMENTS];
 
 // Late-bind the full pool for Transmutations-style augments (avoids cycles).
 poolRef.all = AUGMENTS;

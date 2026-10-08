@@ -50,12 +50,15 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
 
   const owns = (id: string) => run.augments.some((o) => o.id === id);
   const fits = (a: AugmentDef) => augmentFitsChampion(a, run.champion);
+  const unlocked = (a: AugmentDef) => (a.requires ?? []).every(owns);
   let pool = AUGMENTS.filter(
     (a) =>
+      !a.champion && // champion lanes roll on their own track: championOffer()
       !owns(a.id) &&
       !exclude.has(a.id) &&
       !isDeleted(a.id) &&
       fits(a) &&
+      unlocked(a) &&
       tiers.includes(a.tier) &&
       (a.tier !== 'prisma' || prismaAllowed),
   );
@@ -92,13 +95,50 @@ export function rollOneOffer(round: number, exclude: Set<string>, opts: RollOpts
 }
 
 /**
- * Roll `count` distinct offers: no owned duplicates, tier gating, at most one
- * prisma per selection (capped by flags.prismaSlots), 40% owned-tag bias.
+ * The champion card of a pick screen: one augment from the champion's own
+ * lanes, outside the tier bands (a lane must be startable from the first pick).
+ *
+ * Priority mirrors how a build is felt to come together:
+ *  1. a capstone the player has just unlocked — the payoff must show up the
+ *     moment it is earned, or the lane reads as a dead end;
+ *  2. the next step of a lane already started;
+ *  3. any lane opener.
+ */
+export function championOffer(exclude: Set<string>): AugmentDef | null {
+  const owns = (id: string) => run.augments.some((o) => o.id === id);
+  const pool = AUGMENTS.filter(
+    (a) =>
+      a.champion === run.champion &&
+      !owns(a.id) &&
+      !exclude.has(a.id) &&
+      !isDeleted(a.id) &&
+      (a.requires ?? []).every(owns),
+  );
+  if (pool.length === 0) return null;
+  const pick = (xs: AugmentDef[]) => xs[Math.floor(Math.random() * xs.length)];
+  const capstones = pool.filter((a) => a.requires?.length);
+  if (capstones.length) return pick(capstones);
+  const started = new Set(run.augments.map((a) => a.lane).filter(Boolean));
+  const continuing = pool.filter((a) => a.lane && started.has(a.lane));
+  if (continuing.length && Math.random() < 0.75) return pick(continuing);
+  return pick(pool);
+}
+
+/**
+ * Roll `count` distinct offers: one champion-lane card when the champion has
+ * any left, the rest from the general pool — no owned duplicates, tier
+ * gating, at most one prisma per selection, 40% owned-tag bias.
  */
 export function rollOffers(round: number, count = 3): AugmentDef[] {
   const offers: AugmentDef[] = [];
   const exclude = new Set<string>();
   let prismaOffered = false;
+  const champ = championOffer(exclude);
+  if (champ) {
+    offers.push(champ);
+    exclude.add(champ.id);
+    if (champ.tier === 'prisma') prismaOffered = true;
+  }
   while (offers.length < count) {
     const def = rollOneOffer(round, exclude, { allowPrisma: !prismaOffered });
     if (!def) break;

@@ -40,7 +40,11 @@ export class StatBlock {
       flat += m.flat ?? 0;
       pct += m.pct ?? 0;
     }
-    return ((this.base[stat] ?? 0) + flat) * (1 + pct);
+    const v = ((this.base[stat] ?? 0) + flat) * (1 + pct);
+    // Slows add up: past -100% the speed went negative and a slowed unit
+    // walked BACKWARDS, away from its target (found by lanecheck: a chilled
+    // dummy drifted out of Skorrvald's reach).
+    return stat === 'moveSpeed' ? Math.max(0, v) : v;
   }
 
   getBase(stat: StatName): number {

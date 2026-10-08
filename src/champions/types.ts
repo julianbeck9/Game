@@ -71,10 +71,17 @@ export interface ChampionDef {
   castE(p: Player, dir?: Vec): void;
   /**
    * Champion-specific Dash effect (leap, hook, blink…). Runs when the player
-   * dashes; return true to take over movement (the generic dash slide is
-   * suppressed) or false/undefined to keep the plain directional dash.
+   * dashes. Return:
+   *  - a NUMBER: slide that many pixels — the body really travels, at the
+   *    generic dash speed. This is what a dash should almost always do; the
+   *    whole new roster used to teleport instead (moveBy + `true`), which
+   *    reads as a cut in the film rather than a movement.
+   *  - true: the kit moves the player itself (genuine blinks, target leaps).
+   *  - false/undefined: the plain directional dash.
    */
-  onDash?(p: Player, dir: Vec): boolean | void;
+  onDash?(p: Player, dir: Vec): boolean | number | void;
+  /** Fires when the dash slide ends — landing shockwaves belong here. */
+  onDashEnd?(p: Player): void;
   /**
    * The dash is an aimed skillshot, not a movement dodge.
    *
@@ -102,6 +109,39 @@ export interface ChampionDef {
    * exists: casting on after the killing blow is the best moment in his kit.
    */
   onLethal?(p: Player): boolean;
+
+  // ---- Auto-attack and dash shape (champion pack, see newKits.ts) ----
+  // Declared as data so the engine implements each rule once, for every kit.
+
+  /**
+   * Melee autos hit every enemy inside this arc (degrees) around the target,
+   * up to `maxTargets`. Single-target melee against a crowd of nine was the
+   * other half of "alle sind melee, man bekommt immer Schaden": a melee
+   * champion could only ever thin a crowd one body at a time.
+   */
+  autoArc?: { arc: number; maxTargets?: number };
+  /** Ranged autos carry on through this many further enemies in a line. */
+  autoPierce?: number;
+  /** `size` autos, then `reloadMs` before the next one (Kip). */
+  magazine?: { size: number; reloadMs: number };
+  /** True while the kit forbids auto-attacks (Sunna's Zenith). */
+  autoBlocked?(p: Player): boolean;
+  /** Base dash charges (default 1). Augments that add charges stack on top. */
+  dashCharges?: number;
+  /**
+   * Invulnerability at the start of every dash, in seconds. The pack gives
+   * every champion 0.16-0.34s; the engine gave none unless a kit set it by
+   * hand. A dash that does not dodge is just a fast walk.
+   */
+  dashIFrames?: number;
+  /** Share of an incoming hit that lands (1 = all). Knows where it came from and how big it was. */
+  incomingMult?(p: Player, source: Unit | null, amount: number): number;
+  /**
+   * Called as an auto-attack fires, after the magazine ticks. A kit may scale
+   * that one shot or let it pierce further (Kip's last round), or fire
+   * something alongside it (Aeren's eye). null = an ordinary shot.
+   */
+  onAutoFire?(p: Player, target: Unit): { mult?: number; pierce?: number } | null;
   /**
    * Advice for the scripted player only (core/autopilot), never read in real
    * play. A champion whose kit needs handling a generic bot cannot infer —

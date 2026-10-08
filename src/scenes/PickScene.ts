@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { AugmentDef, Tier } from '../augments/types';
 import { addAugment, run, MAX_AUGMENTS, removeAugment } from '../core/run';
-import { rollOneOffer, nextOfferAfterReroll, Offer } from '../augments/offers';
+import { rollOneOffer, nextOfferAfterReroll, Offer, championOffer } from '../augments/offers';
 import { GAME_W, GAME_H, COLORS } from '../config';
 import { sfx } from '../core/sfx';
 import { backdrop, cardFrame, buttonPlate } from '../ui/panel';
@@ -70,7 +70,10 @@ export class PickScene extends Phaser.Scene {
     if (this.mode !== 'select') return;
     const cur = this.offers[i];
     if (!cur || cur.rerolled || cur.exhausted) return;
-    const def = rollOneOffer(this.offerRound, this.excludeSet());
+    // A lane card rerolls into another lane card first — the champion slot
+    // should not vanish because the first lane offered was the wrong one.
+    const def = (cur.def.champion ? championOffer(this.excludeSet()) : null)
+      ?? rollOneOffer(this.offerRound, this.excludeSet());
     this.offers[i] = nextOfferAfterReroll(cur, def);
     if (def) sfx.cast();
     this.render();
@@ -306,6 +309,22 @@ export class PickScene extends Phaser.Scene {
       fontFamily: 'sans-serif', fontSize: '26px', fontStyle: 'bold',
       color: '#' + tierColor.toString(16).padStart(6, '0'),
     }).setOrigin(0, 0.5).setLetterSpacing?.(3);
+
+    // Lane cards say which build they belong to and how far along it you are:
+    // one pip per step, owned steps filled, this card's step ringed.
+    if (def.lane) {
+      const owned = run.augments.filter((a) => a.lane === def.lane && a.champion === def.champion).length;
+      const capstone = !!def.requires?.length;
+      this.add.text(L + w - 30 - 3 * 26, T + 44, (capstone ? 'CAPSTONE · ' : '') + def.lane.toUpperCase(), {
+        fontFamily: 'sans-serif', fontSize: '22px', fontStyle: 'bold', color: '#ffb066',
+      }).setOrigin(1, 0.5);
+      for (let k = 0; k < 3; k++) {
+        const px = L + w - 30 - (2 - k) * 26 - 8;
+        if (k < owned) g.fillStyle(0xffb066, 1).fillCircle(px, T + 44, 8);
+        else if (k === owned) g.lineStyle(3, 0xffb066, 1).strokeCircle(px, T + 44, 8);
+        else g.lineStyle(2, 0x5a4a3a, 1).strokeCircle(px, T + 44, 7);
+      }
+    }
 
     // Invisible hit area on top of the Graphics; Graphics itself is awkward to
     // make interactive and needs an explicit hit polygon.

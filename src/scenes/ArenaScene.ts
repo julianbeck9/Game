@@ -695,6 +695,12 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     if (target === this.player && this.player.dashing && run.flags.dashIFrames) return 0;
     // Champion dash i-frames (Fizz/Yi/Fiddlesticks) grant brief invulnerability.
     if (target === this.player && this.now < this.player.invulnUntil) return 0;
+    // Kit damage reduction (Skorrvald's Rime Wall) — the kit sees the source,
+    // so a block can be frontal only.
+    if (target === this.player && this.player.champ.incomingMult) {
+      amount *= this.player.champ.incomingMult(this.player, source, amount);
+      if (amount <= 0) return 0;
+    }
 
     // LoL-like mitigation: Rüstung vs physisch, MR vs magisch, wahr ignores both
     const sch: School =
@@ -1410,7 +1416,11 @@ export class ArenaScene extends Phaser.Scene implements Combat {
     // because a pick arrived constantly none of them felt like a decision.
     // Picks now land on rounds 2, 5, 8, 11, 15 and 19 — six moments, one per
     // slot, spaced so each one is a step change rather than a drip.
-    const PICK_AFTER = [2, 5, 8, 11, 15, 19];
+    // Moved to [1, 3, 5, 8, 11, 15] once the champion lanes existed: with the
+    // sim's median run ending around round 3-4, the old schedule meant most
+    // runs saw ONE pick, and a build cannot form out of one card. The first
+    // pick now follows the first fight, the way Hades opens with a boon.
+    const PICK_AFTER = [1, 3, 5, 8, 11, 15];
     const justPlayed = run.round;
     run.round++;
     if (PICK_AFTER.includes(justPlayed)) {

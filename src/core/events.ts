@@ -25,6 +25,8 @@ export interface EventMap {
   playerHpThreshold: { pct: number };
   /** Fires for ANY enemy death including minions — the on-kill economy. */
   killWindow: { victim: Unit };
+  /** A magazine ran dry and started reloading (Kip). */
+  reload: void;
 }
 
 type Handler<K extends keyof EventMap> = (payload: EventMap[K]) => void;

@@ -6,6 +6,7 @@ import { initAudio } from '../core/sfx';
 import { crown, shade, spawnEmber, updateAndDrawEmbers, Ember } from '../core/draw';
 import { ACTIVE_CHAMPIONS, CHAMP_IMAGE_KEYS, ensureChampionTextures } from '../champions/registry';
 import { describeQ } from '../champions/describe';
+import { loreFor } from '../champions/lore';
 import { addFullscreenButton } from '../core/fullscreen';
 import { backdrop, cardFrame } from '../ui/panel';
 import { MAP_IMAGE_KEYS } from '../core/maps';
@@ -142,30 +143,46 @@ export class MenuScene extends Phaser.Scene {
     const layer = this.add.container(0, 0).setDepth(50);
     layer.add(this.add.rectangle(cx, GAME_H / 2, GAME_W, GAME_H, 0x06060c, 0.9));
 
+    // Taller than before (60..1040): the pack's blurb and tip now sit in the
+    // panel too, and the old 840px only just held the four kit slots.
     const panelW = 1180;
     const panelX = cx - panelW / 2;
+    const top = 50;
     const g = this.add.graphics();
     g.fillStyle(0x11111c, 0.98);
-    g.fillRoundedRect(panelX, 120, panelW, 840, 20);
+    g.fillRoundedRect(panelX, top, panelW, 990, 20);
     g.lineStyle(3, COLORS.player, 0.8);
-    g.strokeRoundedRect(panelX, 120, panelW, 840, 20);
+    g.strokeRoundedRect(panelX, top, panelW, 990, 20);
     layer.add(g);
 
-    const sprite = this.add.image(panelX + 130, 250, `champ:${c.id}`);
+    const lore = loreFor(c.id);
+    const sprite = this.add.image(panelX + 130, top + 130, `champ:${c.id}`);
     sprite.setScale(sprite.height > 0 ? Math.min(4, 190 / sprite.height) : 3.4);
     layer.add(sprite);
     layer.add(
       this.add
-        .text(panelX + 260, 200, c.name, { fontFamily: 'Georgia, serif', fontSize: '54px', fontStyle: 'bold', color: '#ffffff' })
+        .text(panelX + 260, top + 70, c.name, { fontFamily: 'Georgia, serif', fontSize: '54px', fontStyle: 'bold', color: '#ffffff' })
         .setOrigin(0, 0.5),
     );
+    // Difficulty as three pips after the role line — read at a glance, the
+    // way the pack rates it (1 easy … 3 hard).
+    const pips = lore ? '  ' + '●'.repeat(lore.difficulty) + '○'.repeat(Math.max(0, 3 - lore.difficulty)) : '';
     layer.add(
       this.add
-        .text(panelX + 260, 252, `${c.tagline} · ${c.region} · ${c.ranged ? 'Ranged' : 'Melee'}`, {
+        .text(panelX + 260, top + 122, `${c.tagline} · ${c.region} · ${c.ranged ? 'Ranged' : 'Melee'}${pips}`, {
           fontFamily: 'sans-serif', fontSize: '26px', fontStyle: 'italic', color: '#9aa3bb',
         })
         .setOrigin(0, 0.5),
     );
+    let blurbBottom = top + 150;
+    if (lore?.blurb) {
+      const b = this.add.text(panelX + 260, top + 152, lore.blurb, {
+        fontFamily: 'sans-serif', fontSize: '22px', color: '#c4cadb',
+        wordWrap: { width: panelW - 320 }, lineSpacing: 4,
+      });
+      layer.add(b);
+      blurbBottom = top + 152 + b.height;
+    }
 
     // Q's desc is flavor-only; the mechanical ground truth (shape + round-scaled
     // numbers) is generated from spec.q/Q_SCALE so it can never drift (B6).
@@ -176,7 +193,7 @@ export class MenuScene extends Phaser.Scene {
       ['E', c.info.e, 0xffe680],
       ['Dash / Space', c.info.dash, 0x6ab8ff],
     ];
-    let yy = 350;
+    let yy = Math.max(top + 250, blurbBottom + 34);
     for (const [key, info, col] of slots) {
       layer.add(
         this.add.text(panelX + 60, yy, `${key} — ${info.name}`, {
@@ -189,23 +206,32 @@ export class MenuScene extends Phaser.Scene {
         wordWrap: { width: panelW - 120 }, lineSpacing: 5,
       });
       layer.add(d);
-      yy += 52 + d.height + 22;
+      yy += 46 + d.height + 18;
+    }
+
+    if (lore?.tip) {
+      layer.add(
+        this.add.text(panelX + 60, yy + 4, `Tipp: ${lore.tip}`, {
+          fontFamily: 'sans-serif', fontSize: '23px', fontStyle: 'italic', color: '#ffd27a',
+          wordWrap: { width: panelW - 120 }, lineSpacing: 4,
+        }),
+      );
     }
 
     const play = this.add
-      .rectangle(cx - 200, 900, 320, 78, 0x1a3a24, 1)
+      .rectangle(cx - 230, 985, 420, 78, 0x1a3a24, 1) // pack names are long: 'Brannoc Emberjaw'
       .setStrokeStyle(3, 0x5fd06a, 1)
       .setInteractive({ useHandCursor: true });
     layer.add(play);
-    layer.add(this.add.text(cx - 200, 900, `▶ Play ${c.name}`, { fontFamily: 'sans-serif', fontSize: '32px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5));
+    layer.add(this.add.text(cx - 230, 985, `▶ Play ${c.name}`, { fontFamily: 'sans-serif', fontSize: '32px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5));
     play.on('pointerdown', () => this.startFn(c.id));
 
     const back = this.add
-      .rectangle(cx + 200, 900, 320, 78, 0x2a2a40, 1)
+      .rectangle(cx + 250, 985, 280, 78, 0x2a2a40, 1)
       .setStrokeStyle(3, 0x556, 1)
       .setInteractive({ useHandCursor: true });
     layer.add(back);
-    layer.add(this.add.text(cx + 200, 900, 'Back', { fontFamily: 'sans-serif', fontSize: '32px', color: '#c8d0e4' }).setOrigin(0.5));
+    layer.add(this.add.text(cx + 250, 985, 'Back', { fontFamily: 'sans-serif', fontSize: '32px', color: '#c8d0e4' }).setOrigin(0.5));
     back.on('pointerdown', () => layer.destroy());
   }
 
